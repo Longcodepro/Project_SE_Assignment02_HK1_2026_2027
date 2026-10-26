@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Trà sữa trân châu">
+  <title>Trà sữa trân châu</title>
+  <rect width="400" height="400" rx="32" fill="#EFE3D2"/>
+  <!-- thu nhỏ hình để không bị cắt khi hiển thị trong khung ngang của thẻ sản phẩm -->
+  <g transform="translate(200 202) scale(.7) translate(-200 -200)">
+  <ellipse cx="200" cy="344" rx="92" ry="11" fill="#000" opacity=".12"/>
+  <line x1="240" y1="56" x2="218" y2="280" stroke="#5CA9A0" stroke-width="16" stroke-linecap="round"/>
+  <clipPath id="g"><path d="M130 110 H270 L252 320 Q250 335 235 335 H165 Q150 335 148 320 Z"/></clipPath>
+  <g clip-path="url(#g)">
+    <rect x="120" y="100" width="160" height="245" fill="#fff" opacity=".55"/>
+    <rect x="120" y="140" width="160" height="205" fill="#C9A27A"/>
+    <rect x="120" y="140" width="160" height="45" fill="#D8B793"/>
+    <circle cx="150" cy="322" r="9" fill="#2A1B14"/>
+    <circle cx="172" cy="326" r="9" fill="#2A1B14"/>
+    <circle cx="194" cy="322" r="9" fill="#2A1B14"/>
+    <circle cx="216" cy="326" r="9" fill="#2A1B14"/>
+    <circle cx="238" cy="322" r="9" fill="#2A1B14"/>
+    <circle cx="160" cy="304" r="9" fill="#2A1B14"/>
+    <circle cx="184" cy="308" r="9" fill="#2A1B14"/>
+    <circle cx="208" cy="304" r="9" fill="#2A1B14"/>
+    <circle cx="230" cy="308" r="9" fill="#2A1B14"/>
+    <circle cx="172" cy="288" r="9" fill="#2A1B14"/>
+    <circle cx="198" cy="290" r="9" fill="#2A1B14"/>
+    <circle cx="222" cy="288" r="9" fill="#2A1B14"/>
+  </g>
+  <path d="M130 110 H270 L252 320 Q250 335 235 335 H165 Q150 335 148 320 Z" fill="none" stroke="#fff" stroke-width="6" opacity=".9"/>
+  <path d="M150 128 L160 300" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+  </g>
+</svg>

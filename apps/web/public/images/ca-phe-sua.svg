@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Cà phê sữa">
+  <title>Cà phê sữa</title>
+  <rect width="400" height="400" rx="32" fill="#F3E3CC"/>
+  <!-- thu nhỏ hình để không bị cắt khi hiển thị trong khung ngang của thẻ sản phẩm -->
+  <g transform="translate(200 202) scale(.7) translate(-200 -200)">
+  <ellipse cx="200" cy="344" rx="92" ry="11" fill="#000" opacity=".12"/>
+  <line x1="238" y1="64" x2="218" y2="270" stroke="#C0392B" stroke-width="11" stroke-linecap="round"/>
+  <clipPath id="g"><path d="M130 110 H270 L252 320 Q250 335 235 335 H165 Q150 335 148 320 Z"/></clipPath>
+  <g clip-path="url(#g)">
+    <rect x="120" y="100" width="160" height="245" fill="#fff" opacity=".55"/>
+    <rect x="120" y="215" width="160" height="130" fill="#5A341C"/>
+    <rect x="120" y="150" width="160" height="70" fill="#D8B48A"/>
+    <rect x="150" y="150" width="38" height="38" rx="8" fill="#fff" opacity=".6" transform="rotate(-8 169 169)"/>
+    <rect x="205" y="138" width="38" height="38" rx="8" fill="#fff" opacity=".6" transform="rotate(10 224 157)"/>
+    <rect x="170" y="190" width="38" height="38" rx="8" fill="#fff" opacity=".6" transform="rotate(6 189 209)"/>
+  </g>
+  <path d="M130 110 H270 L252 320 Q250 335 235 335 H165 Q150 335 148 320 Z" fill="none" stroke="#fff" stroke-width="6" opacity=".9"/>
+  <path d="M150 128 L160 300" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+  </g>
+</svg>

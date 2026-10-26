@@ -6,37 +6,37 @@ const products = [
     id: 1,
     name: 'Cà phê sữa',
     price: 29000,
-    imageUrl: 'https://example.com/ca-phe-sua.jpg',
+    imageUrl: '/images/ca-phe-sua.svg',
   },
   {
     id: 2,
     name: 'Cà phê đen',
     price: 25000,
-    imageUrl: 'https://example.com/ca-phe-den.jpg',
+    imageUrl: '/images/ca-phe-den.svg',
   },
   {
     id: 3,
     name: 'Bạc xỉu',
     price: 32000,
-    imageUrl: 'https://example.com/bac-xiu.jpg',
+    imageUrl: '/images/bac-xiu.svg',
   },
   {
     id: 4,
     name: 'Trà đào cam sả',
     price: 39000,
-    imageUrl: 'https://example.com/tra-dao-cam-sa.jpg',
+    imageUrl: '/images/tra-dao-cam-sa.svg',
   },
   {
     id: 5,
     name: 'Trà sữa trân châu',
     price: 35000,
-    imageUrl: 'https://example.com/tra-sua-tran-chau.jpg',
+    imageUrl: '/images/tra-sua-tran-chau.svg',
   },
   {
     id: 6,
     name: 'Matcha latte',
     price: 45000,
-    imageUrl: 'https://example.com/matcha-latte.jpg',
+    imageUrl: '/images/matcha-latte.svg',
   },
 ];
 

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Bạc xỉu">
+  <title>Bạc xỉu</title>
+  <rect width="400" height="400" rx="32" fill="#FBEFD9"/>
+  <!-- thu nhỏ hình để không bị cắt khi hiển thị trong khung ngang của thẻ sản phẩm -->
+  <g transform="translate(200 202) scale(.7) translate(-200 -200)">
+  <ellipse cx="200" cy="344" rx="92" ry="11" fill="#000" opacity=".12"/>
+  <line x1="238" y1="64" x2="218" y2="270" stroke="#E0A526" stroke-width="11" stroke-linecap="round"/>
+  <clipPath id="g"><path d="M130 110 H270 L252 320 Q250 335 235 335 H165 Q150 335 148 320 Z"/></clipPath>
+  <g clip-path="url(#g)">
+    <rect x="120" y="100" width="160" height="245" fill="#fff" opacity=".55"/>
+    <rect x="120" y="280" width="160" height="65" fill="#7B4A2A"/>
+    <rect x="120" y="268" width="160" height="16" fill="#B98A5E"/>
+    <rect x="120" y="140" width="160" height="135" fill="#FBF5EA"/>
+    <rect x="150" y="140" width="38" height="38" rx="8" fill="#fff" opacity=".6" transform="rotate(-6 169 159)"/>
+    <rect x="208" y="150" width="38" height="38" rx="8" fill="#fff" opacity=".6" transform="rotate(12 227 169)"/>
+  </g>
+  <path d="M130 110 H270 L252 320 Q250 335 235 335 H165 Q150 335 148 320 Z" fill="none" stroke="#fff" stroke-width="6" opacity=".9"/>
+  <path d="M150 128 L160 300" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+  </g>
+</svg>
