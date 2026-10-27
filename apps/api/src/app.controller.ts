@@ -13,4 +13,11 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
+
+  @Get('health')
+  @ApiOperation({ summary: 'Kiểm tra trạng thái sức khỏe hệ thống (Health Check)' })
+  @ApiOkResponse({ description: 'Hệ thống hoạt động bình thường' })
+  getHealth(): { status: string; timestamp: string } {
+    return { status: 'ok', timestamp: new Date().toISOString() };
+  }
 }
