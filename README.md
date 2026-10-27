@@ -10,6 +10,7 @@ Luồng chính: Xem menu → Chọn tùy chọn → Giỏ hàng → Đặt đơn
 apps/web/     Next.js mobile-first
 apps/api/     NestJS + Prisma (migration, seed, test, Swagger, Postman)
 docs/         requirements/ · diagrams/ · architecture/ (kèm adr/) · traceability-matrix.md · deployment.md
+scripts/      logs.sh · start-tunnel.sh · studio-cloud.sh
 tests/        integration / E2E
 .github/      workflows CI/CD, mẫu Pull Request
 docker-compose.yml · .env.example
@@ -46,6 +47,19 @@ cd apps/web && npm ci && NEXT_PUBLIC_API_URL=http://localhost:4000 npm run dev
 cd apps/api && npm run lint && npm run build && npm test
 cd apps/api && npm run postman      # cần API đang chạy
 cd apps/web && npm run lint && npm run build
+```
+
+## Tiện ích scripts & Cloud
+
+```bash
+# 1. Theo dõi log HTTP Backend thời gian thực từ Docker
+bash scripts/logs.sh
+
+# 2. Khởi động Cloudflare Tunnel (HTTPS miễn phí cho demo internet / mobile)
+bash scripts/start-tunnel.sh
+
+# 3. Mở Prisma Studio kết nối Database Neon Cloud (xem dữ liệu online)
+bash scripts/studio-cloud.sh
 ```
 
 ## Quy ước
