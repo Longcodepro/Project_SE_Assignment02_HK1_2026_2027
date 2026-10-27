@@ -1,8 +1,7 @@
 name: CI
 
 # Chạy mỗi khi có Pull Request và khi push vào main.
-# Không dùng path filter: các job dưới đây là "required check" của main,
-# nếu bị bỏ qua thì PR sẽ chờ mãi.
+# Bắt buộc: Tất cả các job phải XANH (passed) thì mới được phép merge vào main.
 on:
   pull_request:
   push:
@@ -17,55 +16,115 @@ concurrency:
 
 jobs:
   backend:
-    name: backend
+    name: "Kiểm tra Backend (Lint, Build, Test)"
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: apps/api
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài đặt Node.js 22
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: apps/api/package-lock.json
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run build
-      - run: npm test
+
+      - name: Cài đặt dependencies
+        run: npm ci
+
+      - name: Kiểm tra cú pháp (oxlint)
+        run: npm run lint
+
+      - name: Sinh Prisma Client và biên dịch NestJS
+        run: npm run build
+
+      - name: Chạy Unit Test (Vitest)
+        run: npm test
 
   frontend:
-    name: frontend
+    name: "Kiểm tra Frontend (Lint, Build)"
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài đặt Node.js 22
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run build
 
-  # Build image và chạy thử cả 3 service bằng docker compose.
-  docker:
-    name: docker
+      - name: Cài đặt dependencies
+        run: npm ci
+
+      - name: Kiểm tra cú pháp (eslint)
+        run: npm run lint
+
+      - name: Biên dịch Next.js (Turbopack)
+        run: npm run build
+
+  # MÔ PHỎNG DEPLOYMENT & SMOKE TEST TOÀN DIỆN
+  # Job này đóng vai trò Quality Gate cuối cùng:
+  # Nếu bất kỳ khâu build Docker, migration DB, backend API hay frontend web sập
+  # -> Job thất bại -> GitHub KHÓA NÚT MERGE PULL REQUEST.
+  deploy-smoke-test:
+    name: "Mô phỏng Deploy & Smoke Test (Docker)"
     runs-on: ubuntu-latest
+    needs: [backend, frontend]
     steps:
-      - uses: actions/checkout@v4
-      - name: Tạo .env từ .env.example
+      - name: Checkout mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Chuẩn bị biến môi trường
         run: cp .env.example .env
-      - name: Build và chạy
+
+      - name: Build và khởi động toàn bộ hệ thống (Docker Compose)
         run: docker compose up -d --build
-      - name: Backend trả lời
-        run: curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://localhost:4000
-      - name: Log khi lỗi
+
+      - name: Smoke Test 1 - Kiểm tra Backend API phản hồi (GET /)
+        run: |
+          echo "Đang kiểm tra Backend tại cổng 4000..."
+          curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://localhost:4000
+
+      - name: Smoke Test 2 - Kiểm tra Health Endpoint (GET /health)
+        run: |
+          echo "Đang kiểm tra Health check endpoint..."
+          curl --fail --silent --show-error --retry 10 --retry-delay 2 http://localhost:4000/health
+
+      - name: Smoke Test 3 - Kiểm tra Database kết nối & Seed dữ liệu (GET /products)
+        run: |
+          echo "Đang kiểm tra Database qua API /products..."
+          RESPONSE=$(curl --fail --silent --show-error --retry 10 --retry-delay 2 http://localhost:4000/products)
+          echo "Dữ liệu trả về: $RESPONSE"
+          # Kiểm tra kết quả trả về phải chứa mảng sản phẩm
+          if [[ "$RESPONSE" != *"["* ]]; then
+            echo "LỖI: API /products không trả về danh sách sản phẩm hợp lệ!"
+            exit 1
+          fi
+
+      - name: Smoke Test 4 - Kiểm tra Swagger Documentation (GET /docs)
+        run: |
+          echo "Đang kiểm tra Swagger UI..."
+          curl --fail --silent --show-error --retry 10 --retry-delay 2 http://localhost:4000/docs/
+
+      - name: Smoke Test 5 - Kiểm tra Frontend Web Render (GET /)
+        run: |
+          echo "Đang kiểm tra Frontend tại cổng 4001..."
+          curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://localhost:4001
+
+      - name: In log container khi có lỗi
         if: failure()
-        run: docker compose logs
-      - name: Dọn dẹp
+        run: |
+          echo "=== LOG TOÀN BỘ CONTAINER KHI GẶP LỖI ==="
+          docker compose logs
+
+      - name: Dọn dẹp container và volumes
         if: always()
         run: docker compose down -v
