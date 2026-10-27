@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import { Product } from '@/types';
 import { apiService } from '@/services/api';
-import { Loader2, AlertCircle, Coffee, Sparkles, ShieldCheck, Zap } from 'lucide-react';
+import { Loader2, AlertCircle, Coffee, Sparkles, ShieldCheck, Zap, Radio } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import ProductCard from '@/components/ProductCard';
 import ProductDetailModel from '@/components/ProductDetailModal';
+import ServerConfigModal from '@/components/ServerConfigModal';
 import { useCartStore } from '@/store/useCartStore';
 
 const MOCK_PRODUCTS: Product[] = [
@@ -88,6 +89,8 @@ export default function MenuPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOfflineMode, setIsOfflineMode] = useState<boolean>(false);
+  const [isServerModalOpen, setIsServerModalOpen] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const addToCart = useCartStore((state)=>state.addToCart);
 
@@ -96,6 +99,7 @@ export default function MenuPage() {
       try {
         setLoading(true);
         setError(null);
+        setIsOfflineMode(false);
 
         // Gọi API backend thật
         const data = await apiService.getProducts();
@@ -103,6 +107,7 @@ export default function MenuPage() {
       } catch (err) {
         console.warn('Backend chưa bật hoặc gặp lỗi, sử dụng dữ liệu mẫu', err);
         setProducts(MOCK_PRODUCTS);
+        setIsOfflineMode(true);
       } finally {
         setLoading(false);
       }
@@ -155,6 +160,35 @@ export default function MenuPage() {
             <Coffee className="w-80 h-80 text-white stroke-[0.8]" />
           </div>
         </section>
+
+        {/* BANNER THÔNG BÁO OFFLINE & KẾT NỐI SERVER (Dành cho demo từ xa / mobile) */}
+        {isOfflineMode && (
+          <div className="mb-6 p-3.5 sm:p-4 bg-amber-50 border border-amber-300 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-950 shadow-sm animate-in fade-in">
+            <div className="flex items-start sm:items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0 mt-1 sm:mt-0" />
+              <div>
+                <span className="font-extrabold text-amber-900">Chưa kết nối được Backend API thật:</span>{' '}
+                <span className="text-amber-800">
+                  Đang dùng dữ liệu demo offline. Nếu bạn đang test trên điện thoại hoặc từ xa, vui lòng nhập link Cloudflare Tunnel để kết nối.
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsServerModalOpen(true)}
+              className="shrink-0 w-full sm:w-auto px-4 py-2 bg-[#3E2314] hover:bg-[#2C1810] text-white font-bold rounded-xl transition shadow text-xs flex items-center justify-center gap-1.5 active:scale-95"
+            >
+              <Radio className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <span>Kết nối Server Tunnel</span>
+            </button>
+          </div>
+        )}
+
+        {/* Modal cấu hình Server API */}
+        <ServerConfigModal
+          isOpen={isServerModalOpen}
+          onClose={() => setIsServerModalOpen(false)}
+        />
 
         {/* BỘ LỌC DANH MỤC: Cuộn ngang trên điện thoại, dàn trải trên Desktop */}
         <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-3 mb-6 sm:mb-8 no-scrollbar">
