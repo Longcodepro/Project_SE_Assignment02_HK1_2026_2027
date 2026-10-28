@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Server, CheckCircle2, AlertCircle, RefreshCw, X, Radio, ArrowRight } from 'lucide-react';
-import { getApiUrl, setCustomApiUrl, resetCustomApiUrl, isCustomApiUrlSet, apiService } from '@/services/api';
+import { getApiUrl, setCustomApiUrl, resetCustomApiUrl, isCustomApiUrlSet, apiService, normalizeApiUrl } from '@/services/api';
 
 interface ServerConfigModalProps {
     isOpen: boolean;
@@ -22,11 +22,13 @@ export default function ServerConfigModal({ isOpen, onClose }: ServerConfigModal
     const isCustom = typeof window !== 'undefined' ? isCustomApiUrlSet() : false;
 
     const handleTest = async () => {
-        if (!inputUrl.trim()) return;
+        const normalized = normalizeApiUrl(inputUrl);
+        if (!normalized) return;
+        setInputUrl(normalized);
         setTesting(true);
         setTestResult(null);
         try {
-            const res = await apiService.testConnection(inputUrl.trim());
+            const res = await apiService.testConnection(normalized);
             setTestResult(res);
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Lỗi kết nối';
@@ -37,8 +39,9 @@ export default function ServerConfigModal({ isOpen, onClose }: ServerConfigModal
     };
 
     const handleSave = () => {
-        if (!inputUrl.trim()) return;
-        setCustomApiUrl(inputUrl.trim());
+        const normalized = normalizeApiUrl(inputUrl);
+        if (!normalized) return;
+        setCustomApiUrl(normalized);
         onClose();
         window.location.reload();
     };
@@ -107,13 +110,13 @@ export default function ServerConfigModal({ isOpen, onClose }: ServerConfigModal
                     {/* Ô nhập URL mới */}
                     <div>
                         <label className="block text-xs font-bold text-gray-800 mb-1.5">
-                            Nhập đường link Cloudflare Tunnel (HTTPS):
+                            Nhập đường link Backend API (Render hoặc Cloudflare Tunnel):
                         </label>
                         <input
                             type="url"
                             value={inputUrl}
                             onChange={(e) => setInputUrl(e.target.value)}
-                            placeholder="https://...trycloudflare.com"
+                            placeholder="https://brewlite-api.onrender.com"
                             className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-base sm:text-sm font-mono text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-800 focus:bg-white transition"
                         />
                         <div className="flex items-center justify-between gap-2 mt-2">

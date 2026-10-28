@@ -1,20 +1,32 @@
 import axios from "axios";
 import { Product, Order, AuthResponse, User } from "@/types";
 
+// Chuẩn hóa URL: tự động thêm https:// hoặc http:// nếu người dùng quên nhập
+export const normalizeApiUrl = (raw: string): string => {
+    let trimmed = (raw || '').trim();
+    if (!trimmed) return '';
+    if (!/^https?:\/\//i.test(trimmed)) {
+        trimmed = (trimmed.startsWith('localhost') || trimmed.startsWith('127.0.0.1'))
+            ? `http://${trimmed}`
+            : `https://${trimmed}`;
+    }
+    return trimmed.replace(/\/+$/, '');
+};
+
 // Lấy URL Backend động: ưu tiên custom URL trong localStorage (để test trên mobile / demo từ xa), sau đó đến biến môi trường
 export const getApiUrl = (): string => {
     if (typeof window !== 'undefined') {
         const customUrl = localStorage.getItem('brewlite_api_url');
         if (customUrl && customUrl.trim()) {
-            return customUrl.trim().replace(/\/+$/, '');
+            return normalizeApiUrl(customUrl);
         }
     }
-    return (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4003').replace(/\/+$/, '');
+    return normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4003');
 };
 
 export const setCustomApiUrl = (url: string): void => {
     if (typeof window !== 'undefined') {
-        const clean = url.trim().replace(/\/+$/, '');
+        const clean = normalizeApiUrl(url);
         if (clean) {
             localStorage.setItem('brewlite_api_url', clean);
         } else {
@@ -63,9 +75,13 @@ axios.interceptors.response.use(
 export const apiService = {
     // Kiểm tra kết nối tới Backend (Ping health-check)
     testConnection: async (targetUrl?: string): Promise<{ success: boolean; message: string }> => {
-        const url = (targetUrl || getApiUrl()).replace(/\/+$/, '');
+        const raw = targetUrl || getApiUrl();
+        const url = normalizeApiUrl(raw);
+        if (!url) {
+            return { success: false, message: 'Vui lòng nhập đường dẫn URL máy chủ.' };
+        }
         try {
-            const res = await axios.get(`${url}/`, { timeout: 6000 });
+            const res = await axios.get(`${url}/`, { timeout: 15000 });
             if (res.status === 200) {
                 return { success: true, message: 'Kết nối máy chủ Backend thành công (200 OK)!' };
             }
@@ -74,12 +90,20 @@ export const apiService = {
             let msg = 'Không thể kết nối đến máy chủ';
             if (axios.isAxiosError(err)) {
                 if (err.code === 'ECONNABORTED') {
-                    msg = 'Hết thời gian chờ phản hồi (Timeout)';
+                    msg = 'Hết thời gian chờ phản hồi (Server Render có thể đang ngủ đông, vui lòng thử lại sau 30s)';
+                } else if (err.message && err.message.includes('Invalid URL')) {
+                    msg = 'Đường dẫn URL không hợp lệ. Vui lòng nhập đầy đủ tiền tố https://';
+                } else if (err.message === 'Network Error') {
+                    msg = 'Lỗi mạng hoặc bị chặn bởi CORS (Hãy kiểm tra biến FRONTEND_URL trên Render)';
                 } else if (err.message) {
                     msg = err.message;
                 }
             } else if (err instanceof Error) {
-                msg = err.message;
+                if (err.message.includes('Invalid URL')) {
+                    msg = 'Đường dẫn URL không hợp lệ. Vui lòng nhập đầy đủ tiền tố https://';
+                } else {
+                    msg = err.message;
+                }
             }
             return { success: false, message: msg };
         }
