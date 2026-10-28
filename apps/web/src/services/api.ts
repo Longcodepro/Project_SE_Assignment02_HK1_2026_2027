@@ -1,34 +1,20 @@
 import axios from "axios";
 import { Product, Order, AuthResponse, User } from "@/types";
 
-// Chuẩn hóa URL: tự động gỡ dấu nháy thừa, khoảng trắng và thêm https:// hoặc http:// nếu thiếu
-export const normalizeApiUrl = (raw: string): string => {
-    let trimmed = (raw || '').trim();
-    // Loại bỏ dấu nháy kép, nháy đơn, nháy xiên nếu copy paste dính vào
-    trimmed = trimmed.replace(/^["'`]+|["'`]+$/g, '').trim();
-    if (!trimmed) return '';
-    if (!/^https?:\/\//i.test(trimmed)) {
-        trimmed = (trimmed.startsWith('localhost') || trimmed.startsWith('127.0.0.1'))
-            ? `http://${trimmed}`
-            : `https://${trimmed}`;
-    }
-    return trimmed.replace(/\/+$/, '');
-};
-
 // Lấy URL Backend động: ưu tiên custom URL trong localStorage (để test trên mobile / demo từ xa), sau đó đến biến môi trường
 export const getApiUrl = (): string => {
     if (typeof window !== 'undefined') {
         const customUrl = localStorage.getItem('brewlite_api_url');
         if (customUrl && customUrl.trim()) {
-            return normalizeApiUrl(customUrl);
+            return customUrl.trim().replace(/\/+$/, '');
         }
     }
-    return normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4003');
+    return (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/+$/, '');
 };
 
 export const setCustomApiUrl = (url: string): void => {
     if (typeof window !== 'undefined') {
-        const clean = normalizeApiUrl(url);
+        const clean = url.trim().replace(/\/+$/, '');
         if (clean) {
             localStorage.setItem('brewlite_api_url', clean);
         } else {
@@ -77,39 +63,23 @@ axios.interceptors.response.use(
 export const apiService = {
     // Kiểm tra kết nối tới Backend (Ping health-check)
     testConnection: async (targetUrl?: string): Promise<{ success: boolean; message: string }> => {
-        const raw = targetUrl || getApiUrl();
-        const url = normalizeApiUrl(raw);
-        if (!url) {
-            return { success: false, message: 'Vui lòng nhập đường dẫn URL máy chủ.' };
-        }
+        const url = (targetUrl || getApiUrl()).replace(/\/+$/, '');
         try {
-            // Sử dụng fetch trực tiếp để ping kiểm tra, tránh bị interceptor của axios đính kèm token hoặc header gây lỗi preflight
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-            const res = await fetch(`${url}/`, {
-                method: 'GET',
-                signal: controller.signal,
-                headers: { 'Accept': 'text/html,application/json' },
-            });
-            clearTimeout(timeoutId);
-
-            if (res.ok || res.status === 200) {
+            const res = await axios.get(`${url}/`, { timeout: 6000 });
+            if (res.status === 200) {
                 return { success: true, message: 'Kết nối máy chủ Backend thành công (200 OK)!' };
             }
             return { success: false, message: `Máy chủ phản hồi với mã trạng thái ${res.status}` };
         } catch (err: unknown) {
             let msg = 'Không thể kết nối đến máy chủ';
-            if (err instanceof Error) {
-                if (err.name === 'AbortError') {
-                    msg = 'Hết thời gian chờ phản hồi (Server Render có thể đang ngủ đông, vui lòng thử lại sau 30s)';
-                } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-                    msg = 'Lỗi mạng hoặc bị chặn bởi CORS (Hãy kiểm tra biến FRONTEND_URL trên Render)';
-                } else if (err.message.includes('Invalid URL') || err.message.includes('Failed to construct')) {
-                    msg = 'Đường dẫn URL không hợp lệ. Vui lòng kiểm tra lại ký tự lạ';
-                } else {
+            if (axios.isAxiosError(err)) {
+                if (err.code === 'ECONNABORTED') {
+                    msg = 'Hết thời gian chờ phản hồi (Timeout)';
+                } else if (err.message) {
                     msg = err.message;
                 }
+            } else if (err instanceof Error) {
+                msg = err.message;
             }
             return { success: false, message: msg };
         }

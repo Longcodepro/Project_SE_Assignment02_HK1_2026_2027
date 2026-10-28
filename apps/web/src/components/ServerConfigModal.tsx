@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Server, CheckCircle2, AlertCircle, RefreshCw, X, Radio, ArrowRight } from 'lucide-react';
-import { getApiUrl, setCustomApiUrl, resetCustomApiUrl, isCustomApiUrlSet, apiService, normalizeApiUrl } from '@/services/api';
+import { getApiUrl, setCustomApiUrl, resetCustomApiUrl, isCustomApiUrlSet, apiService } from '@/services/api';
 
 interface ServerConfigModalProps {
     isOpen: boolean;
@@ -22,13 +22,11 @@ export default function ServerConfigModal({ isOpen, onClose }: ServerConfigModal
     const isCustom = typeof window !== 'undefined' ? isCustomApiUrlSet() : false;
 
     const handleTest = async () => {
-        const normalized = normalizeApiUrl(inputUrl);
-        if (!normalized) return;
-        setInputUrl(normalized);
+        if (!inputUrl.trim()) return;
         setTesting(true);
         setTestResult(null);
         try {
-            const res = await apiService.testConnection(normalized);
+            const res = await apiService.testConnection(inputUrl.trim());
             setTestResult(res);
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Lỗi kết nối';
@@ -39,9 +37,8 @@ export default function ServerConfigModal({ isOpen, onClose }: ServerConfigModal
     };
 
     const handleSave = () => {
-        const normalized = normalizeApiUrl(inputUrl);
-        if (!normalized) return;
-        setCustomApiUrl(normalized);
+        if (!inputUrl.trim()) return;
+        setCustomApiUrl(inputUrl.trim());
         onClose();
         window.location.reload();
     };
@@ -97,7 +94,7 @@ export default function ServerConfigModal({ isOpen, onClose }: ServerConfigModal
                         <div className="min-w-0 flex-1">
                             <span className="font-bold">Đang kết nối tới:</span>
                             <div className="font-mono text-[11px] sm:text-xs text-amber-900 truncate mt-0.5">
-                                {currentUrl || 'http://localhost:4003'}
+                                {currentUrl || 'http://localhost:4000'}
                             </div>
                             {isCustom && (
                                 <span className="inline-block mt-1 text-[10px] font-bold bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full">
@@ -110,13 +107,13 @@ export default function ServerConfigModal({ isOpen, onClose }: ServerConfigModal
                     {/* Ô nhập URL mới */}
                     <div>
                         <label className="block text-xs font-bold text-gray-800 mb-1.5">
-                            Nhập đường link Backend API (Render hoặc Cloudflare Tunnel):
+                            Nhập đường link Cloudflare Tunnel (HTTPS):
                         </label>
                         <input
                             type="url"
                             value={inputUrl}
                             onChange={(e) => setInputUrl(e.target.value)}
-                            placeholder="https://brewlite-api.onrender.com"
+                            placeholder="https://...trycloudflare.com"
                             className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-base sm:text-sm font-mono text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-800 focus:bg-white transition"
                         />
                         <div className="flex items-center justify-between gap-2 mt-2">
