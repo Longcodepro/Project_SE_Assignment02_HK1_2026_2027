@@ -1,0 +1,23 @@
+import { Controller, Get } from '@nestjs/common';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { AppService } from './app.service.js';
+
+@ApiTags('health')
+@Controller()
+export class AppController {
+  constructor(private readonly appService: AppService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Kiểm tra backend đang chạy' })
+  @ApiOkResponse({ description: 'Hello World!', schema: { type: 'string' } })
+  getHello(): string {
+    return this.appService.getHello();
+  }
+
+  @Get('health')
+  @ApiOperation({ summary: 'Kiểm tra trạng thái sức khỏe hệ thống (Health Check)' })
+  @ApiOkResponse({ description: 'Hệ thống hoạt động bình thường' })
+  getHealth(): { status: string; timestamp: string } {
+    return { status: 'ok', timestamp: new Date().toISOString() };
+  }
+}

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Cà phê đen">
+  <title>Cà phê đen</title>
+  <rect width="400" height="400" rx="32" fill="#E6DDD3"/>
+  <!-- thu nhỏ hình để không bị cắt khi hiển thị trong khung ngang của thẻ sản phẩm -->
+  <g transform="translate(200 202) scale(.7) translate(-200 -200)">
+  <ellipse cx="200" cy="318" rx="118" ry="18" fill="#000" opacity=".12"/>
+  <ellipse cx="200" cy="304" rx="112" ry="20" fill="#fff"/>
+  <ellipse cx="200" cy="300" rx="90" ry="13" fill="#EFE9E2"/>
+  <path d="M290 200 Q335 205 330 245 Q325 280 280 275" fill="none" stroke="#fff" stroke-width="16" stroke-linecap="round"/>
+  <path d="M110 190 H290 Q290 296 200 302 Q110 296 110 190 Z" fill="#fff"/>
+  <ellipse cx="200" cy="190" rx="90" ry="19" fill="#2B1A12"/>
+  <ellipse cx="190" cy="187" rx="48" ry="7" fill="#5A341C" opacity=".6"/>
+  <path d="M170 150 Q155 125 172 100 Q188 76 172 52" fill="none" stroke="#9C8F83" stroke-width="7" stroke-linecap="round" opacity=".6"/>
+  <path d="M215 156 Q200 130 217 106 Q233 82 218 58" fill="none" stroke="#9C8F83" stroke-width="7" stroke-linecap="round" opacity=".5"/>
+  </g>
+</svg>

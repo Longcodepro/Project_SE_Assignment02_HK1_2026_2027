@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Trà đào cam sả">
+  <title>Trà đào cam sả</title>
+  <rect width="400" height="400" rx="32" fill="#FFE6DA"/>
+  <!-- thu nhỏ hình để không bị cắt khi hiển thị trong khung ngang của thẻ sản phẩm -->
+  <g transform="translate(200 202) scale(.7) translate(-200 -200)">
+  <ellipse cx="200" cy="344" rx="92" ry="11" fill="#000" opacity=".12"/>
+  <path d="M232 70 Q238 160 224 250" fill="none" stroke="#8DB04A" stroke-width="9" stroke-linecap="round"/>
+  <path d="M236 72 Q258 40 270 52" fill="none" stroke="#8DB04A" stroke-width="7" stroke-linecap="round"/>
+  <clipPath id="g"><path d="M130 110 H270 L252 320 Q250 335 235 335 H165 Q150 335 148 320 Z"/></clipPath>
+  <g clip-path="url(#g)">
+    <rect x="120" y="100" width="160" height="245" fill="#fff" opacity=".55"/>
+    <rect x="120" y="140" width="160" height="205" fill="#F7A25B"/>
+    <rect x="120" y="140" width="160" height="60" fill="#F9B97C"/>
+    <rect x="152" y="150" width="38" height="38" rx="8" fill="#fff" opacity=".6" transform="rotate(-8 171 169)"/>
+    <rect x="206" y="160" width="38" height="38" rx="8" fill="#fff" opacity=".6" transform="rotate(12 225 179)"/>
+    <path d="M160 230 a38 38 0 0 1 78 0 z" fill="#FFC9A0" stroke="#F08A5D" stroke-width="4"/>
+    <path d="M170 280 a30 30 0 0 1 62 0 z" fill="#FFC9A0" stroke="#F08A5D" stroke-width="4" transform="rotate(14 200 280)"/>
+  </g>
+  <path d="M130 110 H270 L252 320 Q250 335 235 335 H165 Q150 335 148 320 Z" fill="none" stroke="#fff" stroke-width="6" opacity=".9"/>
+  <path d="M150 128 L160 300" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+  <circle cx="262" cy="124" r="22" fill="#FFB347"/><circle cx="262" cy="124" r="14" fill="#FFD28A"/>
+  </g>
+</svg>

@@ -1,0 +1,161 @@
+name: CI
+
+# Chạy mỗi khi có Pull Request và khi push vào main.
+# BẮT BUỘC: Tất cả các job (kiểm tra mã nguồn và Deploy/Smoke Test)
+# phải XANH thì mới được phép merge vào main.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: "1. Kiểm tra Backend (Lint, Build, Test)"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - name: Checkout mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài đặt Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+
+      - name: Cài đặt dependencies
+        run: npm ci
+
+      - name: Kiểm tra cú pháp (oxlint)
+        run: npm run lint
+
+      - name: Sinh Prisma Client và biên dịch NestJS
+        run: npm run build
+
+      - name: Chạy Unit Test (Vitest)
+        run: npm test
+
+  frontend:
+    name: "2. Kiểm tra Frontend (Lint, Build)"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Checkout mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài đặt Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Cài đặt dependencies
+        run: npm ci
+
+      - name: Kiểm tra cú pháp (eslint)
+        run: npm run lint
+
+      - name: Biên dịch Next.js (Turbopack)
+        run: npm run build
+
+  # KIỂM SOÁT TRIỂN KHAI & SMOKE TEST (QUALITY GATE)
+  # Nếu có secret Cloud: Kích hoạt Deploy Cloud thật và kiểm tra URL Cloud live.
+  # Nếu chưa có secret Cloud: Tự động chạy cụm Docker Compose để kiểm tra toàn bộ dịch vụ.
+  # NẾU DEPLOY THẤT BẠI HOẶC SERVER SẬP -> CHẶN MERGE PULL REQUEST!
+  deploy-and-smoke-test:
+    name: "3. Kiểm soát Triển khai & Smoke Test"
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - name: Checkout mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Triển khai Cloud Thật (Khi đã cấu hình Secrets)
+        id: cloud_check
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          CLOUD_URL: ${{ secrets.PRODUCTION_BACKEND_URL }}
+        run: |
+          if [ -n "$DEPLOY_HOOK" ] && [ -n "$CLOUD_URL" ]; then
+            echo "has_cloud=true" >> "$GITHUB_OUTPUT"
+            echo "🚀 Đang kích hoạt Deploy trực tiếp lên Cloud..."
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$DEPLOY_HOOK")
+            if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+              echo "✓ Đã gửi tín hiệu Deploy thành công (HTTP $HTTP_STATUS)!"
+            else
+              echo "❌ LỖI: Gọi Webhook Deploy thất bại (HTTP $HTTP_STATUS)!"
+              exit 1
+            fi
+
+            echo "⏳ Đang đợi Cloud hoàn tất đóng gói và khởi động server (chờ 45s)..."
+            sleep 45
+
+            echo "🔍 Kiểm tra Health Check tại: $CLOUD_URL/health"
+            curl --fail --silent --show-error --retry 20 --retry-delay 5 --retry-all-errors "$CLOUD_URL/health"
+            echo "✓ Health Check Cloud thành công!"
+
+            echo "🔍 Kiểm tra Database Cloud tại: $CLOUD_URL/products"
+            RESPONSE=$(curl --fail --silent --show-error --retry 10 --retry-delay 3 --retry-all-errors "$CLOUD_URL/products")
+            if [[ "$RESPONSE" != *"["* ]]; then
+              echo "❌ LỖI: Database Cloud không trả về danh sách sản phẩm hợp lệ!"
+              exit 1
+            fi
+            echo "✓ Database Cloud hoạt động trơn tru!"
+          else
+            echo "has_cloud=false" >> "$GITHUB_OUTPUT"
+            echo "ℹ Chưa cấu hình secret Cloud (RENDER_DEPLOY_HOOK_URL, PRODUCTION_BACKEND_URL)."
+            echo "Chuyển sang chế độ Kiểm thử Triển khai bằng Docker Compose nội bộ."
+          fi
+
+      - name: Chuẩn bị biến môi trường (Nếu chạy Docker)
+        if: steps.cloud_check.outputs.has_cloud == 'false'
+        run: cp .env.example .env
+
+      - name: Khởi động hệ thống bằng Docker Compose (Nếu chạy Docker)
+        if: steps.cloud_check.outputs.has_cloud == 'false'
+        run: docker compose up -d --build
+
+      - name: Smoke Test Backend nội bộ (GET / & GET /health)
+        if: steps.cloud_check.outputs.has_cloud == 'false'
+        run: |
+          echo "Đang kiểm tra Backend tại cổng 4003..."
+          curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://localhost:4003
+          curl --fail --silent --show-error --retry 10 --retry-delay 2 http://localhost:4003/health
+
+      - name: Smoke Test Database & Dữ liệu Seed nội bộ (GET /products)
+        if: steps.cloud_check.outputs.has_cloud == 'false'
+        run: |
+          echo "Đang kiểm tra Database qua API /products..."
+          RESPONSE=$(curl --fail --silent --show-error --retry 10 --retry-delay 2 http://localhost:4003/products)
+          if [[ "$RESPONSE" != *"["* ]]; then
+            echo "LỖI: API /products không trả về danh sách sản phẩm hợp lệ!"
+            exit 1
+          fi
+          echo "✓ Dữ liệu sản phẩm trả về thành công!"
+
+      - name: Smoke Test Frontend Web nội bộ (GET /)
+        if: steps.cloud_check.outputs.has_cloud == 'false'
+        run: |
+          echo "Đang kiểm tra Frontend tại cổng 4004..."
+          curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://localhost:4004
+
+      - name: In log container khi có lỗi
+        if: failure() && steps.cloud_check.outputs.has_cloud == 'false'
+        run: docker compose logs
+
+      - name: Dọn dẹp container và volumes
+        if: always() && steps.cloud_check.outputs.has_cloud == 'false'
+        run: docker compose down -v
