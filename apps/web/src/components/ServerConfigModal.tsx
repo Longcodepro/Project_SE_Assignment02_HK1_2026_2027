@@ -94,7 +94,7 @@ export default function ServerConfigModal({ isOpen, onClose }: ServerConfigModal
                         <div className="min-w-0 flex-1">
                             <span className="font-bold">Đang kết nối tới:</span>
                             <div className="font-mono text-[11px] sm:text-xs text-amber-900 truncate mt-0.5">
-                                {currentUrl || 'http://localhost:4000'}
+                                {currentUrl || 'http://localhost:4003'}
                             </div>
                             {isCustom && (
                                 <span className="inline-block mt-1 text-[10px] font-bold bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full">

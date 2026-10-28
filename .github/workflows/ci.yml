@@ -131,15 +131,15 @@ jobs:
       - name: Smoke Test Backend nội bộ (GET / & GET /health)
         if: steps.cloud_check.outputs.has_cloud == 'false'
         run: |
-          echo "Đang kiểm tra Backend tại cổng 4000..."
-          curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://localhost:4000
-          curl --fail --silent --show-error --retry 10 --retry-delay 2 http://localhost:4000/health
+          echo "Đang kiểm tra Backend tại cổng 4003..."
+          curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://localhost:4003
+          curl --fail --silent --show-error --retry 10 --retry-delay 2 http://localhost:4003/health
 
       - name: Smoke Test Database & Dữ liệu Seed nội bộ (GET /products)
         if: steps.cloud_check.outputs.has_cloud == 'false'
         run: |
           echo "Đang kiểm tra Database qua API /products..."
-          RESPONSE=$(curl --fail --silent --show-error --retry 10 --retry-delay 2 http://localhost:4000/products)
+          RESPONSE=$(curl --fail --silent --show-error --retry 10 --retry-delay 2 http://localhost:4003/products)
           if [[ "$RESPONSE" != *"["* ]]; then
             echo "LỖI: API /products không trả về danh sách sản phẩm hợp lệ!"
             exit 1
@@ -149,8 +149,8 @@ jobs:
       - name: Smoke Test Frontend Web nội bộ (GET /)
         if: steps.cloud_check.outputs.has_cloud == 'false'
         run: |
-          echo "Đang kiểm tra Frontend tại cổng 4001..."
-          curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://localhost:4001
+          echo "Đang kiểm tra Frontend tại cổng 4004..."
+          curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors http://localhost:4004
 
       - name: In log container khi có lỗi
         if: failure() && steps.cloud_check.outputs.has_cloud == 'false'

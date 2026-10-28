@@ -27,11 +27,11 @@
 
 ## Swagger và Postman
 
-Chạy backend (`npm run start:dev`, cổng 4000) rồi:
+Chạy backend (`npm run start:dev`, cổng 4003) rồi:
 
-- **Swagger UI:** http://localhost:4000/docs (JSON ở `/docs-json`, import được vào Postman qua *Import > Link*).
+- **Swagger UI:** http://localhost:4003/docs (JSON ở `/docs-json`, import được vào Postman qua *Import > Link*).
 - **Postman:** import `postman/BrewLite.postman_collection.json` và `postman/BrewLite.local.postman_environment.json`, chọn môi trường *BrewLite - Local* rồi bấm *Run*. Mỗi request có sẵn test kiểm tra mã trạng thái và hình dạng JSON.
-- **Chạy Postman bằng dòng lệnh:** `npm run postman` (dùng `newman`, đổi địa chỉ bằng `BASE_URL=http://host:4000 npm run postman`).
+- **Chạy Postman bằng dòng lệnh:** `npm run postman` (dùng `newman`, đổi địa chỉ bằng `BASE_URL=http://host:4003 npm run postman`).
 
 ## Project setup
 

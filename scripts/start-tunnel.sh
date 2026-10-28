@@ -8,7 +8,7 @@ echo "=================================================="
 # Đọc cấu hình cổng từ .env nếu có
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$SCRIPT_DIR/.."
-PORT=4000
+PORT=4003
 if [ -f "$ROOT_DIR/.env" ]; then
     ENV_PORT=$(grep -E '^BACKEND_PORT=' "$ROOT_DIR/.env" | cut -d '=' -f2 | tr -d ' "\r')
     if [ -n "$ENV_PORT" ]; then

@@ -27,18 +27,18 @@ docker compose up --build
 
 | Service  | URL                    |
 |----------|------------------------|
-| Web      | http://localhost:4001  |
-| API      | http://localhost:4000  |
-| Swagger  | http://localhost:4000/docs |
-| Postgres | localhost:4002         |
+| Web      | http://localhost:4004  |
+| API      | http://localhost:4003  |
+| Swagger  | http://localhost:4003/docs |
+| Postgres | localhost:4005         |
 
 Migration và seed tự chạy khi API khởi động. Dừng: `docker compose down` (thêm `-v` để xóa dữ liệu DB).
 
 Chạy không cần Docker (Node.js 22+, cần `DATABASE_URL`):
 
 ```bash
-cd apps/api && npm ci && npx prisma migrate dev && npx prisma db seed && PORT=4000 npm run start:dev
-cd apps/web && npm ci && NEXT_PUBLIC_API_URL=http://localhost:4000 npm run dev
+cd apps/api && npm ci && npx prisma migrate dev && npx prisma db seed && PORT=4003 npm run start:dev
+cd apps/web && npm ci && NEXT_PUBLIC_API_URL=http://localhost:4003 npm run dev
 ```
 
 ## Kiểm thử

@@ -253,7 +253,7 @@ export default function MenuPage() {
             <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
             <p className="text-red-800 font-bold text-base">{error}</p>
             <p className="text-xs text-red-600/80 mt-1.5">
-              Gợi ý: Kiểm tra xem Backend cổng 4000 đã hoạt động chưa nhé.
+              Gợi ý: Kiểm tra xem Backend cổng 4003 đã hoạt động chưa nhé.
             </p>
           </div>
         )}

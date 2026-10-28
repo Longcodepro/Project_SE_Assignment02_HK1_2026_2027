@@ -32,7 +32,7 @@ async function bootstrap() {
   setupSwagger(app);
   app.useGlobalPipes(createValidationPipe());
 
-  const rawFrontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:4001';
+  const rawFrontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:4004';
   const allowedOrigins = rawFrontendUrl.split(',').map((u) => u.trim());
 
   app.enableCors({
@@ -52,6 +52,6 @@ async function bootstrap() {
     },
     credentials: true,
   });
-  await app.listen(process.env.PORT ?? 4000);
+  await app.listen(process.env.PORT ?? 4003);
 }
 await bootstrap();

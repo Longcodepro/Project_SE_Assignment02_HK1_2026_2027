@@ -1,6 +1,6 @@
 # API Contract
 
-Base URL: `http://localhost:4000`. Mọi thay đổi phải báo người kia trước khi sửa.
+Base URL: `http://localhost:4003`. Mọi thay đổi phải báo người kia trước khi sửa.
 
 ## GET /products
 

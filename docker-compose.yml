@@ -18,14 +18,14 @@ services:
   backend:
     build: ./apps/api
     environment:
-      PORT: 4000
+      PORT: 4003
       # Trong mạng Docker, backend gọi db qua tên service + cổng nội bộ 5432
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
       FRONTEND_URL: http://localhost:${FRONTEND_PORT}
     ports:
-      - "${BACKEND_PORT}:4000"
+      - "${BACKEND_PORT}:4003"
     depends_on:
       db:
         condition: service_healthy
@@ -35,7 +35,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:${BACKEND_PORT}
     ports:
-      - "${FRONTEND_PORT}:4001"
+      - "${FRONTEND_PORT}:4004"
     depends_on:
       - backend
 
