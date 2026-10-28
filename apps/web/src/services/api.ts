@@ -1,9 +1,11 @@
 import axios from "axios";
 import { Product, Order, AuthResponse, User } from "@/types";
 
-// Chuẩn hóa URL: tự động thêm https:// hoặc http:// nếu người dùng quên nhập
+// Chuẩn hóa URL: tự động gỡ dấu nháy thừa, khoảng trắng và thêm https:// hoặc http:// nếu thiếu
 export const normalizeApiUrl = (raw: string): string => {
     let trimmed = (raw || '').trim();
+    // Loại bỏ dấu nháy kép, nháy đơn, nháy xiên nếu copy paste dính vào
+    trimmed = trimmed.replace(/^["'`]+|["'`]+$/g, '').trim();
     if (!trimmed) return '';
     if (!/^https?:\/\//i.test(trimmed)) {
         trimmed = (trimmed.startsWith('localhost') || trimmed.startsWith('127.0.0.1'))
@@ -81,26 +83,30 @@ export const apiService = {
             return { success: false, message: 'Vui lòng nhập đường dẫn URL máy chủ.' };
         }
         try {
-            const res = await axios.get(`${url}/`, { timeout: 15000 });
-            if (res.status === 200) {
+            // Sử dụng fetch trực tiếp để ping kiểm tra, tránh bị interceptor của axios đính kèm token hoặc header gây lỗi preflight
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+            const res = await fetch(`${url}/`, {
+                method: 'GET',
+                signal: controller.signal,
+                headers: { 'Accept': 'text/html,application/json' },
+            });
+            clearTimeout(timeoutId);
+
+            if (res.ok || res.status === 200) {
                 return { success: true, message: 'Kết nối máy chủ Backend thành công (200 OK)!' };
             }
             return { success: false, message: `Máy chủ phản hồi với mã trạng thái ${res.status}` };
         } catch (err: unknown) {
             let msg = 'Không thể kết nối đến máy chủ';
-            if (axios.isAxiosError(err)) {
-                if (err.code === 'ECONNABORTED') {
+            if (err instanceof Error) {
+                if (err.name === 'AbortError') {
                     msg = 'Hết thời gian chờ phản hồi (Server Render có thể đang ngủ đông, vui lòng thử lại sau 30s)';
-                } else if (err.message && err.message.includes('Invalid URL')) {
-                    msg = 'Đường dẫn URL không hợp lệ. Vui lòng nhập đầy đủ tiền tố https://';
-                } else if (err.message === 'Network Error') {
+                } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
                     msg = 'Lỗi mạng hoặc bị chặn bởi CORS (Hãy kiểm tra biến FRONTEND_URL trên Render)';
-                } else if (err.message) {
-                    msg = err.message;
-                }
-            } else if (err instanceof Error) {
-                if (err.message.includes('Invalid URL')) {
-                    msg = 'Đường dẫn URL không hợp lệ. Vui lòng nhập đầy đủ tiền tố https://';
+                } else if (err.message.includes('Invalid URL') || err.message.includes('Failed to construct')) {
+                    msg = 'Đường dẫn URL không hợp lệ. Vui lòng kiểm tra lại ký tự lạ';
                 } else {
                     msg = err.message;
                 }
