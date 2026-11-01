@@ -1,0 +1,158 @@
+@startuml
+!theme plain
+skinparam defaultFontName "Segoe UI", Arial, sans-serif
+skinparam defaultFontSize 12
+skinparam roundcorner 10
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+skinparam ClassBorderThickness 1.2
+skinparam ClassBorderColor #34495E
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ArrowColor #2C3E50
+skinparam ArrowThickness 1.2
+
+' ========================================================
+' ENUMS
+' ========================================================
+enum OrderStatus <<Enum>> #F3E5F5 {
+  PENDING
+  PAID
+  PAYMENT_FAILED
+}
+
+enum Size <<Enum>> #F3E5F5 {
+  S
+  M
+  L
+}
+
+enum PaymentMethod <<Enum>> #F3E5F5 {
+  WALLET
+  CARD
+}
+
+enum PaymentStatus <<Enum>> #F3E5F5 {
+  SUCCESS
+  FAILED
+}
+
+enum DiscountType <<Enum - Mở rộng>> #EDE7F6 {
+  FIXED
+  PERCENT
+}
+
+' ========================================================
+' CORE DOMAIN CLASSES (ĐÃ HIỆN THỰC TRONG PRISMA SCHEMA)
+' ========================================================
+class User <<Core Entity>> #E8F8F5 {
+  + id : Int [PK]
+  + email : String [Unique]
+  - passwordHash : String
+  + name : String?
+  + loyaltyPoints : Int = 0
+  + createdAt : DateTime
+  __
+  + register()
+  + login()
+  + getProfile()
+}
+
+class Product <<Core Entity>> #E1F5FE {
+  + id : Int [PK]
+  + name : String
+  + price : Int  {VND - Size S}
+  + imageUrl : String
+  __
+  + getDetails()
+}
+
+class Order <<Core Entity>> #FFF9C4 {
+  + id : String [PK]
+  + userId : Int [FK]
+  + idempotencyKey : String?
+  + status : OrderStatus = PENDING
+  + total : Int  {Server calculated}
+  + version : Int = 0  {Optimistic Lock}
+  + createdAt : DateTime
+  __
+  + calculateTotal()
+  + transitionTo(status: OrderStatus)
+}
+
+class OrderItem <<Core Entity>> #FFF9C4 {
+  + id : Int [PK]
+  + orderId : String [FK]
+  + productId : Int [FK]
+  + quantity : Int  {1..99}
+  + size : Size
+  + toppings : String[]
+  + unitPrice : Int  {Base + Size + Toppings}
+  __
+  + getSubtotal() : Int
+}
+
+class Payment <<Core Entity>> #E8F5E9 {
+  + id : Int [PK]
+  + orderId : String [FK]
+  + method : PaymentMethod
+  + status : PaymentStatus
+  + amount : Int  {Matches Order.total}
+  + failureReason : String?
+  + pointsEarned : Int
+  + idempotencyKey : String?
+  + createdAt : DateTime
+  __
+  + processPayment()
+}
+
+' ========================================================
+' EXTENSION CLASSES (MÔ HÌNH MỞ RỘNG - CHƯA TẠO BẢNG CSDL)
+' ========================================================
+class Promotion <<Domain Extension>> #FFF3E0 {
+  + id : Int [PK]
+  + code : String [Unique]
+  + discountType : DiscountType
+  + discountValue : Int
+  + minOrderAmount : Int
+  + isActive : Boolean = true
+  __
+  + validateVoucher(orderTotal: Int) : Boolean
+  + calculateDiscount(orderTotal: Int) : Int
+}
+
+class LoyaltyTransaction <<Domain Extension>> #FFF3E0 {
+  + id : Int [PK]
+  + userId : Int [FK]
+  + orderId : String [FK]
+  + pointsEarned : Int
+  + pointsUsed : Int 
+  + balanceAfter : Int
+  + createdAt : DateTime
+  __
+  + recordTransaction()
+}
+
+' ========================================================
+' RELATIONSHIPS & MULTIPLICITY
+' ========================================================
+User "1" *-- "0..*" Order : "places >"
+User "1" *-- "0..*" LoyaltyTransaction : "owns >"
+
+Order "1" *-- "1..*" OrderItem : "contains >"
+Product "1" <-- "0..*" OrderItem : "references >"
+
+Order "1" *-- "0..*" Payment : "settled by >"
+Order "0..*" o-- "0..1" Promotion : "applies >"
+
+LoyaltyTransaction "0..*" --> "1" Order : "tied to >"
+
+' Enum dependencies
+Order ..> OrderStatus : uses
+OrderItem ..> Size : uses
+Payment ..> PaymentMethod : uses
+Payment ..> PaymentStatus : uses
+Promotion ..> DiscountType : uses
+
+
+@enduml
