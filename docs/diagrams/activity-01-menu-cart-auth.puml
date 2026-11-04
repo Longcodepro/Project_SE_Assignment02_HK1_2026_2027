@@ -1,0 +1,100 @@
+@startuml
+skinparam style strictuml
+skinparam conditionStyle insidediamond
+skinparam defaultTextAlignment center
+skinparam roundcorner 10
+skinparam monochrome false
+skinparam swimlaneBorderColor #444444
+skinparam swimlaneTitleFontStyle bold
+
+|#E8F5E9|Khách hàng|
+|#E3F2FD|Next.js UI|
+|#FFF3E0|NestJS API|
+|#F3E5F5|Database|
+|#ECEFF1|Payment Service|
+
+|Khách hàng|
+start
+:Truy cập ứng dụng web BrewLite;
+
+|Next.js UI|
+:Khởi tạo giao diện trang chủ;
+:Hiển thị trạng thái Skeleton Loading;
+:Gửi yêu cầu HTTP GET /products;
+
+|NestJS API|
+:Tiếp nhận request GET /products;
+:Gọi Prisma Service truy vấn dữ liệu;
+
+|Database|
+:SELECT * FROM "Product" WHERE isAvailable = true;
+:Trả về danh sách đồ uống kèm\n(basePrice, dailyQuota, soldToday);
+
+|NestJS API|
+:Trả về HTTP 200 OK kèm JSON danh sách món;
+
+|Next.js UI|
+:Render giao diện lưới thẻ đồ uống (Product Card Grid);
+
+|Khách hàng|
+:Duyệt menu và bấm chọn 1 món đồ uống;
+
+|Next.js UI|
+if (soldToday >= dailyQuota?) then (Hết hàng)
+  :Hiển thị nhãn "Hết hàng" (Sold Out) màu xám;
+  :Vô hiệu hóa nút chọn món;
+  |Khách hàng|
+  :Xem xét và chọn món nước khác;
+  stop
+else (Còn hàng)
+  |Next.js UI|
+  :Mở Modal Chi tiết & Tùy biến món;\n(Mặc định Size S, 0 topping);
+  |Khách hàng|
+  :Chọn kích cỡ (S/M/L) và tick chọn Topping;
+  |Next.js UI|
+  :Tự động tính lại tổng tiền tạm tính theo thời gian thực;\n(Unit Price = BasePrice + SizePrice + Toppings);
+  |Khách hàng|
+  :Bấm nút "Thêm vào giỏ hàng";
+  |Next.js UI|
+  :Lưu món vào Zustand Cart Store (localStorage);
+  :Cập nhật số lượng trên Badge giỏ hàng (Navbar);
+  :Hiển thị thông báo thêm giỏ thành công;
+  |Khách hàng|
+  :Bấm vào biểu tượng Giỏ hàng (/cart);
+  |Next.js UI|
+  :Hiển thị danh sách các món trong giỏ và tổng tiền;
+  |Khách hàng|
+  :Kiểm tra số lượng và bấm "Tiến hành Đặt hàng";
+  |Next.js UI|
+  if (Đã có JWT Access Token trong Store?) then (Chưa đăng nhập)
+    :Mở Modal Đăng nhập / Đăng ký tài khoản;
+    |Khách hàng|
+    :Nhập Email và Mật khẩu tài khoản;
+    :Bấm "Đăng nhập";
+    |Next.js UI|
+    :Gửi request POST /auth/login;
+    |NestJS API|
+    :Validate AuthDto (Email hợp lệ, Pass >= 6 ký tự);
+    :Truy vấn tìm tài khoản theo Email;
+    |Database|
+    :SELECT * FROM "User" WHERE email = ?;
+    :Trả về thông tin User kèm passwordHash;
+    |NestJS API|
+    :Xác thực mật khẩu bằng bcrypt.compare();
+    :Ký cấp phát JSON Web Token (JWT Access Token);
+    :Trả về HTTP 200 OK kèm accessToken;
+    |Next.js UI|
+    :Lưu accessToken vào Store & Axios Authorization Header;
+    :Cập nhật thông tin User trên Navbar;
+    :Tự động đóng Modal Auth;
+  else (Đã đăng nhập)
+  endif
+  |Next.js UI|
+  :Chuyển giao trạng thái giỏ hàng và Access Token\nsẵn sàng cho bước Đặt hàng & Thanh toán;
+endif
+
+|Payment Service|
+note: Chờ nhận giao dịch ở luồng Đặt & Thanh toán (Activity-02)
+
+stop
+@enduml
