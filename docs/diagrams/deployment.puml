@@ -1,0 +1,123 @@
+@startuml
+!theme plain
+skinparam defaultFontName "Segoe UI", Arial, sans-serif
+skinparam defaultFontSize 11
+skinparam roundcorner 10
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+skinparam node {
+  BorderColor #34495E
+  BackgroundColor #FFFFFF
+}
+skinparam cloud {
+  BorderColor #2980B9
+  BackgroundColor #F4F9FD
+}
+skinparam database {
+  BorderColor #27AE60
+  BackgroundColor #E8F8F5
+}
+skinparam component {
+  BorderColor #455A64
+  BackgroundColor #FFFFFF
+}
+
+title Sơ Đồ Kiến Trúc Triển Khai Hệ Thống BrewLite (UML Deployment Diagram)
+
+' ========================================================
+' THIẾT BỊ NGƯỜI DÙNG
+' ========================================================
+node "Thiết bị Khách hàng\n(Smartphone / Tablet / PC)" as ClientDevice <<Device>> #E8F4F8 {
+  artifact "Trình duyệt Web / PWA\n(Google Chrome, Safari)" as WebBrowser <<Execution Environment>>
+}
+
+' ========================================================
+' 1. RANH GIỚI PRODUCTION CLOUD
+' ========================================================
+package "MÔI TRƯỜNG PRODUCTION CLOUD" as ProdBoundary #FAFAFA {
+  
+  cloud "Vercel Global Edge Network\n(Serverless & CDN Platform)" as VercelPlatform {
+    node "Vercel Edge Node" <<Virtual Server>> {
+      component "Frontend Web App\n(Next.js 16 Mobile-first)" as ProdWeb <<Application>> #E1F5FE
+      note bottom of ProdWeb
+        **Secrets / Envs:**
+        - NEXT_PUBLIC_API_URL
+      end note
+    }
+  }
+
+  cloud "Render Cloud Services\n(Container Hosting Platform)" as RenderPlatform {
+    node "Docker Host (Linux VM)" <<Virtual Server>> {
+      component "API Web Service\n(NestJS Modular API)" as ProdAPI <<Container>> #FFF9C4
+      note bottom of ProdAPI
+        **Health Check:** GET /health
+        **Secrets / Envs:**
+        - DATABASE_URL (SSL Mode)
+        - JWT_SECRET
+        - FRONTEND_URL
+        **Logs:** Live stdout/stderr
+      end note
+    }
+  }
+
+  cloud "Neon Serverless Cloud\n(Region: Singapore - ap-southeast-1)" as NeonPlatform {
+    database "PostgreSQL v16 Engine" as NeonDB <<Database Server>> #E8F8F5 {
+      storage "Persistent NVMe Storage\n(Dữ liệu Orders, Users, Products)" as NeonStorage <<Storage>>
+    }
+  }
+}
+
+' ========================================================
+' 2. RANH GIỚI CI/CD AUTOMATION
+' ========================================================
+package "MÔI TRƯỜNG CI/CD (GitHub Automation)" as CIBoundary #F5EEF8 {
+  node "GitHub Actions Runner\n(Ubuntu Latest)" as CIRunner <<Automation Server>> {
+    component "CI Quality Gate\n(Lint -> Unit Test -> Build)" as CIJob
+    component "CD Publish Pipeline\n(Docker Buildx)" as CDJob
+  }
+  
+  cloud "GitHub Container Registry (GHCR)\n(ghcr.io)" as GHCR {
+    artifact "Docker Image\nbackend:latest & sha" as BackendImage <<Container Image>> #F3E5F5
+  }
+}
+
+' ========================================================
+' 3. RANH GIỚI MÔI TRƯỜNG LOCAL & TUNNEL DEMO
+' ========================================================
+package "MÔI TRƯỜNG LOCAL & TUNNEL DEMO" as LocalBoundary #F9FBE7 {
+  node "Developer Workstation\n(Docker Engine & Compose)" as LocalHost <<Personal Computer>> {
+    component "web (Port 4004)\nNext.js Dev" as LocalWeb
+    component "api (Port 4003)\nNestJS Dev" as LocalAPI
+    database "db (Port 4005)\nPostgres 16 Alpine" as LocalDB
+    storage "Volume: pgdata" as LocalVolume
+    
+    LocalDB *-- LocalVolume
+    LocalAPI --> LocalDB : Cổng nội bộ 5432
+    LocalWeb --> LocalAPI : Cổng nội bộ 4003
+  }
+  
+  cloud "Cloudflare Edge\n(Zero Trust CDN)" as CFCloud {
+    component "Cloudflare Tunnel\n(scripts/start-tunnel.sh)" as CFTunnel <<Daemon>>
+  }
+  CFTunnel --> LocalAPI : Reverse Proxy (Port 4003)
+}
+
+' ========================================================
+' KẾT NỐI, GIAO THỨC VÀ ĐƯỜNG DẪN MẠNG
+' ========================================================
+WebBrowser --> ProdWeb : HTTPS (Port 443)
+WebBrowser --> ProdAPI : HTTPS / REST API (Port 443)
+WebBrowser ..> CFTunnel : HTTPS Demo từ xa\n(Khi bật Tunnel)
+
+ProdWeb --> ProdAPI : REST / JSON qua HTTPS (Port 443)
+ProdAPI --> NeonDB : TCP / TLS Encrypted\n(Port 5432 / pooler.neon.tech)
+NeonDB *-- NeonStorage : Persistent Read/Write
+
+' Luồng CI/CD
+CIRunner --> GHCR : Push Docker Image\n(Token Authenticated)
+RenderPlatform ..> GHCR : Pull Image tự động khi Deploy
+CIRunner ..> RenderPlatform : Kích hoạt Webhook Deploy\n(RENDER_DEPLOY_HOOK_URL)
+CIRunner ..> ProdAPI : Smoke Test sau Deploy\n(curl /health)
+
+@enduml
