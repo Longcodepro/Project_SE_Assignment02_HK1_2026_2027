@@ -2,12 +2,13 @@
 ' ==============================================================================
 ' Diagram: Sơ đồ Use-case tổng quát hệ thống BrewLite
 ' Code: UseCase-01
-' References: FR-01..14, NFR-01..05, Issue #37 [D1.2d]
-' Tài liệu đối chiếu: docs/requirements/context-and-scope.md (Mục 2 & 3)
+' References: FR-01..21, NFR-01..04, Issue #37 [D1.2d]
+' Tài liệu đối chiếu: cac-chuc-nang-thong-nhat.md, docs/requirements/context-and-scope.md
 ' Đặt hàng và thanh toán gộp một use case (một bước checkout): UC-05.
 ' Bố cục: khách hàng bên trái; cột 1 = use case của khách hàng, cột 2 = vận hành & quản trị,
 '         không chia khung con; nhân viên, quản lý và cổng thanh toán ở ngoài cùng bên phải.
 ' Màu: xanh = khách hàng & đặt hàng, vàng = vận hành cửa hàng, xám = quản trị.
+' Số lượng use case: 21 (UC-01 đến UC-21), chuẩn hóa theo Single Source of Truth.
 ' ==============================================================================
 title Sơ đồ Use-case tổng quát hệ thống BrewLite (UseCase-01)
 
@@ -34,6 +35,7 @@ actor "Pha chế\n(Barista)" as Barista
 actor "Quản lý cửa hàng\n(Store Manager)" as Manager
 
 rectangle "Hệ thống BrewLite" {
+  ' --- Cột 1: Nhóm Khách hàng & Đặt hàng (Màu xanh #EBF5FB) ---
   usecase "UC-01: Xem menu sản phẩm" as UC01
   usecase "UC-02: Xem chi tiết & tùy chọn món" as UC02
   usecase "UC-03: Quản lý giỏ hàng" as UC03
@@ -41,30 +43,37 @@ rectangle "Hệ thống BrewLite" {
   usecase "UC-05: Đặt hàng & thanh toán" as UC05
   usecase "UC-08: Hủy đơn hàng khi chưa pha" as UC08
   usecase "UC-06: Xem lịch sử & theo dõi đơn" as UC06
+  usecase "UC-20: Xem điểm tích lũy & lịch sử thưởng" as UC20
   usecase "UC-09: Đánh giá & gửi phản hồi" as UC09
   usecase "UC-07: Nhận đồ uống bằng mã 6 số" as UC07
   usecase "UC-10: Áp dụng mã khuyến mãi" as UC10
 
+  ' --- Cột 2a: Nhóm Vận hành cửa hàng (Màu vàng #FEF9E7) ---
   usecase "UC-12: Xác nhận mã 6 số & giao món" as UC12 #FEF9E7
-  usecase "UC-13: Xử lý hủy đơn & hoàn nguyên liệu" as UC13 #FEF9E7
+  usecase "UC-13: Xử lý hủy đơn tại quầy" as UC13 #FEF9E7
   usecase "UC-11: Pha chế & cập nhật tiến độ" as UC11 #FEF9E7
   usecase "UC-14: Nhập kho nguyên liệu thực tế" as UC14 #FEF9E7
+
+  ' --- Cột 2b: Nhóm Quản trị cửa hàng (Màu xám #F4F6F7) ---
   usecase "UC-15: Quản lý danh mục & món đồ uống" as UC15 #F4F6F7
   usecase "UC-16: Quản lý công thức pha chế" as UC16 #F4F6F7
   usecase "UC-17: Quản lý tồn kho & cảnh báo nguyên liệu" as UC17 #F4F6F7
   usecase "UC-18: Quản lý tài khoản nhân viên" as UC18 #F4F6F7
+  usecase "UC-21: Quản lý mã khuyến mãi" as UC21 #F4F6F7
   usecase "UC-19: Báo cáo thống kê doanh thu & sản lượng" as UC19 #F4F6F7
 }
 
-' --- thứ tự cột (liên kết ẩn, chỉ để sắp xếp) ---
+' --- Thứ tự sắp xếp các cột (liên kết ẩn để bố cục cân đối) ---
 UC01 -[hidden]right- UC02
 UC02 -[hidden]right- UC03
 UC03 -[hidden]right- UC04
 UC04 -[hidden]right- UC05
 UC05 -[hidden]right- UC08
 UC08 -[hidden]right- UC06
-UC06 -[hidden]right- UC09
+UC06 -[hidden]right- UC20
+UC20 -[hidden]right- UC09
 UC09 -[hidden]right- UC07
+
 UC10 -[hidden]left- UC12
 UC12 -[hidden]left- UC13
 UC13 -[hidden]left- UC11
@@ -73,32 +82,39 @@ UC14 -[hidden]left- UC15
 UC15 -[hidden]left- UC16
 UC16 -[hidden]left- UC17
 UC17 -[hidden]left- UC18
-UC18 -[hidden]left- UC19
+UC18 -[hidden]left- UC21
+UC21 -[hidden]left- UC19
 UC10 -[hidden]- PaymentGateway
 
-' --- tác nhân - use case (association) ---
+' --- Tác nhân - Use Case (Association) ---
 Customer -- UC01
 Customer -- UC02
 Customer -- UC03
 Customer -- UC04
 Customer -- UC05
 Customer -- UC06
+Customer -- UC20
 Customer -- UC07
 Customer -- UC08
 Customer -- UC09
+
 UC05 -- PaymentGateway
+
 UC12 -- Cashier
 UC13 -- Cashier
+
 UC11 -- Barista
 UC14 -- Barista
+
 UC14 -- Manager
 UC15 -- Manager
 UC16 -- Manager
 UC17 -- Manager
 UC18 -- Manager
+UC21 -- Manager
 UC19 -- Manager
 
-' --- include / extend ---
+' --- Quan hệ include / extend ---
 UC05 .left.> UC04 : <<include>>
 UC05 <.. UC10 : <<extend>>
 UC08 .right.> UC06 : <<extend>>
