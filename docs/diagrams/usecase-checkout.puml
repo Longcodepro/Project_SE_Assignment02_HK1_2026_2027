@@ -1,0 +1,80 @@
+@startuml
+' ==============================================================================
+' Diagram: Sơ đồ Use Case phạm vi trọng tâm — Đặt hàng & Thanh toán (Task 1.3)
+' Code: UseCase-Checkout | Phục vụ Issue #38 (D1.3)
+' References: UC-05, UC-04, UC-10, UC-06, UC-20 | FR-04..06, FR-08..10
+' ==============================================================================
+
+title SƠ ĐỒ USE-CASE CHI TIẾT: ĐẶT HÀNG & THANH TOÁN KHÔNG DÙNG TIỀN MẶT (TASK 1.3)
+
+left to right direction
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+' --- Tùy chỉnh màu sắc Use Case và Actor ---
+skinparam usecase {
+  BackgroundColor #EBF5FB
+  BorderColor #2980B9
+  BorderThickness 1.2
+}
+
+skinparam actor {
+  BackgroundColor #EAEDED
+  BorderColor #2C3E50
+  BorderThickness 1.2
+}
+
+' --- 1. ĐỊNH NGHĨA CÁC ACTOR ---
+actor "Khách hàng\n(Customer)" as Customer
+actor "Cổng thanh toán\n(Payment Gateway)" as PaymentGateway <<External System>>
+
+' --- 2. PHÂN HỆ NGHIỆP VỤ CHECKOUT ---
+rectangle "Phân hệ Đặt hàng & Thanh toán (BrewLite)" {
+
+  ' Use-case trung tâm trọng điểm
+  usecase "<b>UC-05: Đặt hàng & thanh toán\nkhông dùng tiền mặt</b>\n(Mã hệ thống: Checkout)" as UC05 #D4EFDF
+
+  ' Các Use-case bắt buộc đi kèm (Include)
+  usecase "UC-04: Đăng ký / Đăng nhập\nbằng SĐT & mật khẩu" as UC04
+  usecase "UC-20: Tích điểm thưởng thành viên\n(1 điểm / 1.000đ thực trả)" as UC20
+  usecase "UC-06: Chuyển hướng theo dõi đơn\n(Polling trạng thái 5s)" as UC06
+
+  ' Use-case mở rộng tùy chọn (Extend)
+  usecase "UC-10: Áp dụng mã khuyến mãi\n(Voucher giảm giá)" as UC10
+
+  ' Các phương thức thanh toán cụ thể
+  usecase "Thanh toán bằng Thẻ (CARD)\n<i>(Lỗi khi 4 số cuối là '0000')</i>" as PayCard #FEF9E7
+  usecase "Thanh toán bằng Ví (WALLET)\n<i>(Lỗi khi đơn hàng > 500.000đ)</i>" as PayWallet #FEF9E7
+}
+
+' --- 3. MỐI LIÊN KẾT ACTOR VỚI USE-CASE CHÍNH ---
+Customer --> UC05
+UC05 --> PaymentGateway
+
+' --- 4. MỐI QUAN HỆ <<include>> (BẮT BUỘC) ---
+UC05 .> UC04 : <<include>>\n(khi chưa đăng nhập)
+UC05 .> UC20 : <<include>>\n(khi thanh toán thành công)
+UC05 .> UC06 : <<include>>\n(sau khi tạo đơn PAID)
+
+' --- 5. MỐI QUAN HỆ <<extend>> (TÙY CHỌN MỞ RỘNG) ---
+UC05 <.. UC10 : <<extend>>\n(nếu khách có mã voucher)
+UC05 <.. PayCard : <<extend>>\n(chọn thẻ ngân hàng)
+UC05 <.. PayWallet : <<extend>>\n(chọn ví điện tử)
+
+' --- 6. GHI CHÚ QUY TẮC AN NINH & NGHIỆP VỤ ---
+note right of UC05
+  <b>Quy tắc an ninh & nghiệp vụ cốt lõi:</b>
+  • <b>Server-side Pricing (FR-08):</b> Server tự tính giá từ CSDL,
+    tuyệt đối không cho client gửi tổng tiền.
+  • <b>Idempotency-Key (FR-09):</b> Header UUID chống trừ tiền
+    và chống tạo đơn trùng khi mạng bị trễ.
+  • <b>Khóa lạc quan (version):</b> Kiểm soát xung đột trạng thái
+    đồng thời (Optimistic Concurrency Control).
+  • <b>Mô phỏng từ chối (Negative Path):</b>
+    - Thẻ đuôi <b>0000</b>: Từ chối thẻ.
+    - Ví đơn <b>> 500.000đ</b>: Từ chối do quá hạn mức ví.
+end note
+
+@enduml
