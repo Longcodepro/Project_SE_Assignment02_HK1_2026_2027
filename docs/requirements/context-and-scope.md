@@ -1,196 +1,212 @@
-# Bối cảnh, stakeholder và phạm vi hệ thống (Task 1.1)
+# Bối cảnh, Stakeholder và Phạm vi Hệ thống BrewLite (Task 1.1)
 
-> **Dự án:** Ứng dụng đặt cà phê không tiền mặt BrewLite
-> **Môn học:** Công nghệ phần mềm — Học kỳ 1, năm học 2026–2027
-> **Nhóm thực hiện:**
-> - **Nguyễn Thành Long (`Longcodepro`)** — Backend, Scrum Master, DevOps, kiến trúc
-> - **Trần Quốc Tài (`TaiTran263`)** — Frontend UI/UX, quản trị trạng thái client, QA
+> **Dự án:** Ứng dụng đặt cà phê không tiền mặt BrewLite  
+> **Môn học:** Công nghệ phần mềm — Học kỳ 1, Năm học 2026–2027  
+> **Nhóm sinh viên thực hiện:**
+> - **Nguyễn Thành Long (`Longcodepro`)** — Backend, Scrum Master, DevOps, Kiến trúc
+> - **Trần Quốc Tài (`TaiTran263`)** — Frontend UI/UX, Quản trị trạng thái Client, QA
 >
-> **Tạo phẩm của Issue #33.** Tài liệu liên quan: `srs.md` (yêu cầu chức năng và phi chức năng), `../architecture/api-contract.md` (hợp đồng API), `../traceability-matrix.md` (ma trận truy vết).
+> **Đường dẫn tạo phẩm:** `docs/requirements/context-and-scope.md` (Liên kết: Issue `[D1.1]`, số issue ghi sau khi tạo ở repo Assignment 2)  
+> **Tài liệu đối chiếu:** `Assignment2-BrewLite.pdf` (Task 1.1), `cac-chuc-nang-thong-nhat.md`, `docs/architecture/api-contract.md`, `docs/traceability-matrix.md`
+
+## 0. Hướng dẫn đọc
+
+- File này là tạo phẩm **Task 1.1** của đề Assignment 2, đặt tại `docs/requirements/context-and-scope.md`.
+- Chi tiết chức năng (mã `CN-xx`, `UC-xx`, `FR-xx`, `NFR-xx`), bảng chuyển trạng thái đơn và các quyết định nằm ở `cac-chuc-nang-thong-nhat.md`, là **nguồn sự thật chuẩn**. Nếu hai file lệch nhau thì theo file đó và báo lại Long hoặc Tài để sửa.
+- Mã chỉ định nghĩa trong file này: `P1` đến `P4` (vấn đề nghiệp vụ), `G1` đến `G4` (mục tiêu hệ thống), `RSK-01` đến `RSK-08` (rủi ro).
+- Tên trong dấu `backtick` (enum, header, endpoint, cột CSDL) là tên đúng trong mã nguồn; dùng nguyên văn. Không tự thêm chức năng ngoài phạm vi đã ghi; thiếu thông tin thì hỏi lại, không đoán.
+- Bố cục theo yêu cầu Task 1.1 của đề: bối cảnh và vấn đề (mục 1), bảng stakeholder (mục 2), in-scope và phạm vi mở rộng (3.1, 3.2), out-of-scope (3.3), giả định và ràng buộc (mục 4), rủi ro ban đầu (mục 5).
+- Phần Sprint 3 và 4 (mục 3.2) ở trạng thái **Planned**: chỉ có tài liệu và sơ đồ, không đòi mã nguồn và kiểm thử.
 
 ---
 
-## 1. Bối cảnh và vấn đề nghiệp vụ cần giải quyết
+## 1. Bối Cảnh Nghiệp Vụ và Vấn Đề Cần Giải Quyết
 
-### 1.1. Thực trạng vận hành truyền thống
+### 1.1. Thực trạng vận hành quán cà phê truyền thống
 
-Tại các quán cà phê vừa và nhỏ hiện nay, quy trình phục vụ diễn ra thủ công tại quầy thu ngân: khách xếp hàng, gọi món với nhân viên, trả tiền, nhận máy rung rồi chờ gọi. Khách tự chọn chỗ ngồi, quán không quản lý chỗ ngồi. Cách làm này phát sinh bốn vấn đề:
+Tại các cửa hàng cà phê vừa và nhỏ hiện nay, quy trình phục vụ chủ yếu diễn ra thủ công tại quầy thu ngân: khách hàng phải xếp hàng chờ gọi món, thanh toán bằng tiền mặt hoặc chuyển khoản thủ công, nhận thẻ rung và tự tìm chỗ ngồi. Cách thức vận hành này phát sinh 4 vấn đề nghiệp vụ nhức nhối:
 
-| Mã | Vấn đề | Hệ quả |
+| Mã | Vấn đề thực tế | Hệ quả nghiệp vụ |
 |:---:|---|---|
-| **P1** | **Ùn tắc giờ cao điểm.** Khách phải xếp hàng dài chờ tới lượt gọi món | Khách khó chịu, giảm trải nghiệm; nhân viên bận nhập đơn thay vì phục vụ |
-| **P2** | **Thanh toán tiền mặt chậm và dễ sai.** Nhận tiền, đếm lại, thối tiền tốn thời gian; khách chuyển khoản còn phải chờ nhân viên đối chiếu giao dịch mới được ghi đơn | Dễ nhầm lẫn và thất thoát doanh thu; nhân viên vừa nhận tiền vừa pha chế nên tiềm ẩn rủi ro vệ sinh an toàn thực phẩm |
-| **P3** | **Sai sót khi tiếp nhận yêu cầu.** Khách có nhiều lựa chọn khác nhau (size, topping, mức đường, mức đá, nóng hoặc lạnh, yêu cầu riêng). Nhân viên ghi tay hoặc truyền miệng | Pha nhầm món, sai định lượng, phải làm lại |
-| **P4** | **Không kiểm soát được nguyên liệu.** Quán không có công cụ biết tức thời còn pha được bao nhiêu ly | Nhận đơn của khách rồi mới phát hiện hết nguyên liệu và phải hủy; không có số liệu tồn kho và lịch sử nhập |
+| **P1** | **Ùn tắc giờ cao điểm tại quầy:** Khách phải xếp hàng dài chờ tới lượt gọi món, nhân viên thu ngân quá tải trong việc nhập đơn thủ công. | Giảm trải nghiệm khách hàng; tăng thời gian chờ đợi; nguy cơ mất khách trong khung giờ cao điểm (sáng, trưa). |
+| **P2** | **Thanh toán tiền mặt chậm và rủi ro:** Nhận tiền mặt, kiểm đếm và thối tiền lẻ tốn thời gian; khách chuyển khoản thì nhân viên phải chờ thông báo biến động số dư để đối soát. | Dễ nhầm lẫn, thất thoát doanh thu; rủi ro mất vệ sinh an toàn thực phẩm khi nhân viên vừa nhận tiền vừa pha chế. |
+| **P3** | **Sai sót thông tin order do truyền miệng:** Khách có nhiều tùy biến chi tiết (kích cỡ ly, topping, mức đường, mức đá...). Nhân viên ghi giấy hoặc truyền miệng dễ nhầm lẫn. | Pha chế nhầm món, sai định lượng, phải pha lại gây lãng phí nguyên liệu và làm khách hàng không hài lòng. |
+| **P4** | **Thiếu công cụ kiểm soát nguyên vật liệu tức thì:** Quán không theo dõi được lượng nguyên liệu thực tế còn lại pha được bao nhiêu ly trong ca làm việc. | Nhận đơn thu tiền của khách rồi mới phát hiện hết nguyên liệu (hết sữa, hết đá...), buộc phải hủy đơn và xin lỗi khách. |
 
-### 1.2. Giải pháp hệ thống BrewLite
+### 1.2. Giải pháp chuyển đổi số từ hệ thống BrewLite
 
-**BrewLite** là ứng dụng web theo hướng **mobile-first**, giải quyết bài toán đặt món và thanh toán không tiền mặt:
+**BrewLite** là ứng dụng web hiện đại xây dựng theo triết lý **Mobile-First**, giải quyết 4 vấn đề trên. P1 đến P3 được giải quyết ngay ở MVP (Sprint 1–2); P4 chỉ được giải quyết đầy đủ ở Sprint 4, còn MVP dùng cờ `isAvailable` làm phương án tạm:
 
-* **Tự phục vụ tiện lợi:** khách quét mã QR tại bàn hoặc mở ứng dụng trên điện thoại để duyệt menu, chọn món kèm tùy chọn (size, topping, mức đường, mức đá, nóng hoặc lạnh, yêu cầu riêng), thêm vào giỏ và đặt món mà không cần tới quầy $\rightarrow$ Giải quyết vấn đề P1 và P3.
-* **Thanh toán không tiền mặt tức thì:** tích hợp cơ chế thanh toán mô phỏng (ví điện tử, thẻ ngân hàng, chuyển khoản), tự động xác nhận đơn ngay khi giao dịch thành công, không chờ nhân viên xác minh $\rightarrow$ Giải quyết vấn đề P2.
-* **Kiểm soát nguyên liệu theo công thức:** mỗi món có công thức theo từng size. Khi thanh toán thành công, hệ thống tự trừ nguyên liệu và ghi lịch sử; thiếu nguyên liệu thì chặn ngay trước khi thu tiền $\rightarrow$ Giải quyết vấn đề P4.
-* **Số hóa quy trình đơn hàng:** đơn sau khi thanh toán vào thẳng hàng đợi của pha chế. Khách theo dõi trạng thái đơn trên điện thoại và nhận món bằng mã nhận hàng 6 số, thay cho máy rung.
+* **Tự phục vụ tiện lợi (Self-ordering):** Khách hàng quét mã QR (chỉ mở đường dẫn web, không gắn với bàn) hoặc mở trình duyệt di động để duyệt menu, tùy biến kích cỡ (Size S/M/L) và topping, kiểm tra giỏ hàng và đặt món mà không cần xếp hàng tại quầy → *Giải quyết P1 và P3*.
+* **Thanh toán không tiền mặt tức thời (Cashless Payment):** Tích hợp giải pháp thanh toán số mô phỏng (Thẻ ngân hàng, Ví điện tử); hệ thống tự động xác nhận đơn ngay khi giao dịch thành công trong cùng một giao dịch (Transaction) → *Giải quyết P2*.
+* **Số hóa quy trình đơn hàng & Nhận món bằng mã 6 số (theo dõi đơn: MVP Sprint 2; hàng đợi pha chế và mã 6 số: Sprint 3, Planned):** Đơn sau khi thanh toán thành công tự động vào thẳng hàng đợi pha chế. Khách theo dõi tiến độ trên điện thoại (màn hình tự cập nhật bằng polling khoảng 5 giây) và nhận món tại quầy bằng mã nhận hàng 6 số (thay thế thẻ rung truyền thống) → *Giải quyết P1*.
+* **Quản lý nguyên liệu & Định lượng (Sprint 4, Planned):** Kho nguyên liệu thực tế có công thức pha chế, kiểm tra đủ nguyên liệu khi tạo đơn, tự trừ kho khi thanh toán và cảnh báo tồn kho sắp hết → *Giải quyết P4*. Ở MVP chỉ có cờ `isAvailable`.
 
-### 1.3. Mục tiêu hệ thống
+### 1.3. Mục tiêu hệ thống (System Goals)
 
-| Mã | Mục tiêu | Giải quyết vấn đề |
+| Mã | Mục tiêu hệ thống | Vấn đề giải quyết |
 |:---:|---|:---:|
-| **G1** | Khách tự gọi món và thanh toán trên điện thoại, không phải xếp hàng tại quầy, tùy chọn được ghi chính xác theo đúng ý khách | P1, P2, P3 |
-| **G2** | Hệ thống tự kiểm tra và trừ nguyên liệu theo công thức mỗi khi bán, có lịch sử nhập kho và cảnh báo sắp hết | P4 |
-| **G3** | Khách theo dõi trạng thái đơn và nhận món tại quầy bằng mã nhận hàng, thay cho máy rung | P1 |
+| **G1** | Khách hàng tự gọi món và thanh toán trực tiếp trên điện thoại di động trong vòng **dưới 60 giây**, loại bỏ hoàn toàn việc xếp hàng tại quầy. | P1, P2, P3 |
+| **G2** | Tự động hóa 100% khâu định giá và kiểm tra tính hợp lệ của đơn hàng tại máy chủ (Server-side Pricing), bảo vệ an toàn giao dịch tài chính. | P2, P3 |
+| **G3** | Cung cấp mã nhận hàng 6 số và cơ chế theo dõi trạng thái đơn hàng, cập nhật định kỳ khoảng 5 giây (polling), trên giao diện web di động. | P1 |
+| **G4** | Không nhận tiền cho đơn không đủ nguyên liệu: kiểm tra tồn kho khi tạo đơn, tự trừ kho khi thanh toán (Sprint 4, Planned; MVP dùng `isAvailable`). | P4 |
 
-### 1.4. Luồng nghiệp vụ chính
+### 1.4. Luồng người dùng cốt lõi (Core User Journey MVP)
 
-Khách ngồi vào bàn, quét QR mở ứng dụng → xem menu → chọn size, topping, mức đường, mức đá (và nóng hoặc lạnh) → thêm vào giỏ → chọn mang về hoặc tại quán → đăng nhập bằng số điện thoại và mật khẩu → thanh toán mô phỏng → hệ thống kiểm tra và trừ nguyên liệu, tạo đơn `PAID` → pha chế làm món (`PREPARING`, rồi `READY`) → khách nhận mã 6 số khi món sẵn sàng, đến quầy đọc mã → nhân viên giao món (`COMPLETED`).
+Thứ tự các bước (khớp luồng tối thiểu của đề):
 
-Hệ thống không lưu chỗ ngồi: khách muốn ngồi đâu thì ngồi.
+1. Khách quét QR hoặc mở web.
+2. Duyệt menu đồ uống (CN-02).
+3. Chọn size và topping (CN-03).
+4. Thêm vào giỏ hàng (CN-04).
+5. Đăng nhập bằng SĐT khi đặt hàng (CN-05); giỏ hàng giữ nguyên.
+6. Thanh toán bằng Thẻ hoặc Ví (CN-06); đơn chuyển sang `PAID`.
+7. Theo dõi đơn, xem điểm thưởng (CN-07).
 
 ---
 
-## 2. Bảng phân tích các bên liên quan (Stakeholder analysis)
+## 2. Bảng Phân Tích Các Bên Liên Quan (Stakeholder Analysis)
 
-Đề bài nêu 6 nhóm stakeholder. Nhóm tách **nhân viên quầy** thành hai vai trò riêng là **pha chế** và **nhân viên giao món**, vì ở quán thật đây là hai người với hai mối quan tâm khác nhau, và hệ thống cũng phân quyền riêng cho từng vai trò. Vì vậy bảng có 7 nhóm.
+Đề bài Assignment 2 quy định 6 nhóm stakeholder chính tham gia vào vòng đời hệ thống:
 
-| STT | Stakeholder | Vai trò trong hệ thống | Mục tiêu chính | Kỳ vọng đối với phần mềm |
+| STT | Stakeholder | Vai trò trong hệ thống | Mục tiêu chính | Kỳ vọng đối với phần mềm BrewLite |
 |:---:|---|---|---|---|
-| **1** | **Khách hàng**<br>*(Customer)* | Người dùng cuối mua và thưởng thức đồ uống | Đặt đồ uống nhanh, chính xác theo ý muốn, không phải xếp hàng chờ đợi | • Giao diện trên điện thoại mượt, dễ chọn món.<br>• Tùy chọn size, topping, mức đường, mức đá trực quan, thấy ngay tổng tiền.<br>• Thanh toán không tiền mặt an toàn, không bị trừ tiền hai lần.<br>• Đã bị trừ tiền thì chắc chắn có đơn; thất bại thì giỏ còn nguyên để thử lại.<br>• Tra cứu được lịch sử đơn của mình. |
-| **2** | **Pha chế**<br>*(Barista)* | Làm món theo đơn đã thanh toán và nhập nguyên liệu vào kho | Làm món đúng thứ tự, không bị thiếu nguyên liệu giữa buổi | • Hàng đợi hiện đơn cũ nhất trước.<br>• Thông tin món rõ ràng: size, danh sách topping, mức đường, mức đá, yêu cầu riêng.<br>• Chỉ nhận đơn đã thanh toán thành công (`PAID`).<br>• Nhập kho nhanh, thấy cảnh báo nguyên liệu sắp hết. |
-| **3** | **Nhân viên giao món**<br>*(Counter staff)* | Giao đồ uống cho khách và xử lý hủy đơn | Giao đúng món cho đúng khách, giảm áp lực nhận order thủ công | • Nhập mã nhận hàng là biết ngay đơn nào.<br>• Không phải đối chiếu chuyển khoản thủ công.<br>• Không phải xử lý tiền mặt và tiền lẻ thối.<br>• Hủy đơn có ghi lý do, rõ ràng, không gây tranh cãi với khách. |
-| **4** | **Quản lý cửa hàng**<br>*(Store manager)* | Quản trị vận hành, danh mục sản phẩm, nguyên liệu và tài khoản | Nâng cao hiệu suất phục vụ giờ cao điểm; kiểm soát nguyên liệu và doanh thu | • Cấu hình được món, giá từng size, các tùy chọn và giá trị mặc định.<br>• Khai công thức theo size, đặt ngưỡng cảnh báo tồn kho.<br>• Biết nguyên liệu sắp hết; có lịch sử nhập kèm người thực hiện.<br>• Tạo và khóa được tài khoản nhân viên.<br>• Dữ liệu đơn hàng minh bạch, không thất thoát doanh thu. |
-| **5** | **Đơn vị thanh toán**<br>*(Payment provider)* | Cổng trung gian cung cấp hạ tầng thanh toán số. Trong MVP là dịch vụ mô phỏng nội bộ | Đảm bảo tính toàn vẹn, bảo mật và chính xác của giao dịch | • Nhận yêu cầu đúng định dạng, không bị gửi trùng nhờ header `Idempotency-Key`.<br>• Phản hồi trạng thái rõ ràng: thành công hoặc từ chối.<br>• Hệ thống gọi theo hợp đồng ổn định để sau này thay bằng cổng thật. |
-| **6** | **Nhóm phát triển**<br>*(Development team)* | Xây dựng, kiểm thử, triển khai và bảo trì hệ thống | Tạo sản phẩm đạt chuẩn kiến trúc, dễ mở rộng, kiểm thử tự động | • Cấu trúc monorepo phân tách rõ `apps/web` và `apps/api`.<br>• Hợp đồng API chốt sớm để hai người làm song song không lệch nhau.<br>• Pipeline CI/CD tự phát hiện lỗi và đóng gói container.<br>• Phạm vi vừa sức 2 người trong 2 sprint.<br>• Code sạch, có migration và tài liệu kỹ thuật đồng bộ. |
-| **7** | **Giảng viên nghiệm thu**<br>*(Evaluator / Client)* | Đánh giá chất lượng dự án và nghiệm thu sản phẩm | Thẩm định năng lực kỹ thuật và quy trình công nghệ phần mềm của nhóm | • Tuân thủ quy trình từ yêu cầu, thiết kế, CI/CD đến deployment.<br>• Ma trận truy vết đầy đủ từ mã yêu cầu tới sơ đồ, code và test.<br>• Có phiên bản chạy trực tiếp trên Internet, truy cập được qua HTTPS. |
+| **1** | **Khách hàng** *(Customer)* | Người dùng cuối mua và thưởng thức đồ uống tại quán | Đặt đồ uống nhanh, chính xác theo ý muốn, không phải chờ đợi tại quầy | (1) Giao diện di động mượt mà, trực quan, dễ thao tác. (2) Tùy chọn size và topping thấy ngay giá tạm tính theo thời gian thực. (3) Đăng ký/đăng nhập đơn giản bằng số điện thoại. (4) Thanh toán không tiền mặt an toàn, không bị trừ tiền 2 lần. (5) Tra cứu được lịch sử đơn hàng và số dư điểm tích lũy. |
+| **2** | **Nhân viên quầy & Pha chế** *(Counter Staff & Barista)* | Tiếp nhận đơn, pha chế đồ uống và giao món cho khách | Chuẩn bị đồ uống chính xác, giảm thiểu sai sót và áp lực giờ cao điểm | (1) Hàng đợi pha chế hiển thị đơn theo thứ tự thời gian. (2) Thông tin món rõ ràng: tên món, size ly, danh sách topping. (3) Chỉ tiếp nhận những đơn đã thanh toán thành công (`PAID`). (4) Đối chiếu mã nhận hàng 6 số nhanh chóng để giao đúng khách. |
+| **3** | **Quản lý cửa hàng** *(Store Manager)* | Quản trị vận hành, danh mục món, nguyên liệu và doanh thu | Nâng cao hiệu suất bán hàng, kiểm soát doanh thu minh bạch và chống thất thoát | (1) Cấu hình được danh mục, giá món theo từng size và topping. (2) Kiểm soát được tình trạng còn bán / hết hàng của từng món. (3) Báo cáo thống kê doanh thu thực tế, số đơn thành công theo ngày. (4) Quản lý và phân quyền tài khoản cho nhân sự vận hành. |
+| **4** | **Đơn vị thanh toán** *(Payment Provider)* | Cổng thanh toán trung gian (hệ thống mô phỏng nội bộ) | Đảm bảo tính toàn vẹn, bảo mật và chính xác của giao dịch | (1) Nhận yêu cầu giao dịch chuẩn định dạng API. (2) Hỗ trợ cơ chế chống gửi trùng (`Idempotency-Key`). (3) Phản hồi trạng thái giao dịch rõ ràng (thành công hoặc từ chối). |
+| **5** | **Nhóm phát triển** *(Development Team)* | Xây dựng, kiểm thử, tích hợp CI/CD và vận hành hệ thống | Tạo ra sản phẩm đạt chuẩn kiến trúc, kiểm thử tự động và bàn giao đúng hạn | (1) Cấu trúc Monorepo phân tách rõ `apps/web` và `apps/api`. (2) Hợp đồng API Contract rõ ràng để Frontend và Backend phát triển song song. (3) Pipeline CI/CD tự động phát hiện lỗi và đóng gói container. (4) Phạm vi vừa sức 2 người trong 2 Sprint theo mô hình MoSCoW. |
+| **6** | **Giảng viên nghiệm thu** *(Evaluator / Client)* | Đánh giá chất lượng kỹ thuật phần mềm và nghiệm thu đồ án | Thẩm định năng lực kỹ thuật, quy trình công nghệ phần mềm và tính thực thi | (1) Tuân thủ quy trình: từ Yêu cầu → Thiết kế UML → Kiến trúc → Code → Test → Deploy. (2) Ma trận truy vết (`traceability-matrix.md`) đầy đủ, không đứt đoạn. (3) Ứng dụng có phiên bản Production chạy trực tiếp trên Internet qua HTTPS. |
 
 ---
 
-## 3. Phạm vi sản phẩm (Product scope)
+## 3. Phạm Vi Sản Phẩm (Product Scope)
 
-### 3.1. Phạm vi trong MVP (In-scope — thực hiện trong Sprint 1 và 2)
+Để đảm bảo chất lượng kỹ thuật cao nhất trong khung thời gian 2 Sprint của nhóm 2 người, phạm vi hệ thống được quy hoạch chặt chẽ theo mô hình **MoSCoW** và phân kỳ theo lộ trình phát hành:
 
-Các hạng mục được chia hai mức ưu tiên. **Ưu tiên 1** là luồng khách end-to-end mà đề bắt buộc; **ưu tiên 2** làm sau khi luồng khách đã chạy.
+### 3.1. Phạm vi trong MVP (In-Scope — Sprint 1 & Sprint 2)
 
-#### Ưu tiên 1 — luồng khách end-to-end
+Đây là **phạm vi bắt buộc hoàn thành (Must Have & Should Have)**, có mã nguồn chạy thật, có bộ kiểm thử tự động và được triển khai trực tiếp lên môi trường Production:
 
-* **Menu và chi tiết món:**
-  * Xem danh sách đồ uống phân theo danh mục (cà phê pha phin, espresso, cold brew, trà sữa và các danh mục khác).
-  * Hiển thị chi tiết từng món: tên, mô tả, ảnh, giá khởi điểm, tình trạng còn bán.
-  * Chọn kích cỡ S, M, L với **giá do quản lý nhập riêng cho từng món** (không dùng phụ thu cố định, vì chênh lệch giá giữa các size khác nhau theo từng loại đồ uống).
-  * Chọn topping, mức đường, mức đá và nhiệt độ theo đúng cấu hình của món đó. Món chỉ bán nóng thì không hiện lựa chọn lạnh và không hiện mức đá.
-  * Nhập yêu cầu riêng dạng chữ cho từng món.
-* **Giỏ hàng phía client (Zustand và LocalStorage):**
-  * Thêm món kèm toàn bộ tùy chọn; tăng, giảm số ly; xóa dòng.
-  * Hai dòng giống nhau hoàn toàn thì gộp thành một dòng, số ly cộng dồn.
-  * **Mỗi đơn tối đa 99 ly** tính trên tổng mọi dòng.
-  * Tự động tính tổng tiền tạm tính theo thời gian thực.
-  * Khách chưa đăng nhập vẫn thêm được vào giỏ; giỏ lưu trên trình duyệt.
-* **Xác thực và phân quyền:**
-  * Đăng ký và đăng nhập bằng **số điện thoại Việt Nam và mật khẩu**; email không bắt buộc. Dùng số điện thoại vì đây là thông tin khách quán cà phê luôn có và nhớ, còn email thì nhiều người không dùng thường xuyên.
-  * Băm mật khẩu bằng `bcryptjs`.
-  * Cấp và quản lý phiên bằng `JSON Web Token`, hết hạn sau 24 giờ, thu hồi khi đăng xuất.
-  * Bảo vệ các endpoint đặt hàng và thanh toán bằng `JwtAuthGuard` và kiểm tra vai trò.
-  * Bốn vai trò: khách hàng, pha chế, nhân viên giao món, quản lý.
-* **Đặt đơn và thanh toán mô phỏng (gộp một bước checkout):**
-  * Khách chọn **mang về hoặc tại quán** cho cả đơn.
-  * Server tự tính lại tổng tiền từ cơ sở dữ liệu để chống gian lận giá từ client.
-  * Ba hình thức: **ví điện tử**, **thẻ ngân hàng**, **chuyển khoản**. Quy tắc mô phỏng: ví và chuyển khoản luôn thành công; thẻ có hai số cuối là `99` thì giao dịch bị từ chối.
-  * Thanh toán thành công thì mới tạo đơn, ở trạng thái `PAID`.
-  * Thanh toán thất bại thì không tạo đơn, không trừ nguyên liệu, giỏ hàng còn nguyên để khách đổi hình thức và thử lại.
-  * Chống trừ tiền trùng lặp bằng **`Idempotency-Key`** bắt buộc.
-  * Xem hóa đơn ngay trong ứng dụng sau khi thanh toán.
-* **Theo dõi và lịch sử đơn:**
-  * Khách tra cứu danh sách đơn của chính mình, mới nhất trước.
-  * Trạng thái tự làm mới khi đơn chưa kết thúc.
-  * Mã nhận hàng 6 số hiện khi đơn sang `READY`, ở dạng số và dạng QR.
+#### A. Phân hệ Giao diện Khách hàng (Frontend — `apps/web`)
+1. **Duyệt Menu đồ uống (Mobile-first)** (CN-02, Sprint 1):
+   - Danh sách món cà phê phân chia theo tab danh mục trực quan.
+   - Hiển thị ảnh đại diện, tên đồ uống, giá cơ bản (Size S).
+   - Xử lý mượt mà 3 trạng thái giao diện: Đang tải (*Skeleton Loading*), Danh sách rỗng (*Empty State*), Lỗi mạng (*Error & Retry*).
+2. **Modal Chi tiết & Tùy biến món** (CN-03, Sprint 2):
+   - Chọn duy nhất 1 trong 3 kích cỡ: **Size S** (+0 đ), **Size M** (+5.000 đ), **Size L** (+10.000 đ).
+   - Tick chọn nhiều topping cùng lúc: **Trân châu đen** (+8.000 đ), **Kem cheese** (+10.000 đ), **Thạch cà phê** (+6.000 đ).
+   - Đơn giá tạm tính tự động cập nhật theo thời gian thực trên Modal.
+3. **Quản lý Giỏ hàng Client Store (Zustand & LocalStorage)** (CN-04, Sprint 2):
+   - Lưu trữ bền vững phía trình duyệt, khách chưa đăng nhập vẫn thêm được vào giỏ.
+   - Tăng, giảm số lượng (từ 1 đến 99 ly), xóa từng món hoặc xóa toàn bộ giỏ.
+   - Badge đếm số ly trên thanh điều hướng cập nhật tức thì.
+4. **Xác thực tài khoản Khách hàng** (CN-05, Sprint 2):
+   - Đăng ký và đăng nhập bằng **Số điện thoại** Việt Nam và Mật khẩu (Email là trường tùy chọn).
+   - Quản lý phiên làm việc bằng JSON Web Token (JWT), lưu an toàn phía client và tự động đính kèm header `Authorization: Bearer <token>`.
+   - Tài khoản có vai trò (`CUSTOMER`, `BARISTA`, `CASHIER`, `MANAGER`); đăng ký mặc định là `CUSTOMER`.
+5. **Màn hình Lịch sử & theo dõi đơn hàng** (CN-07, Sprint 2):
+   - Xem danh sách các đơn đã đặt của chính mình, sắp xếp mới nhất lên đầu.
+   - Hiển thị chi tiết từng món (size, topping) và Badge trạng thái trực quan: `PENDING` (Vàng), `PAID` (Xanh lá), `PAYMENT_FAILED` (Đỏ).
+   - Trạng thái đơn tự cập nhật bằng polling khoảng 5 giây (không dùng WebSocket).
+   - Hiển thị số dư **Điểm tích lũy thành viên** và lịch sử điểm (mỗi lần thanh toán thành công một dòng).
 
-#### Ưu tiên 2 — vận hành trong quán
+#### B. Phân hệ Máy chủ & Dịch vụ API (Backend — `apps/api`)
 
-* **Xử lý đơn:** vòng đời `PAID` → `PREPARING` → `READY` → `COMPLETED`, thêm nhánh `CANCELLED`. Pha chế chuyển hai bước đầu, nhân viên giao món nhập mã nhận hàng để hoàn tất. Hàng đợi xếp đơn cũ nhất trước.
-* **Kho nguyên liệu và công thức:** tạo nguyên liệu (tên, đơn vị `g`, `ml`, `cái`, ngưỡng cảnh báo); nhập kho có lưu lịch sử kèm tài khoản thực hiện; công thức theo từng size; trừ kho trong cùng giao dịch với việc tạo đơn; thiếu nguyên liệu thì chặn và gợi ý cách xử lý cho khách. Bao bì cũng tính là nguyên liệu: mang về trừ ly, nắp, ống hút và một túi mỗi đơn; tại quán dùng ly sành nên chỉ trừ ống hút.
-* **Hủy đơn:** khách hoặc nhân viên hủy được khi đơn còn `PAID`, có ghi lý do, hoàn đúng lượng nguyên liệu đã trừ và ghi nhận hoàn tiền mô phỏng.
-* **Gợi ý lựa chọn phổ biến và nhãn bán chạy:** thống kê 30 ngày gần nhất để gợi ý mức đường, mức đá, nhiệt độ và topping được chọn nhiều nhất cho từng món, kèm nhãn "Bán chạy" trên menu.
-* **Quản trị:** quản lý cấu hình món, công thức, ngưỡng cảnh báo; tạo và khóa tài khoản nhân viên.
+Ngoài các mục dưới đây, API sản phẩm `GET /products` và `GET /products/:id` thuộc Sprint 1 (CN-02).
 
-#### Hạ tầng và vận hành
+1. **Định giá độc quyền tại Server (Server-side Pricing)** (CN-06, Sprint 2):
+   - Client tuyệt đối không gửi giá tiền lên Backend; hệ thống đọc giá gốc từ CSDL và tự động tính toán tổng tiền chính xác, ngăn chặn triệt để gian lận sửa giá (*Parameter Tampering*).
+2. **Xử lý giao dịch thanh toán mô phỏng (Simulated Payment)** (CN-06, Sprint 2):
+   - Hỗ trợ 2 phương thức: Thẻ ngân hàng (`CARD`) và Ví điện tử (`WALLET`).
+   - Quy tắc kiểm thử mô phỏng: Thẻ có 4 số cuối `0000` bị từ chối; Ví điện tử từ chối đơn hàng >500.000 đ; các trường hợp hợp lệ khác thành công 100%.
+   - Bảo mật: Tuyệt đối không lưu trữ chuỗi số thẻ thô (`cardNumber`) vào cơ sở dữ liệu.
+3. **Quản lý vòng đời trạng thái đơn hàng (Order State Machine)** (CN-06, Sprint 2):
+   - Kiểm soát nghiêm ngặt bước chuyển: `PENDING` → `PAID` hoặc `PAYMENT_FAILED`; `PAYMENT_FAILED` → `PAID` (cho phép thanh toán lại).
+   - Chặn đứng mọi nỗ lực thanh toán lại đơn hàng đã ở trạng thái `PAID` (báo lỗi `409 Conflict`).
+4. **Chống gửi trùng yêu cầu giao dịch (Idempotency Control)** (CN-06, Sprint 2):
+   - Áp dụng header `Idempotency-Key` (UUID) cho API tạo đơn và thanh toán, ngăn chặn trừ tiền 2 lần khi khách bấm nút liên tục hoặc lỗi mạng gửi lại request.
+5. **Khóa lạc quan chống xung đột đồng thời (Optimistic Locking)** (CN-06, Sprint 2):
+   - Quản lý qua cột `version: Int @default(0)` trong bảng `Order`, đảm bảo an toàn dữ liệu khi có nhiều tiến trình cập nhật đơn hàng cùng lúc.
+6. **Tích lũy điểm thưởng thành viên (Loyalty Points)** (CN-07, Sprint 2):
+   - Tự động cộng **1 điểm cho mỗi 1.000 đ** số tiền thực trả của đơn hàng thanh toán thành công (`PAID`). Điểm chỉ tích lũy, chưa có chức năng đổi điểm.
 
-* Đóng gói toàn bộ hệ thống bằng Docker và Docker Compose.
-* Pipeline CI/CD tự kiểm tra lint, test, build và đóng gói container image lên GHCR.
-* Triển khai môi trường production truy cập công khai qua HTTPS, có health check.
-* Giao diện **mobile-first**: tối ưu cho điện thoại trước, vì khách quét QR là mở ngay trong trình duyệt.
-
-#### Phương án dự phòng
-
-Nếu thiếu thời gian, kho nguyên liệu được lùi về cách đơn giản hơn: nhân viên tự khóa những món đã hết hàng. Luồng khách ưu tiên 1 vẫn phải hoàn chỉnh.
-
----
-
-### 3.2. Phạm vi mở rộng tương lai (Future scope — hậu Sprint 2)
-
-Các tính năng đã quy hoạch trong product backlog, triển khai ở giai đoạn sau nếu còn thời gian:
-
-* **Khuyến mãi và voucher (`Promotion`):** nhập mã giảm giá theo số tiền cố định hoặc theo phần trăm khi thanh toán.
-* **Tích điểm khách hàng thân thiết (`LoyaltyTransaction`):** tích điểm theo giá trị đơn đã thanh toán. Để ngoài MVP vì không phục vụ bốn vấn đề P1 đến P4, nhưng lớp dữ liệu vẫn xuất hiện trong class diagram theo yêu cầu của đề, kèm ghi chú chưa hiện thực.
-* **Progressive Web App đầy đủ:** manifest, service worker, cài được vào màn hình chính, chạy được khi mất mạng. MVP chỉ làm mobile-first.
-* **Đánh giá dịch vụ:** khách gửi đánh giá 1 đến 5 sao và bình luận sau khi hoàn thành đơn.
-* **Báo cáo thống kê:** bảng điều khiển cho quản lý xem doanh thu, số đơn theo ngày và tuần, top món bán chạy.
-* **Thông báo trong ứng dụng** khi đơn chuyển trạng thái.
-* **Xác thực OTP bằng mã giả**, không tốn phí tin nhắn.
-* **Xử lý món lỗi giữa chừng:** hoàn tiền từng món khi pha chế không làm được một món trong đơn.
+#### C. Hạ tầng kỹ thuật, DevOps & Đóng gói
+* Đóng gói toàn bộ hệ thống bằng **Docker và Docker Compose** (chạy đồng bộ Web, API và PostgreSQL tại local).
+* **Sprint 1:** pipeline **Continuous Integration (CI GitHub Actions)** kiểm tra tự động 4 bước bắt buộc trên mọi Pull Request: `Install` → `Lint (oxlint)` → `Unit Test (Vitest)` → `TypeScript Build`.
+* **Sprint 2:** pipeline **Continuous Delivery (CD)** tự động đóng gói Docker Image lên GitHub Packages (GHCR).
+* **Sprint 2:** triển khai môi trường **Production thực tế truy cập qua Internet**: Frontend trên Vercel, API trên Render, Database PostgreSQL trên Neon Cloud, có chứng chỉ bảo mật HTTPS và endpoint giám sát sức khỏe `GET /health`.
+* **Kiểm thử và dữ liệu (theo đề, mục 7.2):** unit test cho nghiệp vụ quan trọng; integration test cho API tạo đơn và thanh toán; ít nhất một end-to-end test từ menu đến xác nhận đơn; migration và seed tái tạo được CSDL.
+* **Phương án dự phòng cho Kho hàng ở MVP:** Sử dụng cờ tình trạng món `isAvailable` (còn bán / hết hàng) để hiển thị nhãn và khóa chọn món, đảm bảo luồng đặt hàng chạy thông suốt.
 
 ---
 
-### 3.3. Các nội dung không thực hiện (Out-of-scope — Won't have)
+### 3.2. Phạm vi mở rộng tương lai (Future Scope — Sprint 3 & Sprint 4)
 
-Để đảm bảo tính khả thi và tập trung vào luồng cốt lõi trong 2 sprint của nhóm 2 người, các nội dung sau **chính thức nằm ngoài phạm vi**:
+Các tính năng nâng cao đã được quy hoạch trong Product Backlog và sẽ được hiện thực hóa ở các Sprint tiếp theo sau khi hoàn thành nghiệm thu MVP. Trong Assignment 2 chúng ở trạng thái **Planned** (có trong tài liệu và sơ đồ, không đòi mã nguồn và kiểm thử). Danh mục FR/NFR, bảng chuyển trạng thái đơn và các quyết định chi tiết nằm ở `cac-chuc-nang-thong-nhat.md`.
 
-1. **Ví nạp và rút tiền ngân hàng thật:** không xây dựng hệ thống quản lý số dư ví nội bộ, không nạp tiền từ tài khoản ngân hàng, không rút tiền về tài khoản thực tế. Hủy đơn chỉ ghi nhận hoàn tiền mô phỏng.
-2. **Quản lý nhân sự và chấm công:** không xếp ca, không chấm công, không bảng lương.
-3. **Kho nguyên liệu nâng cao:** không đặt hàng nhà cung cấp, không theo dõi hạn sử dụng, không kiểm kê định kỳ, không tính hao hụt. Kho trong MVP chỉ gồm nguyên liệu, công thức, nhập kho và trừ khi bán.
-4. **Hạ tầng SMS brandname viễn thông:** không tích hợp tổng đài gửi OTP qua tin nhắn. Xác thực dựa hoàn toàn vào mật khẩu đã băm và JWT.
-5. **Thanh toán thật qua cổng ngân hàng:** chỉ dùng dịch vụ mô phỏng nội bộ, không phát sinh giao dịch và chi phí thật.
-6. **Quản lý chỗ ngồi:** khách muốn ngồi đâu thì ngồi, hệ thống không lưu.
-7. **Ứng dụng di động gốc, đa chi nhánh và giao hàng tận nơi.**
+#### A. Sprint 3 — Vận hành quầy & Tương tác khách hàng
+* **Màn hình Pha chế KDS (Kitchen Display System):** Cho phép Barista tiếp nhận đơn hàng `PAID`, cập nhật tiến độ chuyển trạng thái sang `PREPARING` (Đang pha chế) và `READY` (Món đã sẵn sàng).
+* **Màn hình Giao nhận quầy & Mã nhận hàng 6 số:** Đơn hàng khi chuyển sang `READY` sẽ sinh mã 6 số ngẫu nhiên (`pickupCode`); nhân viên quầy nhập mã này để đối chiếu và chuyển đơn sang `COMPLETED` (Hoàn tất giao món).
+* **Áp dụng mã khuyến mãi (`Promotion`):** Khách hàng nhập mã voucher để được giảm trừ trực tiếp theo số tiền cố định (`FIXED`) hoặc tỷ lệ phần trăm (`PERCENT`). Voucher ở Sprint 3 được seed sẵn trong CSDL.
+* **Hủy đơn hàng trước khi pha chế:** Cho phép khách hàng hoặc nhân viên quầy hủy đơn khi quán chưa bắt đầu làm món (chưa sang `PREPARING`), ghi nhận lý do hủy đơn; đơn đã `PAID` được hoàn tiền mô phỏng.
+* **Phân quyền nhân viên:** Tài khoản Barista/Cashier được seed sẵn ở Sprint 3, phân quyền theo vai trò.
+* **Đánh giá chất lượng dịch vụ:** Khách hàng chấm điểm 1–5 sao kèm nhận xét sau khi nhận đồ uống.
 
----
-
-## 4. Giả định và ràng buộc (Assumptions & Constraints)
-
-### 4.1. Giả định ban đầu
-
-* **Người dùng cuối:** có điện thoại thông minh hoặc máy tính với trình duyệt web hiện đại (Chrome, Safari, Edge) và kết nối Internet ổn định.
-* **Khách hàng:** có số điện thoại Việt Nam; email không bắt buộc.
-* **Cổng thanh toán:** là dịch vụ mô phỏng nội bộ, tuân thủ đúng đặc tả lỗi nghiệp vụ (thẻ hai số cuối `99` bị từ chối) để phục vụ kiểm thử tự động mà không phát sinh chi phí giao dịch thật.
-* **Kho:** mỗi quán có một kho; lượng nguyên liệu là số nguyên theo đơn vị `g`, `ml` hoặc `cái`.
-* **Bao bì:** món tại quán dùng ly sành nên chỉ trừ ống hút; món mang về trừ thêm ly, nắp và túi.
-* **Dữ liệu ban đầu:** danh mục, món, giá từng size, topping, nguyên liệu và công thức mẫu được thiết lập qua kịch bản khởi tạo dữ liệu (*database seed*).
-
-### 4.2. Ràng buộc kỹ thuật và quy trình
-
-* **Công nghệ bắt buộc theo đề bài:**
-  * **Frontend:** `Next.js`, hướng mobile-first.
-  * **Backend:** `NestJS` với kiến trúc module hóa.
-  * **Cơ sở dữ liệu:** `PostgreSQL` kèm cơ chế migration.
-  * **Đóng gói:** có `docker-compose.yml` để chạy toàn bộ hệ thống ở máy local.
-* **Quy trình phần mềm:**
-  * Tài liệu Task 1 đến 3 phải có trong lịch sử git **trước** khi viết code. Task sau chỉ được nghiệm thu khi tạo phẩm của task trước đã có commit rõ ràng.
-  * Mọi thay đổi mã nguồn qua Pull Request, vượt cổng kiểm soát chất lượng (CI: install, lint, unit test, build) và được thành viên còn lại review.
-  * Duy trì ma trận truy vết `../traceability-matrix.md` xuyên suốt từ yêu cầu đến mã nguồn và kiểm thử.
-  * Đổi hợp đồng API phải báo thành viên còn lại trước khi sửa.
-* **Tài nguyên:** nhóm 2 thành viên, thời gian gói gọn trong 2 sprint của học kỳ.
+#### B. Sprint 4 — Cổng Quản lý Admin & Kho nguyên liệu thực tế
+* **Cổng quản trị danh mục món (Admin Portal):** Quản lý thực hiện thêm món mới, cập nhật hình ảnh, sửa giá bán theo size, bật/tắt bán topping.
+* **Phân hệ Kho nguyên liệu thực tế & Công thức pha chế (Recipe):** Thay thế hoàn toàn cơ chế đếm số ly cũ bằng việc quản lý định lượng nguyên liệu thực tế (gam cà phê, ml sữa, siro, ly sành, ly nhựa, ống hút); khai báo công thức theo từng size món, gồm cả nguyên liệu của topping; kiểm tra đủ nguyên liệu khi tạo đơn, tự động trừ tồn kho khi đơn thanh toán thành công (hoàn kho khi hủy) và gửi cảnh báo khi nguyên liệu chạm ngưỡng tối thiểu.
+* **Quản lý tài khoản nhân sự và voucher:** Quản lý tạo tài khoản, cấp quyền Barista hoặc Cashier, khóa/mở khóa tài khoản nhân viên; tạo và quản lý voucher.
+* **Báo cáo thống kê kinh doanh:** Biểu đồ tổng quan doanh thu thực thu theo ngày/tuần/tháng, số đơn hoàn tất (`COMPLETED`), tỷ lệ hủy và Top 5 món bán chạy nhất.
 
 ---
 
-## 5. Rủi ro ban đầu và biện pháp giảm thiểu (Initial risks & mitigation)
+### 3.3. Các nội dung không thực hiện (Out-of-Scope — Won't Have)
 
-| Mã rủi ro | Mô tả rủi ro | Mức độ | Biện pháp phòng ngừa và xử lý |
+Để đảm bảo tính khả thi tuyệt đối và không làm phân tán nguồn lực của nhóm 2 người trong 2 Sprint, 7 nội dung sau **chính thức được loại trừ khỏi phạm vi đồ án**:
+
+| STT | Tính năng loại trừ (Won't Have) | Lý do kỹ thuật và nghiệp vụ giải trình |
+|:---:|---|---|
+| **1** | **Ví tiền hoàn tiền nội bộ (Wallet Refund) & Rút tiền về ngân hàng** | Đồ án áp dụng thanh toán mô phỏng (*Simulated Payment*). Việc xây dựng ví điện tử nạp/rút tiền thật đòi hỏi quy trình đối soát giao dịch liên ngân hàng, xử lý tranh chấp bồi hoàn và chứng chỉ bảo mật tài chính PCI-DSS, vượt quá mục tiêu môn học. |
+| **2** | **Hạ tầng SMS Brandname viễn thông / Gửi OTP trả phí** | Đòi hỏi chi phí đăng ký với các nhà mạng viễn thông và phí duy trì đầu số hàng tháng. Nhóm thay thế bằng xác thực mật khẩu băm bảo mật và đối chiếu nhận món bằng mã đơn hàng 6 số trực tiếp trên ứng dụng. |
+| **3** | **Quản lý nhân sự, chấm công và tính lương** | Đây là nghiệp vụ quản trị nội bộ (ERP/HRM) riêng biệt, không tác động trực tiếp đến luồng giá trị cốt lõi của ứng dụng đặt cà phê. |
+| **4** | **Quản lý đặt và giữ chỗ ngồi tại bàn** | Quán vận hành theo mô hình tự phục vụ linh hoạt, khách hàng tự do lựa chọn chỗ ngồi sau khi gọi món; hệ thống không lưu sơ đồ bàn ghế. |
+| **5** | **Ứng dụng di động gốc (Native iOS/Android) & Giao hàng tận nơi** | Nhóm tập trung tối ưu hóa giao diện Web Mobile-First mở trực tiếp qua trình duyệt di động khi quét mã QR, phục vụ khách hàng mua tại quán hoặc mang đi. |
+| **6** | **Xử lý món không làm được giữa chừng (Item Issue)** | Tình huống hiếm, thêm nhiều trạng thái và màn hình xử lý. Thay bằng hủy cả đơn (CN-10) hoặc nhân viên đổi món tương đương tại quầy, nằm ngoài hệ thống. |
+| **7** | **Đổi điểm thưởng lấy quà hoặc giảm giá** | Điểm thưởng chỉ tích lũy và hiển thị (CN-07); đổi điểm kéo theo quy tắc quy đổi, hạn dùng và đối soát điểm, vượt phạm vi 2 Sprint MVP. |
+
+---
+
+## 4. Giả Định và Ràng Buộc Hệ Thống (Assumptions & Constraints)
+
+### 4.1. Giả định ban đầu (Assumptions)
+* **Thiết bị người dùng cuối:** Khách hàng sở hữu điện thoại thông minh có kết nối Internet ổn định (4G/Wi-Fi) và trình duyệt web hiện đại (Google Chrome, Apple Safari, Microsoft Edge).
+* **Định danh khách hàng:** Khách hàng sử dụng số điện thoại di động hợp lệ tại Việt Nam (10 chữ số) để đăng ký tài khoản.
+* **Cổng thanh toán:** Là dịch vụ mô phỏng nội bộ tuân thủ đúng giao thức REST API, phản ánh trung thực kết quả thành công và thất bại để phục vụ kiểm thử tự động mà không phát sinh chi phí giao dịch thật.
+
+### 4.2. Ràng buộc kỹ thuật và quy trình (Constraints)
+* **Công nghệ bắt buộc theo đề tài:**
+  - Frontend: `Next.js 16` (hướng Mobile-First, Zustand, Axios, Tailwind CSS).
+  - Backend: `NestJS 12` (kiến trúc Modular Monolith, TypeScript ESM, Prisma ORM 7).
+  - Cơ sở dữ liệu: `PostgreSQL 16` kèm cơ chế Migration có phiên bản.
+  - Ảo hóa: `Docker` và `docker-compose.yml` khởi chạy trọn vẹn toàn bộ ngăn xếp.
+* **Quy trình công nghệ phần mềm:**
+  - Tài liệu kỹ thuật (Task 1 đến Task 3) phải được commit vào lịch sử Git **trước** khi viết mã nguồn hiện thực.
+  - Tuân thủ quy ước Git: Mỗi tính năng một nhánh (`<tên>/task-N-...`), commit message tiếng Việt có dấu theo chuẩn Conventional Commits.
+  - Toàn bộ Pull Request phải vượt qua Quality Gate của CI (Install, Lint, Vitest, Build) mới được phép merge vào `main`.
+  - Duy trì ma trận truy vết `traceability-matrix.md` xuyên suốt từ yêu cầu đến thiết kế, mã nguồn và kiểm thử.
+
+---
+
+## 5. Rủi Ro Ban Đầu và Biện Pháp Giảm Thiểu (Risks & Mitigation)
+
+| Mã | Mô tả rủi ro kỹ thuật | Mức độ | Biện pháp phòng ngừa và xử lý kỹ thuật |
 |:---:|---|:---:|---|
-| **RSK-01** | **Trừ kho sai khi nhiều khách thanh toán cùng lúc:** hai khách cùng đặt món dùng chung nguyên liệu gần hết | Cao | Đặt việc kiểm kho, trừ kho và tạo đơn trong **cùng một database transaction**; trừ bằng lệnh có điều kiện tồn lớn hơn hoặc bằng lượng cần nên tồn kho không thể âm; có test mô phỏng nhiều yêu cầu đồng thời |
-| **RSK-02** | **Trừ tiền lặp lại do lỗi mạng:** khách bấm nút thanh toán liên tiếp nhiều lần | Cao | Client sinh UUID đính kèm header **`Idempotency-Key`**; backend ghi nhận key để chỉ xử lý đúng một giao dịch tài chính duy nhất, gửi lại thì trả kết quả lần đầu |
-| **RSK-03** | **Gian lận sửa giá từ client:** người dùng sửa dữ liệu giỏ hàng trên trình duyệt để gửi giá sai về máy chủ | Cao | Backend **tuyệt đối không tin giá từ client**; server truy vấn bảng giá trong cơ sở dữ liệu để tính lại tổng tiền trước khi tạo đơn, lệch thì từ chối |
-| **RSK-04** | **Lộ mật khẩu hoặc token** | Cao | Băm mật khẩu có salt; JWT hết hạn 24 giờ và bị thu hồi khi đăng xuất; không có giá trị mặc định cho khóa ký JWT; không commit secret hay chuỗi kết nối vào git |
-| **RSK-05** | **Lệch pha giữa frontend và backend:** hai thành viên phát triển độc lập dẫn đến không khớp dữ liệu gọi API | Trung bình | Chốt và tuân thủ hợp đồng API tại `../architecture/api-contract.md`; tích hợp Swagger UI tại `/docs`; đổi hợp đồng phải báo người kia |
-| **RSK-06** | **Áp lực tiến độ 2 sprint:** khối lượng công việc nhiều dẫn đến trễ hạn | Trung bình | Áp dụng **MoSCoW**, hoàn thành 100% hạng mục Must trước; ưu tiên 2 có thể lùi; các tính năng Could và Won't đưa về backlog hậu Sprint 2 |
-| **RSK-07** | **Công thức thiếu hoặc sai làm trừ kho sai số** | Trung bình | Bắt buộc khai công thức cho từng size khi tạo món, thiếu thì không lưu được; mọi lần trừ và hoàn kho đều ghi vào lịch sử để đối chiếu |
-| **RSK-08** | **Thiếu thời gian cho kho nguyên liệu** | Trung bình | Có phương án dự phòng ở mục 3.1: lùi về cách nhân viên tự khóa món hết hàng, giữ nguyên luồng khách ưu tiên 1 |
-| **RSK-09** | **Mất bản nháp tài liệu vì để ngoài git** | Trung bình | Giữ tài liệu trong `docs/` và commit sớm, không để ở thư mục bị `.gitignore` bỏ qua |
-| **RSK-10** | **Với cổng thanh toán thật, kiểm kho và trừ tiền cách nhau một khoảng chờ bên ngoài** | Thấp trong MVP | Ghi lại là giới hạn đã biết của thiết kế mô phỏng; khi tích hợp cổng thật phải chuyển sang cơ chế giữ chỗ nguyên liệu có thời hạn thay vì trừ ngay trong transaction |
+| **RSK-01** | **Gian lận sửa giá từ phía Client:** Người dùng can thiệp dữ liệu giỏ hàng trên trình duyệt để gửi tổng tiền sai lệch về máy chủ | **Cao** | Backend **tuyệt đối không tin tưởng giá từ client**; Server tự động đọc giá gốc trong DB và tính lại toàn bộ đơn giá, phụ thu size, topping trước khi tạo đơn (`Server-side Pricing`). |
+| **RSK-02** | **Trừ tiền lặp lại do lỗi mạng hoặc bấm liên tục:** Khách bấm nút thanh toán nhiều lần khi mạng chậm | **Cao** | Client sinh UUID đính kèm header **`Idempotency-Key`**; Backend kiểm tra ràng buộc duy nhất trong CSDL để đảm bảo chỉ xử lý nghiệp vụ tài chính đúng 1 lần duy nhất. |
+| **RSK-03** | **Xung đột trạng thái đơn hàng đồng thời:** Hai request cùng lúc thay đổi trạng thái của một đơn hàng | **Cao** | Áp dụng cơ chế **Khóa lạc quan (Optimistic Locking)** qua trường `version` trong bảng `Order`; câu lệnh UPDATE kiểm tra đúng version, nếu sai lập tức chặn lại và trả mã lỗi `409 Conflict`. |
+| **RSK-04** | **Lộ lọt thông tin xác thực và mật khẩu:** Mật khẩu bị lộ trong log hoặc cơ sở dữ liệu | **Cao** | 100% mật khẩu được băm một chiều bằng thuật toán `bcryptjs` với salt round = 10; JWT có thời hạn 24 giờ; không đặt giá trị fallback cho `JWT_SECRET`; không commit file `.env` chứa secret vào Git. |
+| **RSK-05** | **Lệch pha giữa Frontend và Backend:** Hai thành viên làm việc độc lập dẫn đến không khớp dữ liệu gọi API | **Trung bình** | Thống nhất và tuân thủ hợp đồng API tại `docs/architecture/api-contract.md`; tích hợp Swagger UI tự động tại `/docs`; mọi thay đổi hợp đồng phải được trao đổi và duyệt trước. |
+| **RSK-06** | **Áp lực tiến độ 2 Sprint:** Khối lượng công việc lớn dẫn đến nguy cơ trễ hạn bàn giao | **Trung bình** | Áp dụng nghiêm ngặt mô hình **MoSCoW**: Hoàn thành 100% các hạng mục Must Have của MVP trước; các tính năng mở rộng được phân kỳ rõ ràng sang Sprint 3 và Sprint 4. |
+| **RSK-07** | **Đăng ký bằng SĐT không có OTP:** Có thể đăng ký bằng số điện thoại của người khác vì hệ thống không xác minh quyền sở hữu số | **Thấp** | Chấp nhận như giới hạn đã biết của đồ án (OTP/SMS thuộc mục Won't Have); ghi rõ trong SRS. Mật khẩu băm và JWT vẫn bảo vệ phiên làm việc. |
+| **RSK-08** | **Khởi động chậm của dịch vụ gói miễn phí:** API trên Render gói miễn phí có thể mất vài chục giây cho lần gọi đầu, ảnh hưởng mục tiêu G1 và buổi demo | **Trung bình** | Gọi `GET /health` làm nóng API trước khi demo hoặc nghiệm thu; mục tiêu G1 (dưới 60 giây) là mục tiêu nghiệp vụ, kiểm chứng bằng buổi demo khi API đã chạy, không phải NFR đo tốc độ. |
