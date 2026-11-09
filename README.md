@@ -1,69 +1,151 @@
-# BrewLite
+# BrewLite — Ứng Dụng Đặt Cà Phê Không Tiền Mặt
 
-Ứng dụng đặt cà phê không dùng tiền mặt. Next.js (web) · NestJS (api) · PostgreSQL · Docker Compose.
+> **Môn học:** Công nghệ Phần mềm — Bài tập lớn: Assignment 2 (Requirements to Deployment)  
+> **Học kỳ:** I — Năm học 2026–2027 | Trường Đại học Sài Gòn  
+> **Nhóm sinh viên thực hiện:**
+> - **Nguyễn Thành Long (`Longcodepro`)** — Backend, Scrum Master, DevOps, Kiến trúc
+> - **Trần Quốc Tài (`TaiTran263`)** — Frontend UI/UX, Quản trị trạng thái Client, QA
+>
+> **Công nghệ chính:** Next.js 16 (Mobile-first PWA) · NestJS 12 · PostgreSQL 16 (Neon) · Docker & Docker Compose · GitHub Actions CI/CD  
+> **Luồng nghiệp vụ cốt lõi:**  
+> Xem menu → Tùy biến món (Size/Topping) → Giỏ hàng → Đăng nhập SĐT → Đặt đơn (Server-side Pricing) → Thanh toán Thẻ/Ví → Theo dõi đơn & Tích điểm
 
-Luồng chính: Xem menu → Chọn tùy chọn → Giỏ hàng → Đặt đơn → Thanh toán → Theo dõi đơn.
+---
 
-## Cấu trúc
+## 1. Địa Chỉ Truy Cập Môi Trường Production (Live URLs)
+
+Hệ thống đã được đóng gói container tự động và triển khai công khai trên nền tảng đám mây bảo mật HTTPS:
+
+| Thành phần | Nền tảng hạ tầng | Địa chỉ truy cập Production | Ghi chú nghiệm thu |
+|---|---|---|---|
+| **Frontend Web App** | **Vercel Edge Network** | [https://brewlite-web.vercel.app](https://brewlite-web.vercel.app) | Giao diện Next.js 16 Mobile-first |
+| **Backend API Service** | **Render Cloud Services** | [https://brewlite-api.onrender.com](https://brewlite-api.onrender.com) | Container NestJS triển khai tự động từ GHCR |
+| **Health Check Endpoint** | **Render Cloud** | [https://brewlite-api.onrender.com/health](https://brewlite-api.onrender.com/health) | Trả về HTTP 200 `{ "status": "ok" }` |
+| **Tài liệu API (Swagger)** | **Render Cloud** | [https://brewlite-api.onrender.com/api/docs](https://brewlite-api.onrender.com/api/docs) | Giao diện tương tác OpenAPI 3.0 |
+| **Cơ sở dữ liệu** | **Neon Serverless PostgreSQL** | `ep-dry-pond-xxx.ap-southeast-1.aws.neon.tech` | Đặt tại Singapore (`ap-southeast-1`), SSL Mode |
+| **Demo Tunnel (Dự phòng)** | **Cloudflare Zero Trust** | [https://demo.brewlite.online](https://demo.brewlite.online) | Đường dẫn HTTPS phát trực tiếp từ máy local |
+
+### Dữ liệu tài khoản kiểm thử nhanh (Demo Credentials):
+* **Tài khoản khách hàng có sẵn:** Số điện thoại `0901234567` | Mật khẩu: `password123`
+* **Khách hàng mới:** Có thể tự đăng ký trực tiếp trên web bằng bất kỳ SĐT Việt Nam 10 chữ số nào (ví dụ: `0988888888`).
+* **Kịch bản thanh toán thẻ mô phỏng:**
+  * **Thành công:** Nhập bất kỳ dãy 16 số nào có 4 số cuối **khác `0000`** (ví dụ: `4111 2222 3333 4444`).
+  * **Thất bại:** Nhập số thẻ có 4 số cuối là **`0000`** (ví dụ: `4111 2222 3333 0000`).
+
+---
+
+## 2. Cấu Trúc Thư Mục Repository
 
 ```
-apps/web/     Next.js mobile-first
-apps/api/     NestJS + Prisma (migration, seed, test, Swagger, Postman)
-docs/         requirements/ · diagrams/ · architecture/ (kèm adr/) · traceability-matrix.md · deployment.md
-scripts/      logs.sh · start-tunnel.sh · studio-cloud.sh
-tests/        integration / E2E
-.github/      workflows CI/CD, mẫu Pull Request
-docker-compose.yml · .env.example
+brewlite/
+|-- apps/
+|   |-- web/                   # Frontend Next.js 16, Tailwind CSS, Zustand, Mobile-first/PWA
+|   `-- api/                   # Backend NestJS 12, Prisma 7, PostgreSQL, Swagger, Unit/E2E test
+|-- docs/
+|   |-- requirements/          # Task 1: Bối cảnh, SRS rút gọn, User Stories, Đặc tả Use-case
+|   |-- diagrams/              # Task 2: Activity, Sequence, Class Domain (.puml và .svg)
+|   |-- architecture/          # Task 3: Kiến trúc Frontend/Backend, các bản ADR 001-005
+|   |-- deployment.md          # Task 3.2: Kế hoạch triển khai Production, secrets & rollback
+|   |-- traceability-matrix.md # Task 8: Ma trận truy vết yêu cầu 21 FR + 4 NFR (Độ phủ 100%)
+|   |-- release-notes.md       # Task 5.4: Bản ghi chú phát hành phiên bản v1.0.0
+|   `-- sprint-retrospective.md# Task 5.4: Báo cáo Sprint Review & Sprint Retrospective
+|-- scripts/                   # Tiện ích: logs.sh, start-tunnel.sh, studio-cloud.sh
+|-- tests/                     # Thư mục kiểm thử tích hợp / E2E
+|-- .github/workflows/         # Pipeline tự động hóa: ci.yml (Quality Gate) và cd.yml (Deploy)
+|-- docker-compose.yml         # Chạy trọn gói 3 dịch vụ Web, API và DB bằng 1 câu lệnh
+|-- .env.example               # Mẫu cấu hình biến môi trường chuẩn Twelve-Factor
+`-- README.md                  # Hướng dẫn tổng quan, khởi chạy, kiểm thử và vận hành
 ```
 
-## Chạy dự án
+---
 
-Yêu cầu: Docker + Docker Compose.
+## 3. Hướng Dẫn Khởi Chạy Dự Án Ở Máy Cục Bộ (Local Setup)
+
+### Cách 1: Khởi chạy nhanh bằng Docker Compose (Khuyên dùng)
+Yêu cầu: Máy đã cài đặt **Docker Desktop** và **Docker Compose**.
 
 ```bash
-cp .env.example .env     # rồi sửa POSTGRES_PASSWORD, JWT_SECRET
-docker compose up --build
+# 1. Sao chép file cấu hình môi trường mẫu
+cp .env.example .env
+
+# 2. Khởi động đồng thời cả 3 dịch vụ (Web, API, DB)
+docker compose up --build -d
 ```
 
-| Service  | URL                    |
-|----------|------------------------|
-| Web      | http://localhost:4004  |
-| API      | http://localhost:4003  |
-| Swagger  | http://localhost:4003/docs |
-| Postgres | localhost:4005         |
+| Dịch vụ | URL truy cập Local | Mô tả |
+|---|---|---|
+| **Frontend Web** | [http://localhost:4004](http://localhost:4004) | Giao diện đặt món Next.js |
+| **Backend API** | [http://localhost:4003](http://localhost:4003) | Máy chủ API NestJS |
+| **API Swagger** | [http://localhost:4003/docs](http://localhost:4003/docs) | Tài liệu tương tác API |
+| **PostgreSQL DB** | `localhost:4005` | CSDL PostgreSQL 16 Alpine |
 
-Migration và seed tự chạy khi API khởi động. Dừng: `docker compose down` (thêm `-v` để xóa dữ liệu DB).
+*Migration và seed dữ liệu mẫu sẽ tự động thực thi khi API khởi động.*  
+*Để dừng toàn bộ hệ thống:* `docker compose down` *(thêm cờ `-v` nếu muốn xóa trắng dữ liệu CSDL)*.
 
-Chạy không cần Docker (Node.js 22+, cần `DATABASE_URL`):
+---
+
+### Cách 2: Chạy trực tiếp trên máy không dùng Docker
+Yêu cầu: Node.js phiên bản 22+ và một cơ sở dữ liệu PostgreSQL đang chạy.
 
 ```bash
-cd apps/api && npm ci && npx prisma migrate dev && npx prisma db seed && PORT=4003 npm run start:dev
-cd apps/web && npm ci && NEXT_PUBLIC_API_URL=http://localhost:4003 npm run dev
+# 1. Khởi chạy Backend API
+cd apps/api
+npm ci
+npx prisma migrate dev
+npx prisma db seed
+PORT=4003 npm run start:dev
+
+# 2. Khởi chạy Frontend Web (Mở terminal mới)
+cd apps/web
+npm ci
+NEXT_PUBLIC_API_URL=http://localhost:4003 npm run dev
 ```
 
-## Kiểm thử
+---
+
+## 4. Hướng Dẫn Kiểm Thử Tự Động (Testing)
+
+Dự án trang bị bộ kiểm thử toàn diện từ Unit Test, Integration Test đến Postman Collection:
 
 ```bash
-cd apps/api && npm run lint && npm run build && npm test
-cd apps/api && npm run postman      # cần API đang chạy
-cd apps/web && npm run lint && npm run build
+# 1. Kiểm thử Backend (Lint, Build, Unit test & E2E)
+cd apps/api
+npm run lint                  # Kiểm tra quy chuẩn mã nguồn (oxlint)
+npm run build                 # Biên dịch mã nguồn TypeScript
+npm test                      # Chạy toàn bộ Unit test với Vitest
+npm run test:e2e              # Chạy kiểm thử End-to-End luồng API
+
+# 2. Kiểm thử kịch bản Postman tự động (Yêu cầu API đang chạy)
+npm run postman
+
+# 3. Kiểm thử Frontend Web
+cd apps/web
+npm run lint                  # Kiểm tra cú pháp và quy chuẩn React/Next.js
+npm run build                 # Kiểm tra build tĩnh và tối ưu giao diện
 ```
 
-## Tiện ích scripts & Cloud
+---
 
-```bash
-# 1. Theo dõi log HTTP Backend thời gian thực từ Docker
-bash scripts/logs.sh
+## 5. Quy Trình Khôi Phục Sự Cố Khẩn Cấp (Emergency Rollback)
 
-# 2. Khởi động Cloudflare Tunnel (HTTPS miễn phí cho demo internet / mobile)
-bash scripts/start-tunnel.sh
+Khi phiên bản mới trên Production phát sinh lỗi nghiêm trọng, nhóm thực hiện quy trình Rollback theo 3 cấp độ (chi tiết tại [`docs/deployment.md`](./docs/deployment.md)):
 
-# 3. Mở Prisma Studio kết nối Database Neon Cloud (xem dữ liệu online)
-bash scripts/studio-cloud.sh
-```
+* **Cấp 1 — Rollback Frontend trên Vercel (Dưới 10 giây):**  
+  Vào Vercel Dashboard → Chọn dự án `brewlite-web` → Tab **Deployments** → Chọn bản deploy ổn định gần nhất → Bấm **Instant Rollback**.
+* **Cấp 2 — Rollback Backend trên Render (Dưới 2 phút):**  
+  Vào Render Dashboard → Chọn `brewlite-api` → Tab **Events / Deploy History** → Chọn commit SHA an toàn trước đó → Bấm **Rollback to this deploy**.
+* **Cấp 3 — Rollback Cơ sở dữ liệu:**  
+  * Hoàn tác migration: `npx prisma migrate resolve --rolled-back <migration_name>`.
+  * Khôi phục dữ liệu: Sử dụng tính năng Point-in-Time Recovery (PITR) trên trang quản trị Neon Cloud Console để quay về thời điểm trước sự cố.
 
-## Quy ước
+---
 
-- Nhánh: `<tên-người>/<mô-tả-ngắn>`, không push thẳng `main`, merge qua Pull Request và CI xanh.
-- Commit: `<loại>(<phạm-vi>): <mô tả>` (feat, fix, chore, docs, refactor, test, style), tiếng Việt có dấu.
-- Hợp đồng API: `docs/architecture/api-contract.md`. Đổi hợp đồng phải báo người còn lại.
+## 6. Quy Ước Nhóm & Quản Lý Mã Nguồn
+
+* **Chiến lược nhánh (Branching):**  
+  Mọi tính năng phát triển trên nhánh riêng theo mẫu `<tên-thành-viên>/<tên-task>` (ví dụ: `tai/task-2.2-sequence-checkout`). Tuyệt đối không commit trực tiếp vào nhánh `main`.
+* **Quy chuẩn Pull Request & CI Gate:**  
+  Mỗi Pull Request mở vào `main` bắt buộc phải vượt qua toàn bộ các bước kiểm tra tự động của GitHub Actions (`ci.yml`): `Install -> Lint -> Unit Test -> Build`.
+* **Quy chuẩn Commit:** Tuân thủ chuẩn Conventional Commits tiếng Việt có dấu:  
+  `<loại>(<phạm-vi>): <mô tả>` (ví dụ: `feat(orders): tích hợp cơ chế server-side pricing`, `docs(task-8): hoàn thiện ma trận truy vết`).
+* **Hợp đồng giao tiếp API:** Đặt tại [`docs/architecture/api-contract.md`](./docs/architecture/api-contract.md). Mọi thay đổi về cấu trúc request/response phải được thông báo và thống nhất giữa hai thành viên.
