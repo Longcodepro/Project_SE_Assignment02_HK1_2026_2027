@@ -1,100 +1,380 @@
 @startuml
+' ==============================================================================
+<<<<<<< Updated upstream
+' Diagram: Sơ đồ Activity-01 — Luồng End-to-End Đặt Món & Thanh Toán Không Tiền Mặt
+' Code: Activity-01 | Issue: [D2.1a] #39 / Issue #03 Task 2.1
+' References: UseCase-01 (UC-01 .. UC-05, UC-10, tiếp nối UC-06, UC-07)
+' Bố cục: Đã tối ưu giãn rộng chiều ngang (swimlaneWidth, nodesep) và dọc (ranksep, padding)
+=======
+' Diagram: Sơ đồ Activity — Luồng End-to-End Đặt Món & Thanh Toán Không Tiền Mặt
+' Code: Activity-01 | Issue: [D2.1a] Task 2.1
+' References: UseCase-01 (UC-01, UC-02, UC-03, UC-04, UC-05, UC-06, UC-20, UC-07)
+' Yêu cầu chức năng: FR-01, FR-02, FR-03, FR-04, FR-05, FR-06, FR-07, FR-10
+' Tài liệu đối chiếu: cac-chuc-nang-thong-nhat.md, docs/requirements/requirements-web.md
+>>>>>>> Stashed changes
+' ==============================================================================
+
 skinparam style strictuml
 skinparam conditionStyle insidediamond
 skinparam defaultTextAlignment center
 skinparam roundcorner 10
 skinparam monochrome false
+
+' --- Cấu hình giãn cách và độ thoáng bố cục ---
+<<<<<<< Updated upstream
+skinparam nodesep 65
+skinparam ranksep 55
+skinparam swimlaneWidth 230
+=======
+skinparam nodesep 60
+skinparam ranksep 45
+skinparam swimlaneWidth 220
+>>>>>>> Stashed changes
 skinparam swimlaneBorderColor #444444
 skinparam swimlaneTitleFontStyle bold
 
-|#E8F5E9|Khách hàng|
-|#E3F2FD|Next.js UI|
-|#FFF3E0|NestJS API|
-|#F3E5F5|Database|
-|#ECEFF1|Payment Service|
+' --- Tùy chỉnh chi tiết nút hoạt động và đường nối ---
+skinparam activity {
+  Padding 7
+  FontSize 12
+  BorderColor #2C3E50
+  BorderThickness 1.2
+}
+skinparam arrow {
+  FontSize 11
+  FontColor #2C3E50
+  Color #555555
+}
+skinparam diamond {
+  FontSize 11
+  BorderColor #D35400
+}
+skinparam NoteBackgroundColor #FEF9E7
+skinparam NoteBorderColor #F39C12
 
-|Khách hàng|
+<<<<<<< Updated upstream
+' --- 5 Làn bơi (Swimlanes) giữ nguyên chuẩn bảng màu ---
+=======
+' --- 5 Làn bơi (Swimlanes) theo chuẩn kiến trúc hệ thống ---
+>>>>>>> Stashed changes
+|#E8F5E9|Khách hàng\n(Customer)|
+|#E3F2FD|Next.js Web\n(Client)|
+|#FFF3E0|NestJS API\n(Server)|
+|#F3E5F5|PostgreSQL\n(Database)|
+|#ECEFF1|Cổng thanh toán\n(Payment Gateway)|
+
+|Khách hàng\n(Customer)|
 start
-:Truy cập ứng dụng web BrewLite;
+:Truy cập ứng dụng web BrewLite\n(Mobile Browser / PWA);
 
-|Next.js UI|
+' ------------------------------------------------------------------------------
+<<<<<<< Updated upstream
+' GIAI ĐOẠN 1: UC-01 - XEM MENU SẢN PHẨM
+' ------------------------------------------------------------------------------
+|Next.js Web\n(Client)|
 :Khởi tạo giao diện trang chủ;
-:Hiển thị trạng thái Skeleton Loading;
-:Gửi yêu cầu HTTP GET /products;
+:Hiển thị khung xương nhấp nháy\n(Skeleton Loading State);
+:Gửi HTTP Request\nGET /products;
 
-|NestJS API|
+|NestJS API\n(Server)|
 :Tiếp nhận request GET /products;
-:Gọi Prisma Service truy vấn dữ liệu;
+:Gọi Prisma Service truy vấn danh mục và đồ uống;
 
-|Database|
-:SELECT * FROM "Product" WHERE isAvailable = true;
-:Trả về danh sách đồ uống kèm\n(basePrice, dailyQuota, soldToday);
+|PostgreSQL\n(Database)|
+:SELECT * FROM "Product"\nWHERE "isAvailable" = true;
+:Trả về danh sách bản ghi đồ uống\nkèm thông tin giá theo size và tồn kho;
+=======
+' GIAI ĐOẠN 1: UC-01 - DUYỆT XEM MENU SẢN PHẨM (FR-01)
+' ------------------------------------------------------------------------------
+|Next.js Web\n(Client)|
+:Khởi tạo giao diện trang chủ;\nHiển thị trạng thái Skeleton Loading;
+:Gửi HTTP Request\nGET /products;
 
-|NestJS API|
+|NestJS API\n(Server)|
+:Tiếp nhận request GET /products;\nGọi Prisma Service truy vấn danh sách món;
+
+|PostgreSQL\n(Database)|
+:SELECT * FROM "Product";\nTrả về danh sách món kèm cờ isAvailable;
+>>>>>>> Stashed changes
+
+|NestJS API\n(Server)|
 :Trả về HTTP 200 OK kèm JSON danh sách món;
 
-|Next.js UI|
-:Render giao diện lưới thẻ đồ uống (Product Card Grid);
+|Next.js Web\n(Client)|
+<<<<<<< Updated upstream
+:Render giao diện lưới thẻ đồ uống\n(Product Card Grid theo danh mục);
 
-|Khách hàng|
+|Khách hàng\n(Customer)|
 :Duyệt menu và bấm chọn 1 món đồ uống;
 
-|Next.js UI|
-if (soldToday >= dailyQuota?) then (Hết hàng)
-  :Hiển thị nhãn "Hết hàng" (Sold Out) màu xám;
-  :Vô hiệu hóa nút chọn món;
-  |Khách hàng|
-  :Xem xét và chọn món nước khác;
+|Next.js Web\n(Client)|
+if (Món còn phục vụ / còn nguyên liệu?) then (Hết hàng)
+  -[#red,bold]->
+  |Khách hàng\n(Customer)|
+  :Nhận thấy nhãn "Hết hàng" (Sold Out) màu xám;\nNút chọn món bị vô hiệu hóa;\n(Xem xét và chọn món nước khác);
+=======
+:Render giao diện lưới thẻ đồ uống\n(Product Card Grid theo tab danh mục);
+
+|Khách hàng\n(Customer)|
+:Duyệt menu, tìm kiếm và bấm chọn 1 món đồ uống;
+
+|Next.js Web\n(Client)|
+if (Món còn hàng? (isAvailable == true)) then (Hết hàng / Sold Out)
+  -[#red,bold]->
+  |Khách hàng\n(Customer)|
+  :Nhìn thấy nhãn "Hết hàng" màu xám;\nNút chọn món bị vô hiệu hóa;\n(Xem xét và bấm chọn món nước khác);
+>>>>>>> Stashed changes
   stop
 else (Còn hàng)
-  |Next.js UI|
-  :Mở Modal Chi tiết & Tùy biến món;\n(Mặc định Size S, 0 topping);
-  |Khách hàng|
-  :Chọn kích cỡ (S/M/L) và tick chọn Topping;
-  |Next.js UI|
-  :Tự động tính lại tổng tiền tạm tính theo thời gian thực;\n(Unit Price = BasePrice + SizePrice + Toppings);
-  |Khách hàng|
+  -[#green,bold]->
+  ' ----------------------------------------------------------------------------
+<<<<<<< Updated upstream
+  ' GIAI ĐOẠN 2: UC-02 - XEM CHI TIẾT & TÙY CHỌN MÓN
+=======
+  ' GIAI ĐOẠN 2: UC-02 - XEM CHI TIẾT & TÙY CHỌN MÓN (FR-02)
+>>>>>>> Stashed changes
+  ' ----------------------------------------------------------------------------
+  |Next.js Web\n(Client)|
+  :Mở Modal Chi tiết & Tùy chọn món\n(Mặc định Size S, 0 topping);
+
+  |Khách hàng\n(Customer)|
+<<<<<<< Updated upstream
+  :Chọn kích cỡ (S / M / L) với giá riêng từng size;\nTick chọn Topping (trân châu, kem cheese...);\nChọn mức đường, mức đá, độ nóng/lạnh;\nNhập ghi chú yêu cầu riêng (nếu có);
+
+  |Next.js Web\n(Client)|
+  :Tự động tính lại đơn giá theo thời gian thực\n(Đơn giá = Giá size chọn + Tổng giá Topping);
+
+  ' ----------------------------------------------------------------------------
+  ' GIAI ĐOẠN 3: UC-03 - QUẢN LÝ GIỎ HÀNG
+=======
+  :Chọn 1 kích cỡ: Size S (+0đ) / M (+5.000đ) / L (+10.000đ);\nTick chọn Topping (Trân châu, Kem cheese, Thạch cafe);
+
+  |Next.js Web\n(Client)|
+  :Tự động tính lại đơn giá tạm tính theo thời gian thực\n(Đơn giá = Giá gốc món + Phụ thu Size + Toppings);
+
+  ' ----------------------------------------------------------------------------
+  ' GIAI ĐOẠN 3: UC-03 - QUẢN LÝ GIỎ HÀNG CLIENT STORE (FR-03)
+>>>>>>> Stashed changes
+  ' ----------------------------------------------------------------------------
+  |Khách hàng\n(Customer)|
   :Bấm nút "Thêm vào giỏ hàng";
-  |Next.js UI|
-  :Lưu món vào Zustand Cart Store (localStorage);
+
+  |Next.js Web\n(Client)|
+<<<<<<< Updated upstream
+  :Lưu món vào Zustand Cart Store\n(Đồng bộ LocalStorage, tối đa 99 ly/dòng);
   :Cập nhật số lượng trên Badge giỏ hàng (Navbar);
-  :Hiển thị thông báo thêm giỏ thành công;
-  |Khách hàng|
-  :Bấm vào biểu tượng Giỏ hàng (/cart);
-  |Next.js UI|
-  :Hiển thị danh sách các món trong giỏ và tổng tiền;
-  |Khách hàng|
-  :Kiểm tra số lượng và bấm "Tiến hành Đặt hàng";
-  |Next.js UI|
+  :Hiển thị Toast thông báo thêm thành công;
+
+  |Khách hàng\n(Customer)|
+  :Bấm vào biểu tượng Giỏ hàng để mở /cart;
+
+  |Next.js Web\n(Client)|
+  :Hiển thị chi tiết từng dòng món, số lượng,\ntùy chọn kèm theo và tổng tiền tạm tính;
+
+  |Khách hàng\n(Customer)|
+  :Kiểm tra giỏ hàng (tăng/giảm số lượng nếu cần);\nChọn hình thức nhận: **"Mang về"** hoặc **"Tại quán"**;\nBấm "Tiến hành Đặt hàng";
+
+  ' ----------------------------------------------------------------------------
+  ' GIAI ĐOẠN 4: UC-04 - ĐĂNG KÝ / ĐĂNG NHẬP (UC-05 <<include>> UC-04)
+  ' ----------------------------------------------------------------------------
+  |Next.js Web\n(Client)|
   if (Đã có JWT Access Token trong Store?) then (Chưa đăng nhập)
     :Mở Modal Đăng nhập / Đăng ký tài khoản;
-    |Khách hàng|
-    :Nhập Email và Mật khẩu tài khoản;
-    :Bấm "Đăng nhập";
-    |Next.js UI|
-    :Gửi request POST /auth/login;
-    |NestJS API|
-    :Validate AuthDto (Email hợp lệ, Pass >= 6 ký tự);
-    :Truy vấn tìm tài khoản theo Email;
-    |Database|
-    :SELECT * FROM "User" WHERE email = ?;
-    :Trả về thông tin User kèm passwordHash;
-    |NestJS API|
-    :Xác thực mật khẩu bằng bcrypt.compare();
-    :Ký cấp phát JSON Web Token (JWT Access Token);
+
+    |Khách hàng\n(Customer)|
+    :Nhập **Số điện thoại Việt Nam** và Mật khẩu;\nBấm "Đăng nhập" (hoặc tab "Đăng ký");
+
+    |Next.js Web\n(Client)|
+    :Gửi request POST /auth/login\n(hoặc POST /auth/register);
+
+    |NestJS API\n(Server)|
+    :Validate định dạng SĐT (10 chữ số VN)\nvà độ dài mật khẩu (>= 6 ký tự);
+    :Truy vấn tìm người dùng theo Số điện thoại;
+
+    |PostgreSQL\n(Database)|
+    :SELECT * FROM "User" WHERE phone = ?;
+    :Trả về thông tin User kèm mật khẩu đã băm;
+
+    |NestJS API\n(Server)|
+    :Xác thực mật khẩu bằng bcrypt.compare();\nKý cấp JSON Web Token (JWT, hạn 24 giờ);
     :Trả về HTTP 200 OK kèm accessToken;
-    |Next.js UI|
-    :Lưu accessToken vào Store & Axios Authorization Header;
-    :Cập nhật thông tin User trên Navbar;
-    :Tự động đóng Modal Auth;
+
+    |Next.js Web\n(Client)|
+    :Lưu accessToken vào Auth Store & Axios Header;\nCập nhật tên/SĐT người dùng lên Navbar;\nTự động đóng Modal Đăng nhập;
+=======
+  :Lưu món vào Zustand Cart Store\n(Đồng bộ localStorage, phân định theo size/topping);\nCập nhật số lượng trên Cart Badge (Navbar);
+
+  |Khách hàng\n(Customer)|
+  :Bấm vào biểu tượng Giỏ hàng mở trang /cart;
+
+  |Next.js Web\n(Client)|
+  :Hiển thị chi tiết từng ly (size, topping, số lượng)\nvà tổng tiền tạm tính của giỏ hàng;
+
+  |Khách hàng\n(Customer)|
+  :Kiểm tra giỏ hàng (tăng/giảm số lượng 1..99 ly);\nBấm "Tiến hành Đặt hàng";
+
+  ' ----------------------------------------------------------------------------
+  ' GIAI ĐOẠN 4: UC-04 - ĐĂNG KÝ / ĐĂNG NHẬP BẰNG SĐT 10 SỐ (FR-04)
+  ' ----------------------------------------------------------------------------
+  |Next.js Web\n(Client)|
+  if (Đã có JWT Token hợp lệ trong Auth Store?) then (Chưa đăng nhập)
+    :Mở Modal Đăng nhập / Đăng ký tài khoản;
+
+    |Khách hàng\n(Customer)|
+    :Nhập Số điện thoại (10 chữ số VN) và Mật khẩu;\nBấm "Đăng nhập" (hoặc chọn tab "Đăng ký");
+
+    |Next.js Web\n(Client)|
+    :Validate định dạng SĐT (regex /^0\\d{9}$/);\nGửi request POST /auth/login;
+
+    |NestJS API\n(Server)|
+    :Validate DTO đầu vào (phone, password);\nTruy vấn User trong CSDL theo số điện thoại;
+
+    |PostgreSQL\n(Database)|
+    :SELECT * FROM "User" WHERE phone = ?;
+
+    |NestJS API\n(Server)|
+    :Xác thực mật khẩu bằng bcryptjs.compare();\nKý cấp JWT Access Token (hạn 24h, chứa userId, role);\nTrả về HTTP 200 OK kèm accessToken;
+
+    |Next.js Web\n(Client)|
+    :Lưu accessToken vào Auth Store & LocalStorage;\nCập nhật tên/SĐT khách hàng lên Navbar;\nTự động đóng Modal Đăng nhập;
+>>>>>>> Stashed changes
   else (Đã đăng nhập)
   endif
-  |Next.js UI|
-  :Chuyển giao trạng thái giỏ hàng và Access Token\nsẵn sàng cho bước Đặt hàng & Thanh toán;
+
+  ' ----------------------------------------------------------------------------
+<<<<<<< Updated upstream
+  ' GIAI ĐOẠN 5: UC-05 - ĐẶT HÀNG & THANH TOÁN (GỘP CHECKOUT)
+  ' ----------------------------------------------------------------------------
+  |Next.js Web\n(Client)|
+  :Chuyển sang màn hình Xác nhận Đặt hàng & Thanh toán;
+
+  |Khách hàng\n(Customer)|
+  :Chọn phương thức thanh toán mô phỏng:\n**Thẻ ngân hàng (CARD)** | **Ví điện tử (WALLET)** | **Chuyển khoản (QR)**;\n(Tùy chọn) Nhập mã Voucher khuyến mãi (UC-10);\nBấm nút **"Xác nhận Thanh toán"**;
+
+  |Next.js Web\n(Client)|
+  :Sinh UUID gắn vào header **Idempotency-Key**\n(Chống trừ tiền trùng lặp - RSK-02);
+  :Gửi request POST /orders/checkout\nkèm Giỏ hàng, Hình thức nhận, Phương thức thanh toán\nvà Bearer JWT Token;
+
+  |NestJS API\n(Server)|
+  :Xác thực Token qua JwtAuthGuard;\nKiểm tra trùng lặp Idempotency-Key;
+  :Server-side Pricing: Truy vấn bảng giá từ DB\ntính lại tổng tiền độc quyền (chống gian lận giá client);
+  :Khởi tạo Database Transaction (ACID);
+
+  |PostgreSQL\n(Database)|
+  :Kiểm tra định mức nguyên liệu tồn kho\ncho toàn bộ các món trong đơn;
+
+  |NestJS API\n(Server)|
+  if (Đủ nguyên liệu tồn kho để pha chế?) then (Không đủ nguyên liệu)
+    :Hủy bỏ Database Transaction (Rollback);\nTrả về HTTP 409 Conflict ("Hết nguyên liệu pha chế");
+    
+    |Next.js Web\n(Client)|
+    :Hiển thị thông báo "Một số món tạm hết nguyên liệu";\n**Giữ nguyên giỏ hàng** để khách hàng tùy chỉnh;
+    
+    |Khách hàng\n(Customer)|
+    :Quay lại giỏ hàng đổi món khác;
+    stop
+  else (Đủ nguyên liệu)
+    :Gửi yêu cầu thanh toán mô phỏng sang Payment Gateway;
+    
+    |Cổng thanh toán\n(Payment Gateway)|
+    :Tiếp nhận yêu cầu xử lý giao dịch;
+    if (Quy tắc mô phỏng: Thẻ có 2 số cuối '99'\nhoặc Ví điện tử không đủ số dư?) then (Thanh toán thất bại)
+      :Từ chối giao dịch (PAYMENT_REJECTED);
+      
+      |NestJS API\n(Server)|
+      :Hủy bỏ Database Transaction (Rollback);\n**Không tạo đơn hàng, Không trừ nguyên liệu**;\nTrả về HTTP 402 ("Giao dịch bị từ chối");
+      
+      |Next.js Web\n(Client)|
+      :Hiển thị cảnh báo lỗi thanh toán màu đỏ;\n**Giữ nguyên toàn bộ giỏ hàng**;
+      
+      |Khách hàng\n(Customer)|
+      :Chọn phương thức thanh toán khác\n(hoặc đổi số thẻ) và bấm thanh toán lại;
+      stop
+    else (Thanh toán thành công)
+      :Xác nhận giao dịch thành công (PAYMENT_SUCCESS);
+      
+      |NestJS API\n(Server)|
+      :Trừ định mức nguyên liệu tồn kho trong transaction;
+      :Tạo đơn hàng trạng thái **PAID** (kèm hình thức Mang về/Tại quán);\nSinh **Mã nhận đồ uống 6 chữ số** ngẫu nhiên duy nhất;\nGhi nhận bản ghi Payment trạng thái SUCCESS;
+      
+      |PostgreSQL\n(Database)|
+      :COMMIT Database Transaction;
+      
+      |NestJS API\n(Server)|
+      :Trả về HTTP 201 Created kèm thông tin Order\nvà Mã nhận đồ uống 6 số;
+      
+      |Next.js Web\n(Client)|
+      :Xóa sạch giỏ hàng trong Zustand Store;\nChuyển hướng sang màn hình Thông báo thành công;\nHiển thị nổi bật **Mã nhận đồ 6 số** và mã QR;
+      
+      |Khách hàng\n(Customer)|
+      :Xem mã 6 số và theo dõi trạng thái pha chế (UC-06);\nĐến quầy đọc mã 6 số để nhận đồ uống (UC-07);
+      stop
+    endif
+=======
+  ' GIAI ĐOẠN 5: UC-05 - ĐẶT HÀNG & THANH TOÁN KHÔNG TIỀN MẶT (FR-05, FR-06)
+  ' ----------------------------------------------------------------------------
+  |Next.js Web\n(Client)|
+  :Chuyển sang màn hình Thanh toán (/checkout);
+
+  |Khách hàng\n(Customer)|
+  :Chọn phương thức: Thẻ ngân hàng (CARD) hoặc Ví điện tử (WALLET);\nBấm nút "Xác nhận Đặt hàng & Thanh toán";
+
+  |Next.js Web\n(Client)|
+  :Sinh UUID gắn vào header Idempotency-Key (FR-09);\nVô hiệu hóa nút bấm chống gửi trùng lặp;\nGửi POST /orders kèm danh sách items (chỉ gửi món, size, topping, KHÔNG gửi giá tiền);
+
+  |NestJS API\n(Server)|
+  :Xác thực JWT (JwtAuthGuard) & kiểm tra Idempotency-Key;\nServer-side Pricing: Đọc CSDL tính tổng tiền đơn hàng;
+
+  |PostgreSQL\n(Database)|
+  :INSERT INTO "Order" (status: PENDING, total, version: 0);
+
+  |NestJS API\n(Server)|
+  :Trả về HTTP 201 Created kèm orderId và total;
+
+  |Next.js Web\n(Client)|
+  :Gửi tiếp request POST /payments\nkèm orderId, method và header Idempotency-Key;
+
+  |NestJS API\n(Server)|
+  :Tiếp nhận thanh toán, gửi yêu cầu mô phỏng sang Payment Gateway;
+
+  |Cổng thanh toán\n(Payment Gateway)|
+  if (Quy tắc mô phỏng:\nThẻ đuôi '0000' HOẶC Ví đơn > 500.000đ?) then (Thanh toán thất bại)
+    -[#red,bold]->
+    :Từ chối giao dịch (PAYMENT_FAILED);
+
+    |NestJS API\n(Server)|
+    :Cập nhật trạng thái Order: PAYMENT_FAILED;\nTrả về HTTP 201 kèm status: "PAYMENT_FAILED";
+
+    |Next.js Web\n(Client)|
+    :Hiển thị thông báo lỗi thanh toán màu đỏ;\nGiữ nguyên đơn hàng và hiển thị nút "Thanh toán lại";
+
+    |Khách hàng\n(Customer)|
+    :Đổi phương thức thanh toán khác hoặc bấm thanh toán lại;
+    stop
+  else (Thanh toán thành công)
+    -[#green,bold]->
+    :Xác nhận giao dịch thành công (PAYMENT_SUCCESS);
+
+    |NestJS API\n(Server)|
+    :Bắt đầu Database Transaction (Khóa lạc quan version = 1);\nChuyển trạng thái Order: PENDING -> PAID;
+
+    |PostgreSQL\n(Database)|
+    :Cập nhật Order: status = PAID, version = 1;\nTích điểm: Cộng 1 điểm / 1.000đ thực trả vào User (FR-10);\nLưu bản ghi Payment: status = SUCCESS;\nCOMMIT Transaction;
+
+    |NestJS API\n(Server)|
+    :Trả về HTTP 201 Created kèm status: "PAID" và pointsEarned;
+
+    ' --------------------------------------------------------------------------
+    ' GIAI ĐOẠN 6: UC-06 - XÁC NHẬN & THEO DÕI ĐƠN HÀNG (FR-07)
+    ' --------------------------------------------------------------------------
+    |Next.js Web\n(Client)|
+    :Xóa sạch giỏ hàng trong Zustand Store;\nChuyển hướng sang màn hình Thông báo thành công (/order-success);\nThiết lập Polling tự động định kỳ 5 giây/lần gọi GET /orders/me;
+
+    |Khách hàng\n(Customer)|
+    :Xem thông tin xác nhận đơn hàng PAID;\nTheo dõi trạng thái tiến độ pha chế cập nhật tự động (Polling 5s);\n(Khi đơn sang READY: Nhận mã 6 số tại quầy để nhận đồ uống - UC-07);
+    stop
+>>>>>>> Stashed changes
+  endif
 endif
 
-|Payment Service|
-note: Chờ nhận giao dịch ở luồng Đặt & Thanh toán (Activity-02)
-
-stop
 @enduml

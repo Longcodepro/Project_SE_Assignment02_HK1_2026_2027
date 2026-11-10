@@ -13,12 +13,28 @@ skinparam ArrowColor #2C3E50
 skinparam ArrowThickness 1.2
 
 ' ========================================================
-' ENUMS
+' ENUMS (DANH MỤC TRẠNG THÁI & HÌNH THỨC)
 ' ========================================================
+enum Role <<Enum>> #F3E5F5 {
+  CUSTOMER
+  BARISTA
+  CASHIER
+  MANAGER
+}
+
 enum OrderStatus <<Enum>> #F3E5F5 {
   PENDING
   PAID
   PAYMENT_FAILED
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderType <<Enum>> #F3E5F5 {
+  TAKE_AWAY
+  DINE_IN
 }
 
 enum Size <<Enum>> #F3E5F5 {
@@ -28,8 +44,9 @@ enum Size <<Enum>> #F3E5F5 {
 }
 
 enum PaymentMethod <<Enum>> #F3E5F5 {
-  WALLET
   CARD
+  WALLET
+  TRANSFER
 }
 
 enum PaymentStatus <<Enum>> #F3E5F5 {
@@ -37,34 +54,41 @@ enum PaymentStatus <<Enum>> #F3E5F5 {
   FAILED
 }
 
-enum DiscountType <<Enum - Mở rộng>> #EDE7F6 {
+enum DiscountType <<Enum>> #EDE7F6 {
   FIXED
   PERCENT
 }
 
 ' ========================================================
-' CORE DOMAIN CLASSES (ĐÃ HIỆN THỰC TRONG PRISMA SCHEMA)
+' CORE DOMAIN CLASSES (CÁC THỰC THỂ CỐT LÕI)
 ' ========================================================
 class User <<Core Entity>> #E8F8F5 {
   + id : Int [PK]
-  + email : String [Unique]
+  + phone : String [Unique, 10 digits]
   - passwordHash : String
   + name : String?
+  + role : Role = CUSTOMER
   + loyaltyPoints : Int = 0
+  + email : String?
   + createdAt : DateTime
   __
-  + register()
-  + login()
+  + register(phone, password)
+  + login(phone, password)
   + getProfile()
+  + addLoyaltyPoints(pts: Int)
 }
 
 class Product <<Core Entity>> #E1F5FE {
   + id : Int [PK]
   + name : String
+  + category : String
   + price : Int  {VND - Size S}
+  + isAvailable : Boolean = true
   + imageUrl : String
+  + description : String?
   __
   + getDetails()
+  + checkAvailability() : Boolean
 }
 
 class Order <<Core Entity>> #FFF9C4 {
@@ -72,12 +96,17 @@ class Order <<Core Entity>> #FFF9C4 {
   + userId : Int [FK]
   + idempotencyKey : String?
   + status : OrderStatus = PENDING
-  + total : Int  {Server calculated}
+  + orderType : OrderType = TAKE_AWAY
+  + pickupCode : String?  {6 random digits}
+  + total : Int  {Server-side Pricing}
   + version : Int = 0  {Optimistic Lock}
+  + promotionId : Int? [FK]
+  + discountAmount : Int = 0
   + createdAt : DateTime
   __
-  + calculateTotal()
+  + calculateTotal() : Int
   + transitionTo(status: OrderStatus)
+  + generatePickupCode() : String
 }
 
 class OrderItem <<Core Entity>> #FFF9C4 {
@@ -85,7 +114,7 @@ class OrderItem <<Core Entity>> #FFF9C4 {
   + orderId : String [FK]
   + productId : Int [FK]
   + quantity : Int  {1..99}
-  + size : Size
+  + size : Size = S
   + toppings : String[]
   + unitPrice : Int  {Base + Size + Toppings}
   __
@@ -95,6 +124,7 @@ class OrderItem <<Core Entity>> #FFF9C4 {
 class Payment <<Core Entity>> #E8F5E9 {
   + id : Int [PK]
   + orderId : String [FK]
+  + transactionId : String?  {Gateway Ref}
   + method : PaymentMethod
   + status : PaymentStatus
   + amount : Int  {Matches Order.total}
@@ -103,11 +133,11 @@ class Payment <<Core Entity>> #E8F5E9 {
   + idempotencyKey : String?
   + createdAt : DateTime
   __
-  + processPayment()
+  + processPayment() : Boolean
 }
 
 ' ========================================================
-' EXTENSION CLASSES (MÔ HÌNH MỞ RỘNG - CHƯA TẠO BẢNG CSDL)
+' EXTENSION CLASSES (MÔ HÌNH MỞ RỘNG)
 ' ========================================================
 class Promotion <<Domain Extension>> #FFF3E0 {
   + id : Int [PK]
@@ -116,6 +146,7 @@ class Promotion <<Domain Extension>> #FFF3E0 {
   + discountValue : Int
   + minOrderAmount : Int
   + isActive : Boolean = true
+  + expiryDate : DateTime?
   __
   + validateVoucher(orderTotal: Int) : Boolean
   + calculateDiscount(orderTotal: Int) : Int
@@ -124,10 +155,11 @@ class Promotion <<Domain Extension>> #FFF3E0 {
 class LoyaltyTransaction <<Domain Extension>> #FFF3E0 {
   + id : Int [PK]
   + userId : Int [FK]
-  + orderId : String [FK]
-  + pointsEarned : Int
-  + pointsUsed : Int 
+  + orderId : String? [FK]
+  + pointsEarned : Int = 0
+  + pointsUsed : Int = 0
   + balanceAfter : Int
+  + transactionType : String  {EARN | REDEEM}
   + createdAt : DateTime
   __
   + recordTransaction()
@@ -145,14 +177,15 @@ Product "1" <-- "0..*" OrderItem : "references >"
 Order "1" *-- "0..*" Payment : "settled by >"
 Order "0..*" o-- "0..1" Promotion : "applies >"
 
-LoyaltyTransaction "0..*" --> "1" Order : "tied to >"
+LoyaltyTransaction "0..*" --> "0..1" Order : "tied to >"
 
 ' Enum dependencies
+User ..> Role : uses
 Order ..> OrderStatus : uses
+Order ..> OrderType : uses
 OrderItem ..> Size : uses
 Payment ..> PaymentMethod : uses
 Payment ..> PaymentStatus : uses
 Promotion ..> DiscountType : uses
-
 
 @enduml
