@@ -1,0 +1,58 @@
+@startuml
+title Sơ đồ tuần tự luồng Đặt hàng và Thanh toán (Task 2.2)
+
+skinparam style strictuml
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+participant "Khách hàng" as Customer
+participant "Next.js Web" as Web
+participant "NestJS API" as API
+participant "PostgreSQL" as DB
+participant "Payment Gateway" as PG
+
+autonumber 1 "<b>[0]</b>"
+
+' 1. Tạo đơn hàng (POST /orders)
+Customer -> Web : Bấm "Đặt hàng" trên giỏ hàng
+Web -> API : POST /orders (Header: Bearer JWT, Idempotency-Key)\nPayload: { items, orderType }
+
+API -> API : [1. JWT & Validate] Xác thực token và kiểm tra dữ liệu DTO
+API -> DB : [2. Server-side Pricing] Truy vấn giá gốc món & cờ isAvailable
+DB --> API : Trả về thông tin món từ CSDL
+
+API -> API : [2. Server-side Pricing] Tự tính tổng tiền đơn hàng
+API -> DB : [3. Transaction] Lưu Order (status: PENDING) và các OrderItem
+DB --> API : Lưu đơn hàng thành công
+
+API --> Web : 201 Created (orderId, total)
+Web --> Customer : Hiển thị màn hình thanh toán, chọn Thẻ / Ví
+
+' 2. Thanh toán đơn hàng (POST /payments)
+Customer -> Web : Chọn Thẻ/Ví và bấm "Xác nhận thanh toán"
+Web -> API : POST /payments (Header: Bearer JWT, Idempotency-Key)\nPayload: { orderId, method }
+
+API -> API : Xác thực token và kiểm tra đơn hàng PENDING
+API -> PG : [4. Thanh toán mô phỏng] Gửi yêu cầu trừ tiền (orderId, total, method)
+
+alt Thất bại (Thẻ đuôi 0000 hoặc Ví > 500.000đ)
+    PG --> API : Từ chối giao dịch (PAYMENT_REJECTED)
+    API -> DB : Cập nhật Order (status: PAYMENT_FAILED) và lưu Payment FAILED
+    API --> Web : Báo lỗi thanh toán thất bại
+    Web --> Customer : Hiển thị lỗi, giữ nguyên đơn để khách thử lại
+else Thành công (Thẻ hợp lệ & Ví <= 500.000đ)
+    PG --> API : Phê duyệt giao dịch (PAYMENT_APPROVED)
+    API -> DB : [3. Transaction] Cập nhật Order (PAID), cấp mã 6 số (pickupCode), tích điểm
+    DB --> API : Cập nhật thành công
+    API --> Web : 201 Created (status: PAID, mã 6 số, điểm thưởng)
+    Web --> Customer : Xóa giỏ hàng, hiển thị Mã nhận đồ 6 số và theo dõi đơn
+end
+
+' 3. Chống gửi trùng lặp (Idempotency)
+opt [5. Idempotency-Key] Khách gửi lại do lag mạng (Trùng Idempotency-Key)
+    Web -> API : POST /payments (Cùng Idempotency-Key)
+    API --> Web : Trả về ngay kết quả đã lưu trước đó (không trừ tiền lần 2)
+end
+
+@enduml
