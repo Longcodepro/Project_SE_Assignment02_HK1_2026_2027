@@ -46,9 +46,9 @@ Tại các cửa hàng cà phê vừa và nhỏ hiện nay, quy trình phục v�
 
 | Mã | Mục tiêu hệ thống | Vấn đề giải quyết |
 |:---:|---|:---:|
-| **G1** | Khách hàng tự gọi món và thanh toán trực tiếp trên điện thoại di động trong vòng **dưới 60 giây**, loại bỏ hoàn toàn việc xếp hàng tại quầy. | P1, P2, P3 |
+| **G1** | Khách hàng tự gọi món và thanh toán trực tiếp trên điện thoại di động, **loại bỏ hoàn toàn việc xếp hàng tại quầy**; mỗi thao tác của hệ thống (thêm vào giỏ, chuyển trang, xác nhận thanh toán) phản hồi nhanh, không gây chờ đợi do hệ thống (đo cụ thể ở NFR hiệu năng). | P1, P2, P3 |
 | **G2** | Tự động hóa 100% khâu định giá và kiểm tra tính hợp lệ của đơn hàng tại máy chủ (Server-side Pricing), bảo vệ an toàn giao dịch tài chính. | P2, P3 |
-| **G3** | Cung cấp mã nhận hàng 6 số và cơ chế theo dõi trạng thái đơn hàng, cập nhật định kỳ khoảng 5 giây (polling), trên giao diện web di động. | P1 |
+| **G3** | Cung cấp cơ chế theo dõi trạng thái đơn hàng, cập nhật định kỳ khoảng 5 giây (polling), trên giao diện web di động (MVP Sprint 2); mã nhận hàng 6 số thay thế thẻ rung truyền thống khi triển khai hàng đợi pha chế (Sprint 3, Planned). | P1 |
 | **G4** | Không nhận tiền cho đơn không đủ nguyên liệu: kiểm tra tồn kho khi tạo đơn, tự trừ kho khi thanh toán (Sprint 4, Planned; MVP dùng `isAvailable`). | P4 |
 
 ### 1.4. Luồng người dùng cốt lõi (Core User Journey MVP)
@@ -209,4 +209,4 @@ Các tính năng nâng cao đã được quy hoạch trong Product Backlog và s
 | **RSK-05** | **Lệch pha giữa Frontend và Backend:** Hai thành viên làm việc độc lập dẫn đến không khớp dữ liệu gọi API | **Trung bình** | Thống nhất và tuân thủ hợp đồng API tại `docs/architecture/api-contract.md`; tích hợp Swagger UI tự động tại `/docs`; mọi thay đổi hợp đồng phải được trao đổi và duyệt trước. |
 | **RSK-06** | **Áp lực tiến độ 2 Sprint:** Khối lượng công việc lớn dẫn đến nguy cơ trễ hạn bàn giao | **Trung bình** | Áp dụng nghiêm ngặt mô hình **MoSCoW**: Hoàn thành 100% các hạng mục Must Have của MVP trước; các tính năng mở rộng được phân kỳ rõ ràng sang Sprint 3 và Sprint 4. |
 | **RSK-07** | **Đăng ký bằng SĐT không có OTP:** Có thể đăng ký bằng số điện thoại của người khác vì hệ thống không xác minh quyền sở hữu số | **Thấp** | Chấp nhận như giới hạn đã biết của đồ án (OTP/SMS thuộc mục Won't Have); ghi rõ trong SRS. Mật khẩu băm và JWT vẫn bảo vệ phiên làm việc. |
-| **RSK-08** | **Khởi động chậm của dịch vụ gói miễn phí:** API trên Render gói miễn phí có thể mất vài chục giây cho lần gọi đầu, ảnh hưởng mục tiêu G1 và buổi demo | **Trung bình** | Gọi `GET /health` làm nóng API trước khi demo hoặc nghiệm thu; mục tiêu G1 (dưới 60 giây) là mục tiêu nghiệp vụ, kiểm chứng bằng buổi demo khi API đã chạy, không phải NFR đo tốc độ. |
+| **RSK-08** | **Khởi động chậm của dịch vụ gói miễn phí:** API trên Render gói miễn phí có thể mất vài chục giây cho lần gọi đầu, ảnh hưởng mục tiêu G1 và buổi demo | **Trung bình** | Gọi `GET /health` làm nóng API trước khi demo hoặc nghiệm thu; độ trễ khởi động lần đầu (cold start) của dịch vụ miễn phí không tính vào NFR hiệu năng phản hồi của G1, chỉ đo sau khi dịch vụ đã khởi động xong. |
