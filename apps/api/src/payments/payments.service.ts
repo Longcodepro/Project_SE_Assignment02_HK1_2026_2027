@@ -38,10 +38,10 @@ export class PaymentsService {
     private readonly gateway: MockPaymentGateway,
   ) {}
 
-  async pay(userId: number, dto: CreatePaymentDto, idempotencyKey?: string) {
+  async pay(userPhone: string, dto: CreatePaymentDto, idempotencyKey?: string) {
     // Đơn của người khác cũng báo 404 để không lộ đơn có tồn tại
     const order = await this.prisma.order.findFirst({
-      where: { id: dto.orderId, userId },
+      where: { id: dto.orderId, userPhone },
     });
     if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
 
@@ -96,7 +96,7 @@ export class PaymentsService {
         // Cộng điểm cùng transaction với việc đổi đơn sang PAID nên không bao giờ lệch nhau
         if (pointsEarned > 0) {
           await tx.user.update({
-            where: { id: userId },
+            where: { phone: userPhone },
             data: { loyaltyPoints: { increment: pointsEarned } },
           });
         }

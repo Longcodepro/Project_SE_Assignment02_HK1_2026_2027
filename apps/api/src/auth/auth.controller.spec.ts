@@ -19,7 +19,7 @@ async function setup() {
   };
   const prisma = {
     user,
-    product: { findMany: vi.fn().mockResolvedValue([{ id: 1, price: 29000 }]) },
+    product: { findMany: vi.fn().mockResolvedValue([{ id: 1, price: 29000, isAvailable: true }]) },
     order: {
       create: vi.fn().mockResolvedValue({ id: 'ord_1', status: 'PENDING', total: 29000 }),
     },
@@ -36,35 +36,51 @@ async function setup() {
 }
 
 describe('POST /auth/register', () => {
-  it('băm mật khẩu bằng bcrypt và không trả passwordHash', async () => {
+  it('băm mật khẩu bằng bcrypt, chuẩn hóa SĐT và không trả passwordHash', async () => {
     const { app, prisma, http } = await setup();
-    prisma.user.create.mockResolvedValue({ id: 1, email: 'a@b.com', name: null });
+    prisma.user.create.mockResolvedValue({
+      phone: '0912345678',
+      name: null,
+      email: 'a@b.com',
+      role: 'CUSTOMER',
+    });
 
     const res = await http()
       .post('/auth/register')
-      .send({ email: ' A@B.com ', password: 'secret123' })
+      .send({ phone: '+84912345678', password: 'secret123', email: ' A@B.com ' })
       .expect(201);
 
-    expect(res.body).toEqual({ id: 1, email: 'a@b.com', name: null });
-    const { passwordHash, email } = prisma.user.create.mock.calls[0][0].data;
+    expect(res.body).toEqual({
+      phone: '0912345678',
+      name: null,
+      email: 'a@b.com',
+      role: 'CUSTOMER',
+    });
+    const { passwordHash, phone, email } = prisma.user.create.mock.calls[0][0].data;
+    expect(phone).toBe('0912345678');
     expect(email).toBe('a@b.com');
     expect(passwordHash).not.toBe('secret123');
     expect(await bcrypt.compare('secret123', passwordHash)).toBe(true);
     await app.close();
   });
 
-  it('409 khi email đã tồn tại', async () => {
+  it('409 khi số điện thoại đã tồn tại', async () => {
     const { app, prisma, http } = await setup();
     prisma.user.create.mockRejectedValue({ code: 'P2002' });
-    await http().post('/auth/register').send({ email: 'a@b.com', password: 'secret123' }).expect(409);
+    await http()
+      .post('/auth/register')
+      .send({ phone: '0912345678', password: 'secret123' })
+      .expect(409);
     await app.close();
   });
 
   it.each([
-    ['email sai', { email: 'abc', password: 'secret123' }],
-    ['mật khẩu quá ngắn', { email: 'a@b.com', password: '123' }],
-    ['mật khẩu quá dài cho bcrypt', { email: 'a@b.com', password: 'x'.repeat(73) }],
-    ['thiếu mật khẩu', { email: 'a@b.com' }],
+    ['SĐT không phải số di động Việt Nam (đầu bàn 02)', { phone: '0212345678', password: 'secret123' }],
+    ['SĐT sai định dạng', { phone: 'abc', password: 'secret123' }],
+    ['SĐT thiếu chữ số', { phone: '091234567', password: 'secret123' }],
+    ['mật khẩu quá ngắn', { phone: '0912345678', password: '123' }],
+    ['mật khẩu quá dài cho bcrypt', { phone: '0912345678', password: 'x'.repeat(73) }],
+    ['thiếu mật khẩu', { phone: '0912345678' }],
   ])('400 khi %s', async (_n, body) => {
     const { app, prisma, http } = await setup();
     await http().post('/auth/register').send(body).expect(400);
@@ -74,26 +90,31 @@ describe('POST /auth/register', () => {
 });
 
 describe('POST /auth/login', () => {
-  const login = (http: () => ReturnType<typeof request>, body: object) => http().post('/auth/login').send(body);
+  const login = (http: () => ReturnType<typeof request>, body: object) =>
+    http().post('/auth/login').send(body);
 
   it('đúng mật khẩu thì phát JWT', async () => {
     const { app, prisma, http } = await setup();
     prisma.user.findUnique.mockResolvedValue({
-      id: 1, email: 'a@b.com', passwordHash: await bcrypt.hash('secret123', 4),
+      phone: '0912345678',
+      role: 'CUSTOMER',
+      passwordHash: await bcrypt.hash('secret123', 4),
     });
-    const res = await login(http, { email: 'a@b.com', password: 'secret123' }).expect(200);
+    const res = await login(http, { phone: '0912345678', password: 'secret123' }).expect(200);
     expect(res.body.accessToken.split('.')).toHaveLength(3);
     await app.close();
   });
 
-  it('401 khi sai mật khẩu hoặc email không tồn tại (cùng một thông báo)', async () => {
+  it('401 khi sai mật khẩu hoặc SĐT không tồn tại (cùng một thông báo)', async () => {
     const { app, prisma, http } = await setup();
     prisma.user.findUnique.mockResolvedValueOnce({
-      id: 1, email: 'a@b.com', passwordHash: await bcrypt.hash('secret123', 4),
+      phone: '0912345678',
+      role: 'CUSTOMER',
+      passwordHash: await bcrypt.hash('secret123', 4),
     });
-    const wrong = await login(http, { email: 'a@b.com', password: 'sai-mat-khau' }).expect(401);
+    const wrong = await login(http, { phone: '0912345678', password: 'sai-mat-khau' }).expect(401);
     prisma.user.findUnique.mockResolvedValueOnce(null);
-    const none = await login(http, { email: 'x@b.com', password: 'secret123' }).expect(401);
+    const none = await login(http, { phone: '0987654321', password: 'secret123' }).expect(401);
     expect(none.body.message).toBe(wrong.body.message);
     await app.close();
   });
@@ -103,16 +124,18 @@ describe('guard bảo vệ POST /orders', () => {
   it('không có token / token sai thì 401, có token hợp lệ thì đặt được đơn', async () => {
     const { app, prisma, http } = await setup();
     prisma.user.findUnique.mockResolvedValue({
-      id: 5, email: 'a@b.com', passwordHash: await bcrypt.hash('secret123', 4),
+      phone: '0912345678',
+      role: 'CUSTOMER',
+      passwordHash: await bcrypt.hash('secret123', 4),
     });
 
     await http().post('/orders').send(order).expect(401);
     await http().post('/orders').set('Authorization', 'Bearer rac').send(order).expect(401);
 
-    const { body } = await http().post('/auth/login').send({ email: 'a@b.com', password: 'secret123' });
+    const { body } = await http().post('/auth/login').send({ phone: '0912345678', password: 'secret123' });
     await http().post('/orders').set('Authorization', `Bearer ${body.accessToken}`).send(order).expect(201);
     // đơn gắn với người dùng trong token
-    expect(prisma.order.create.mock.calls[0][0].data.userId).toBe(5);
+    expect(prisma.order.create.mock.calls[0][0].data.userPhone).toBe('0912345678');
     await app.close();
   });
 });

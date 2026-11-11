@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
-export type AuthUser = { id: number; email: string };
+export type AuthUser = { phone: string; role: string };
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -21,7 +21,10 @@ export class JwtAuthGuard implements CanActivate {
     }
     try {
       const payload = await this.jwt.verifyAsync(token);
-      req.user = { id: payload.sub, email: payload.email } satisfies AuthUser;
+      req.user = {
+        phone: payload.phone ?? String(payload.sub),
+        role: payload.role ?? 'CUSTOMER',
+      } satisfies AuthUser;
     } catch {
       throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
     }

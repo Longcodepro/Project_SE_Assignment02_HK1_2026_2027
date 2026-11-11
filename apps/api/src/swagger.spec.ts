@@ -28,6 +28,8 @@ describe('Swagger', () => {
       'name',
       'price',
       'imageUrl',
+      'category',
+      'isAvailable',
     ]);
     expect(doc.paths['/']).toBeDefined();
     await app.close();

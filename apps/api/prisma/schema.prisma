@@ -7,13 +7,22 @@ datasource db {
   provider = "postgresql"
 }
 
-model Product {
-  id       Int    @id @default(autoincrement())
+model Category {
+  id       Int       @id @default(autoincrement())
   name     String
+  products Product[]
+}
+
+model Product {
+  id          Int         @id @default(autoincrement())
+  name        String
   // VND, size S
-  price    Int
-  imageUrl String
-  orderItems OrderItem[]
+  price       Int
+  imageUrl    String
+  isAvailable Boolean     @default(true)
+  categoryId  Int
+  category    Category    @relation(fields: [categoryId], references: [id])
+  orderItems  OrderItem[]
 }
 
 enum Size {
@@ -29,22 +38,22 @@ enum OrderStatus {
 }
 
 model Order {
-  id        String      @id
-  userId    Int
-  user      User        @relation(fields: [userId], references: [id])
+  id             String      @id
+  userPhone      String
+  user           User        @relation(fields: [userPhone], references: [phone])
   // Client gửi lại cùng key thì trả đơn cũ thay vì tạo đơn mới
   idempotencyKey String?
-  status    OrderStatus @default(PENDING)
+  status         OrderStatus @default(PENDING)
   // VND, tính ở server từ giá sản phẩm + size + topping
-  total     Int
-  createdAt DateTime    @default(now())
+  total          Int
+  createdAt      DateTime    @default(now())
   // Khoá lạc quan: mỗi lần cập nhật đơn phải khớp version đã đọc, rồi tăng thêm 1
-  version   Int         @default(0)
-  items     OrderItem[]
-  payments  Payment[]
+  version        Int         @default(0)
+  items          OrderItem[]
+  payments       Payment[]
 
-  @@unique([userId, idempotencyKey])
-  @@index([userId])
+  @@unique([userPhone, idempotencyKey])
+  @@index([userPhone])
 }
 
 model OrderItem {
@@ -62,16 +71,25 @@ model OrderItem {
   @@index([orderId])
 }
 
+enum Role {
+  CUSTOMER
+  BARISTA
+  CASHIER
+  MANAGER
+}
+
 model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
+  phone         String   @id
   // bcrypt hash, không bao giờ trả ra ngoài API
-  passwordHash String
-  name         String?
+  passwordHash  String
+  name          String?
+  // Tùy chọn, không duy nhất
+  email         String?
+  role          Role     @default(CUSTOMER)
   // Tích lũy khi thanh toán thành công (xem payments/loyalty.ts)
-  loyaltyPoints Int     @default(0)
-  createdAt    DateTime @default(now())
-  orders       Order[]
+  loyaltyPoints Int      @default(0)
+  createdAt     DateTime @default(now())
+  orders        Order[]
 }
 
 enum PaymentMethod {
@@ -86,18 +104,18 @@ enum PaymentStatus {
 
 // Mỗi lần thử thanh toán là một dòng, nên đơn thất bại có thể thử lại
 model Payment {
-  id        Int           @id @default(autoincrement())
-  orderId   String
-  order     Order         @relation(fields: [orderId], references: [id])
-  method    PaymentMethod
-  status    PaymentStatus
+  id             Int           @id @default(autoincrement())
+  orderId        String
+  order          Order         @relation(fields: [orderId], references: [id])
+  method         PaymentMethod
+  status         PaymentStatus
   // VND, lấy từ Order.total chứ không nhận từ client
-  amount    Int
+  amount         Int
   failureReason  String?
   // Điểm tích được từ lần thanh toán này, lưu lại để gửi lại cùng key vẫn trả đúng
   pointsEarned   Int           @default(0)
   idempotencyKey String?
-  createdAt DateTime      @default(now())
+  createdAt      DateTime      @default(now())
 
   @@unique([orderId, idempotencyKey])
   @@index([orderId])
