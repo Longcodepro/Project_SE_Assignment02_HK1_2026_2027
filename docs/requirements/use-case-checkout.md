@@ -53,12 +53,11 @@
 
 ### 5.1. Khi giao dịch thành công (Success End Condition)
 - Bản ghi đơn hàng mới được tạo trong bảng `Order` với trạng thái `PAID`, phiên bản `version = 1`.
-- Hệ thống sinh một **Mã nhận đồ uống 6 chữ số ngẫu nhiên duy nhất** (`pickupCode`) gán vào đơn hàng.
 - Toàn bộ danh sách ly (kèm size, topping, phụ thu) được lưu vào bảng `OrderItem`.
 - Bản ghi giao dịch trong bảng `Payment` được lưu với trạng thái `SUCCESS` kèm mã giao dịch `transactionId`.
 - Khách hàng được tự động **cộng điểm tích lũy thưởng** theo tỷ lệ: **1 điểm / 1.000 VNĐ thực trả** (`UC-20`).
 - Giỏ hàng của khách hàng trên trình duyệt (`Zustand Store` & `localStorage`) được xóa sạch hoàn toàn.
-- Khách hàng được chuyển hướng sang trang xác nhận đơn hàng thành công (`/order-success`), hiển thị mã nhận 6 số và tự động kích hoạt tiến trình Polling 5s/lần để theo dõi tiến độ pha chế (`UC-06`).
+- Khách hàng được chuyển hướng sang trang xác nhận đơn hàng thành công (`/order-success`), tự động kích hoạt tiến trình Polling 5s/lần để theo dõi trạng thái đơn (`UC-06`).
 
 ### 5.2. Khi giao dịch thất bại (Failure End Condition)
 - Đơn hàng bị chuyển trạng thái `PAYMENT_FAILED` hoặc bị Rollback hoàn toàn trong cơ sở dữ liệu.
@@ -101,14 +100,14 @@ Sơ đồ PlantUML chi tiết thể hiện đầy đủ các quan hệ phụ thu
 |:---:|---|---|
 | **1** | Tại màn hình Giỏ hàng (`/cart`), khách hàng xem lại danh sách món, tùy chọn size/topping, số lượng và số tiền tạm tính; sau đó bấm **"Tiến hành Đặt hàng"**. | Hệ thống kiểm tra phiên đăng nhập của người dùng. |
 | **2** | *(Người dùng đã đăng nhập từ trước, đã có JWT token hợp lệ trong Store).* | Hệ thống chuyển hướng khách hàng sang màn hình Thanh toán (`/checkout`). |
-| **3** | Khách hàng chọn hình thức nhận đồ uống: **"Mang về"** (`TAKE_AWAY`) hoặc **"Dùng tại quán"** (`DINE_IN`). | Hệ thống ghi nhận hình thức nhận và hiển thị danh mục phương thức thanh toán. |
+| **3** | Khách hàng xem lại tóm tắt giỏ hàng tại màn hình Checkout. | Hệ thống hiển thị danh mục phương thức thanh toán không tiền mặt. |
 | **4** | Khách hàng lựa chọn phương thức thanh toán không tiền mặt: **Thẻ ngân hàng** (`CARD`) hoặc **Ví điện tử** (`WALLET`). | Hệ thống hiển thị các trường nhập thông tin tương ứng của phương thức đã chọn. |
-| **5** | Khách hàng kiểm tra tóm tắt đơn hàng lần cuối và bấm nút **"Xác nhận Thanh toán"**. | Giao diện Next.js sinh mã UUID làm giá trị cho header `Idempotency-Key`, vô hiệu hóa nút bấm để chống gửi trùng lặp; gửi request `POST /orders` kèm payload danh sách món (chỉ gửi `productId`, `size`, `toppingIds`, `quantity`; **tuyệt đối không gửi giá tiền**). |
-| **6** | — | **NestJS API** xác thực JWT qua `JwtAuthGuard`, kiểm tra `Idempotency-Key`. Thực hiện **Server-side Pricing**: truy vấn bảng giá gốc từ DB để tính tổng tiền chính xác. Tạo bản ghi `Order` với trạng thái `PENDING`, `version = 0`. Trả về `orderId` và `total` (HTTP 201 Created). |
+| **5** | Khách hàng kiểm tra tóm tắt đơn hàng lần cuối và bấm nút **"Xác nhận Thanh toán"**. | Giao diện Next.js sinh mã UUID làm giá trị cho header `Idempotency-Key`, vô hiệu hóa nút bấm để chống gửi trùng lặp; gửi request `POST /orders` kèm payload danh sách món (chỉ gửi `productId`, `size`, `toppings`, `quantity`; **tuyệt đối không gửi giá tiền**). |
+| **6** | — | **NestJS API** xác thực JWT qua `JwtAuthGuard`, kiểm tra `Idempotency-Key`. Thực hiện **Server-side Pricing**: truy vấn bảng giá gốc từ DB để tính tổng tiền chính xác. Tạo bản ghi `Order` với trạng thái `PENDING`, `version = 0`. Trả về `id` và `total` (HTTP 201 Created). |
 | **7** | — | Giao diện Next.js tự động gửi tiếp request `POST /payments` chứa `orderId`, `method`, thông tin thẻ/ví và header `Idempotency-Key`. |
 | **8** | — | NestJS API tiếp nhận yêu cầu, gửi dữ liệu sang Cổng thanh toán mô phỏng. Cổng thanh toán kiểm tra quy tắc hợp lệ, thực hiện trừ tiền và trả về thông báo `PAYMENT_SUCCESS`. |
-| **9** | — | NestJS API kích hoạt Database Transaction: cập nhật `Order` thành `PAID`, sinh mã 6 số `pickupCode` ngẫu nhiên không trùng lặp, lưu bản ghi `Payment` trạng thái `SUCCESS`, cộng điểm thưởng thành viên theo tỷ lệ 1 điểm / 1.000đ (`UC-20`), sau đó COMMIT transaction. API trả về HTTP 201 Created kèm thông tin đơn hàng và mã nhận đồ. |
-| **10** | Khách hàng nhìn thấy màn hình Đặt hàng thành công (`/order-success`), mã nhận đồ 6 số to rõ và bắt đầu theo dõi tiến độ pha chế. | Giao diện xóa sạch giỏ hàng trong Zustand Store; thiết lập cơ chế Polling ngầm định kỳ 5 giây/lần gọi `GET /orders/me` để cập nhật trạng thái đơn hàng thời gian thực (`UC-06`). |
+| **9** | — | NestJS API kích hoạt Database Transaction: cập nhật `Order` thành `PAID`, lưu bản ghi `Payment` trạng thái `SUCCESS`, cộng điểm thưởng thành viên theo tỷ lệ 1 điểm / 1.000đ (`UC-20`), sau đó COMMIT transaction. API trả về HTTP 201 Created kèm thông tin đơn hàng và điểm thưởng (`pointsEarned`). |
+| **10** | Khách hàng nhìn thấy màn hình Đặt hàng thành công (`/order-success`) và bắt đầu theo dõi trạng thái đơn. | Giao diện xóa sạch giỏ hàng trong Zustand Store; thiết lập cơ chế Polling ngầm định kỳ 5 giây/lần gọi `GET /orders/me` để cập nhật trạng thái đơn hàng thời gian thực (`UC-06`). |
 
 ---
 
@@ -124,11 +123,11 @@ Sơ đồ PlantUML chi tiết thể hiện đầy đủ các quan hệ phụ thu
   5. Next.js lưu token vào Auth Store & `localStorage`, cập nhật tên người dùng lên Navbar và đóng Modal.
   6. Hệ thống tự động đưa khách hàng tiếp tục Bước 3 của Luồng chính mà không bắt khách hàng phải thao tác lại giỏ hàng.
 
-### A2: Khách hàng áp dụng mã khuyến mãi giảm giá (`<<extend>> UC-10`)
+### A2: Khách hàng áp dụng mã khuyến mãi giảm giá (`<<extend>> UC-10`) — (Sprint 3, Planned: chưa hiện thực ở MVP Sprint 1–2)
 - **Điểm rẽ:** Tại Bước 3 của Luồng chính, trước khi xác nhận thanh toán.
-- **Quy trình xử lý:**
+- **Quy trình xử lý (dự kiến, tên endpoint chốt khi vào Sprint 3):**
   1. Khách hàng nhập mã khuyến mãi (ví dụ `BREW20`, `BANMOI`) vào ô nhập Voucher và bấm nút **"Áp dụng"**.
-  2. Next.js gửi request `POST /promotions/validate` kèm `code` và giá trị đơn hàng.
+  2. Next.js gửi request kiểm tra mã khuyến mãi tới API kèm `code` và giá trị đơn hàng.
   3. NestJS API kiểm tra hạn sử dụng, số lượt dùng còn lại và giá trị đơn hàng tối thiểu.
   4. Nếu thỏa điều kiện, hệ thống trả về số tiền được khấu trừ; giao diện cập nhật hiển thị dòng: `Mã giảm giá: -X.000đ` và tự động trừ vào tổng tiền thanh toán hiển thị.
   5. Đơn hàng khi tạo ở Bước 6 sẽ được lưu kèm `voucherId` và số tiền thực trả sau giảm.
@@ -195,9 +194,9 @@ Sơ đồ PlantUML chi tiết thể hiện đầy đủ các quan hệ phụ thu
 |:---:|---|---|
 | **BR-01** | **Server-side Pricing** *(Định giá độc quyền phía máy chủ)* | Client **tuyệt đối không được gửi giá tiền** lên server. Server đọc `productId`, `size`, `toppingIds` từ database để tự tính toán tổng tiền. Chống hoàn toàn hành vi sửa đổi giá bằng DevTools hoặc Postman. |
 | **BR-02** | **Cơ chế chống gửi trùng Idempotency** | Mọi yêu cầu nhạy cảm (`POST /orders`, `POST /payments`) đều mang header `Idempotency-Key`. Hệ thống lưu vết key để đảm bảo an toàn giao dịch tài chính theo chuẩn RFC 7231. |
-| **BR-03** | **Mã nhận hàng 6 chữ số (`pickupCode`)** | Sau khi thanh toán thành công (`PAID`), hệ thống sinh mã số ngẫu nhiên từ `100000` đến `999999` duy nhất trong ngày. Khách hàng dùng mã này để đọc cho nhân viên quầy nhận đồ. |
+| **BR-03** | **Mã nhận hàng 6 chữ số (`pickupCode`)** — (Sprint 3, Planned) | Không áp dụng ở MVP Sprint 1–2. Khi vào Sprint 3, mã được sinh lúc đơn chuyển sang `READY` (sau khi pha chế xong, không phải lúc `PAID`), duy nhất trong số các đơn đang `READY`. Khách hàng dùng mã này để đọc cho nhân viên quầy nhận đồ. |
 | **BR-04** | **Quy tắc tích điểm thành viên** | Điểm tích lũy được tính theo công thức: `Points = Floor(Thực trả / 1.000)`. Điểm được ghi nhận tự động vào bảng `User` ngay khi đơn chuyển trạng thái `PAID`. |
-| **BR-05** | **Bảo mật xác thực JWT & SĐT** | Định danh duy nhất của tài khoản là **Số điện thoại Việt Nam 10 chữ số** (Regex: `/^0\d{9}$/`). Mật khẩu được mã hóa an toàn bằng thuật toán `bcryptjs` với salt rounds = 10. |
+| **BR-05** | **Bảo mật xác thực JWT & SĐT** | Định danh duy nhất của tài khoản là **Số điện thoại Việt Nam di động hợp lệ** (Regex: `/^(0|\+84)(3|5|7|8|9)\d{8}$/`; server chuẩn hóa về 10 chữ số bắt đầu bằng `0`). Mật khẩu được mã hóa an toàn bằng thuật toán `bcryptjs` với salt rounds = 10. |
 
 ---
 
@@ -207,14 +206,14 @@ Bảng đối chiếu chứng minh tính toàn vẹn và mức độ bao phủ y
 
 | Thành phần đặc tả | Mã Yêu cầu Chức năng (FR) | Mã Yêu cầu Phi chức năng (NFR) | User Story tương ứng |
 |---|:---:|:---:|:---:|
-| Đăng nhập tài khoản bằng SĐT | `FR-04` | `NFR-02` (Bảo mật JWT & bcrypt) | `US-04` |
-| Tạo đơn hàng từ giỏ hàng | `FR-05` | `NFR-01` (Thời gian phản hồi < 500ms) | `US-03` |
-| Thanh toán Thẻ/Ví mô phỏng | `FR-06` | `NFR-03` (Toàn vẹn dữ liệu ACID) | `US-04` |
-| Theo dõi tiến độ đơn hàng (Polling 5s) | `FR-07` | `NFR-01` (Tải nhẹ, không nghẽn) | `US-03` |
-| Định giá độc quyền Server-side Pricing | `FR-08` | `NFR-02` (Chống giả mạo dữ liệu) | `US-04` |
-| Header Idempotency-Key chống trùng đơn | `FR-09` | `NFR-03` (Nhất quán trạng thái) | `US-04` |
-| Tự động tích lũy điểm thưởng | `FR-10` | `NFR-03` (Cộng điểm nguyên tử) | `US-05` |
-| Áp dụng mã giảm giá khuyến mãi | `FR-21` / `UC-10` | `NFR-01` (Kiểm tra hợp lệ tức thì) | `US-03` |
+| Đăng nhập tài khoản bằng SĐT | `FR-04` | `NFR-01` (Bảo mật: JWT, bcrypt) | `US-04` |
+| Tạo đơn hàng từ giỏ hàng (Server-side Pricing) | `FR-05` | `NFR-02` (Độ tin cậy & sẵn sàng) | `US-05` |
+| Thanh toán Thẻ/Ví mô phỏng | `FR-06` | `NFR-01` (Bảo mật: không lưu số thẻ thô) | `US-06` |
+| Theo dõi tiến độ đơn hàng (Polling 5s) | `FR-07` | `NFR-04` (Khả dụng: polling, không WebSocket) | `US-07` |
+| Máy trạng thái đơn & khóa lạc quan (Optimistic Locking) | `FR-08` | `NFR-02` (Độ tin cậy: đúng khi đồng thời) | `US-08` |
+| Header Idempotency-Key chống trùng đơn | `FR-09` | `NFR-02` (Độ tin cậy: đúng khi gửi trùng) | `US-09` |
+| Tự động tích lũy điểm thưởng | `FR-10` | `NFR-03` (Chất lượng: có unit test) | `US-10` |
+| Áp dụng mã giảm giá khuyến mãi (Sprint 3, Planned) | `FR-11` / `UC-10` | — | `US-11` |
 
 ---
 
@@ -227,7 +226,6 @@ Các kịch bản kiểm thử theo chuẩn **Given - When - Then** để phục
 - **When:** Khách hàng chọn hình thức "Mang về", chọn phương thức "Thẻ ngân hàng", nhập số thẻ hợp lệ (đuôi `1234`) và bấm "Xác nhận Thanh toán".
 - **Then:**
   - Hệ thống tạo đơn hàng mới trạng thái `PAID`, tổng tiền chính xác 35.000 VNĐ.
-  - Sinh mã `pickupCode` gồm 6 chữ số hợp lệ.
   - Tài khoản khách hàng được cộng thêm đúng 35 điểm tích lũy.
   - Giỏ hàng client bị xóa rỗng; màn hình điều hướng tới `/order-success`.
 
