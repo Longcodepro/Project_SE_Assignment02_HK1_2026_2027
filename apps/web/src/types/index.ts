@@ -1,18 +1,37 @@
+export interface ProductCategory {
+    id: number;
+    name: string;
+}
+
 // Thực thể sản phẩm
 export interface Product {
     id: number | string;
     name: string;
     price: number;
     imageUrl: string;
+    isAvailable?: boolean;
     stock?: number;
-    category?: string;
+    category?: string | ProductCategory;
 }
 
 export interface User {
-    id: string | number;
-    email: string;
+    id?: string | number;
+    phone: string;
+    role?: 'CUSTOMER' | 'STAFF';
+    email?: string;
     name?: string;
     loyaltyPoints?: number;
+}
+
+export interface LoyaltyHistoryItem {
+    orderId: string;
+    pointsEarned: number;
+    createdAt: string;
+}
+
+export interface LoyaltyInfo {
+    balance: number;
+    history: LoyaltyHistoryItem[];
 }
 
 export interface AuthResponse {

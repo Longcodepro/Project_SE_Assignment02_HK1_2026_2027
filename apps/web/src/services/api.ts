@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Product, Order, AuthResponse, User } from "@/types";
+import { Product, Order, AuthResponse, User, LoyaltyInfo } from "@/types";
 
 // Lấy URL Backend động: ưu tiên custom URL trong localStorage (để test trên mobile / demo từ xa), sau đó đến biến môi trường
 export const getApiUrl = (): string => {
@@ -85,8 +85,8 @@ export const apiService = {
         }
     },
 
-    // 1. Đăng ký tài khoản
-    register: async (payload: { email: string; password: string; name?: string }): Promise<User> => {
+    // 1. Đăng ký tài khoản (dùng số điện thoại di động VN)
+    register: async (payload: { phone: string; password: string; name?: string; email?: string }): Promise<User> => {
         try {
             const res = await axios.post(`${getApiUrl()}/auth/register`, payload);
             return res.data;
@@ -102,13 +102,13 @@ export const apiService = {
         }
     },
 
-    // 2. Đăng nhập lấy JWT Access Token
-    login: async (payload: { email: string; password: string }): Promise<AuthResponse> => {
+    // 2. Đăng nhập lấy JWT Access Token (dùng số điện thoại)
+    login: async (payload: { phone: string; password: string }): Promise<AuthResponse> => {
         try {
             const res = await axios.post(`${getApiUrl()}/auth/login`, payload);
             return res.data;
         } catch (error: unknown) {
-            let msg = 'Email hoặc mật khẩu không chính xác';
+            let msg = 'Số điện thoại hoặc mật khẩu không chính xác';
             if (axios.isAxiosError(error) && error.response?.data?.message) {
                 const resMsg = error.response.data.message;
                 msg = Array.isArray(resMsg) ? resMsg.join(', ') : resMsg;
@@ -126,6 +126,17 @@ export const apiService = {
             return response.data;
         } catch (error) {
             console.error("Lỗi khi lấy danh sách sản phẩm!", error);
+            throw error;
+        }
+    },
+
+    // 3b. Lấy chi tiết một sản phẩm
+    getProductById: async (id: number): Promise<Product> => {
+        try {
+            const response = await axios.get(`${getApiUrl()}/products/${id}`);
+            return response.data;
+        } catch (error) {
+            console.error(`Lỗi khi lấy chi tiết sản phẩm #${id}!`, error);
             throw error;
         }
     },
@@ -190,6 +201,33 @@ export const apiService = {
         };
     },
 
+    // 4b. Thanh toán lại đơn hàng đang ở trạng thái PAYMENT_FAILED (POST /payments)
+    payOrder: async (payload: {
+        orderId: string;
+        paymentMethod: 'WALLET' | 'CARD';
+        cardNumber?: string;
+    }) => {
+        const payIdempotencyKey = `pay_retry_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        const paymentBody: { orderId: string; method: 'WALLET' | 'CARD'; cardNumber?: string } = {
+            orderId: payload.orderId,
+            method: payload.paymentMethod,
+        };
+        if (payload.paymentMethod === 'CARD') {
+            paymentBody.cardNumber = payload.cardNumber || '9704000000000001';
+        }
+
+        const res = await axios.post(
+            `${getApiUrl()}/payments`,
+            paymentBody,
+            {
+                headers: {
+                    'Idempotency-Key': payIdempotencyKey,
+                },
+            }
+        );
+        return res.data;
+    },
+
     // 5. Lịch sử đơn hàng (GET /orders/me)
     getMyOrders: async (): Promise<Order[]> => {
         try {
@@ -202,66 +240,34 @@ export const apiService = {
             if (axios.isAxiosError(error) && error.response?.status === 401) {
                 throw new Error('Vui lòng đăng nhập để xem lịch sử đơn hàng của bạn.');
             }
-            console.warn("Backend chưa kết nối được, sử dụng dữ liệu giả lập:", error);
-            // Dữ liệu giả lập dự phòng khi backend offline
-            return [
-                {
-                    id: "ord_1042",
-                    status: "PREPARING",
-                    total: 75000,
-                    createdAt: new Date(Date.now() - 5 * 60000).toISOString(),
-                    items: [
-                        {
-                            productId: 1,
-                            productName: "Cà phê sữa đá Tây Nguyên",
-                            unitPrice: 35000,
-                            size: "M",
-                            quantity: 1,
-                            lineTotal: 35000
-                        },
-                        {
-                            productId: 3,
-                            productName: "Trà sữa Ô Long nướng",
-                            unitPrice: 40000,
-                            size: "L",
-                            quantity: 1,
-                            lineTotal: 40000
-                        },
-                    ]
-                },
-                {
-                    id: "ord_1038",
-                    status: "READY",
-                    total: 29000,
-                    createdAt: new Date(Date.now() - 25 * 60000).toISOString(),
-                    items: [
-                        {
-                            productId: 2,
-                            productName: "Bạc xỉu truyền thống",
-                            unitPrice: 29000,
-                            size: "S",
-                            quantity: 1,
-                            lineTotal: 29000
-                        }
-                    ]
-                },
-                {
-                    id: "ord_0995",
-                    status: "COMPLETED",
-                    total: 64000,
-                    createdAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-                    items: [
-                        {
-                            productId: 1,
-                            productName: "Cà phê sữa đá Tây Nguyên",
-                            unitPrice: 32000,
-                            size: "M",
-                            quantity: 2,
-                            lineTotal: 64000
-                        }
-                    ]
-                }
-            ];
+            let msg = 'Không thể tải lịch sử đơn hàng từ máy chủ.';
+            if (axios.isAxiosError(error) && error.response?.data?.message) {
+                const resMsg = error.response.data.message;
+                msg = Array.isArray(resMsg) ? resMsg.join(', ') : resMsg;
+            } else if (error instanceof Error) {
+                msg = error.message;
+            }
+            throw new Error(msg);
+        }
+    },
+
+    // 6. Thông tin tích điểm và lịch sử (GET /loyalty/me)
+    getLoyalty: async (): Promise<LoyaltyInfo> => {
+        try {
+            const res = await axios.get(`${getApiUrl()}/loyalty/me`);
+            return res.data;
+        } catch (error) {
+            if (axios.isAxiosError(error) && error.response?.status === 401) {
+                throw new Error('Vui lòng đăng nhập để xem thông tin tích điểm.');
+            }
+            let msg = 'Không thể tải thông tin điểm tích lũy.';
+            if (axios.isAxiosError(error) && error.response?.data?.message) {
+                const resMsg = error.response.data.message;
+                msg = Array.isArray(resMsg) ? resMsg.join(', ') : resMsg;
+            } else if (error instanceof Error) {
+                msg = error.message;
+            }
+            throw new Error(msg);
         }
     },
 };

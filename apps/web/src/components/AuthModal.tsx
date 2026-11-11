@@ -3,15 +3,16 @@
 import { useState } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { apiService } from '@/services/api';
-import { X, Mail, Lock, User as UserIcon, Loader2, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
+import { X, Mail, Phone, Lock, User as UserIcon, Loader2, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
 
 export default function AuthModal() {
     const { isAuthModalOpen, authModalTab, closeAuthModal, openAuthModal, setAuth } = useAuthStore();
 
     // Trạng thái form
-    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -31,9 +32,14 @@ export default function AuthModal() {
 
     // Điền nhanh tài khoản mẫu để demo chấm điểm
     const fillSampleAccount = () => {
-        setEmail('long@test.com');
+        setPhone('0912345678');
         setPassword('matkhau123');
         resetMessages();
+    };
+
+    const validatePhone = (p: string) => {
+        const clean = p.replace(/\s+/g, '');
+        return /^(?:03|05|07|08|09)\d{8}$/.test(clean);
     };
 
     // Xử lý Đăng nhập
@@ -41,14 +47,20 @@ export default function AuthModal() {
         e.preventDefault();
         resetMessages();
 
-        if (!email.trim() || !password) {
-            setError('Vui lòng nhập đầy đủ email và mật khẩu');
+        const cleanPhone = phone.replace(/\s+/g, '');
+        if (!cleanPhone || !password) {
+            setError('Vui lòng nhập đầy đủ số điện thoại và mật khẩu');
+            return;
+        }
+
+        if (!validatePhone(cleanPhone)) {
+            setError('Số điện thoại không hợp lệ (cần 10 chữ số, đầu số 03, 05, 07, 08, 09)');
             return;
         }
 
         try {
             setLoading(true);
-            const res = await apiService.login({ email: email.trim(), password });
+            const res = await apiService.login({ phone: cleanPhone, password });
             setAuth(res.accessToken, res.user);
             setSuccessMsg('Đăng nhập thành công!');
             setTimeout(() => {
@@ -68,8 +80,14 @@ export default function AuthModal() {
         e.preventDefault();
         resetMessages();
 
-        if (!email.trim() || !password) {
-            setError('Vui lòng nhập đầy đủ email và mật khẩu');
+        const cleanPhone = phone.replace(/\s+/g, '');
+        if (!cleanPhone || !password) {
+            setError('Vui lòng nhập đầy đủ số điện thoại và mật khẩu');
+            return;
+        }
+
+        if (!validatePhone(cleanPhone)) {
+            setError('Số điện thoại không hợp lệ (cần 10 chữ số, đầu số 03, 05, 07, 08, 09)');
             return;
         }
 
@@ -81,13 +99,14 @@ export default function AuthModal() {
         try {
             setLoading(true);
             await apiService.register({
-                email: email.trim(),
+                phone: cleanPhone,
                 password,
                 name: name.trim() || undefined,
+                email: email.trim() || undefined,
             });
 
             // Tự động chuyển sang đăng nhập luôn sau khi đăng ký
-            const loginRes = await apiService.login({ email: email.trim(), password });
+            const loginRes = await apiService.login({ phone: cleanPhone, password });
             setAuth(loginRes.accessToken);
             setSuccessMsg('Đăng ký tài khoản thành công! Đang tự động đăng nhập...');
             setTimeout(() => {
@@ -186,16 +205,16 @@ export default function AuthModal() {
                         <form onSubmit={handleLogin} className="space-y-3.5 sm:space-y-4">
                             <div>
                                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Địa chỉ Email
+                                    Số điện thoại
                                 </label>
                                 <div className="relative">
-                                    <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                                    <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                                     <input
-                                        type="email"
+                                        type="tel"
                                         required
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        placeholder="tenban@email.com"
+                                        value={phone}
+                                        onChange={(e) => setPhone(e.target.value)}
+                                        placeholder="0912345678"
                                         className="w-full pl-10 pr-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-base sm:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-800 focus:bg-white transition"
                                     />
                                 </div>
@@ -241,7 +260,7 @@ export default function AuthModal() {
                                     className="w-full py-2 px-3 text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition flex items-center justify-center gap-1.5"
                                 >
                                     <span>⚡ Dùng tài khoản mẫu kiểm thử</span>
-                                    <span className="text-gray-500 font-normal hidden xs:inline sm:inline">(long@test.com)</span>
+                                    <span className="text-gray-500 font-normal hidden xs:inline sm:inline">(0912345678)</span>
                                 </button>
                             </div>
                         </form>
@@ -250,7 +269,24 @@ export default function AuthModal() {
                         <form onSubmit={handleRegister} className="space-y-3.5 sm:space-y-4">
                             <div>
                                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Họ và tên khách hàng
+                                    Số điện thoại <span className="text-red-500">*</span>
+                                </label>
+                                <div className="relative">
+                                    <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                                    <input
+                                        type="tel"
+                                        required
+                                        value={phone}
+                                        onChange={(e) => setPhone(e.target.value)}
+                                        placeholder="0912345678"
+                                        className="w-full pl-10 pr-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-base sm:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-800 focus:bg-white transition"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1">
+                                    Họ và tên khách hàng (tùy chọn)
                                 </label>
                                 <div className="relative">
                                     <UserIcon className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -266,13 +302,12 @@ export default function AuthModal() {
 
                             <div>
                                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Địa chỉ Email <span className="text-red-500">*</span>
+                                    Địa chỉ Email (tùy chọn)
                                 </label>
                                 <div className="relative">
                                     <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                                     <input
                                         type="email"
-                                        required
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="tenban@email.com"
