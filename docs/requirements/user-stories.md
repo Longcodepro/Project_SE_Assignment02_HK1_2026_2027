@@ -6,8 +6,8 @@
 > - **Trần Quốc Tài (`TaiTran263`)** — Phụ trách chính: Frontend UI/UX, Quản trị trạng thái Client, QA
 > - **Nguyễn Thành Long (`Longcodepro`)** — Phối hợp: Backend, Scrum Master, DevOps, Kiến trúc
 >
-> - **Đường dẫn:** `docs/requirements/user-story.md`  
-> - **Tài liệu tham chiếu:** `docs/requirements/requirements.md` và `docs/BACKLOG.md`  
+> - **Đường dẫn:** `docs/requirements/user-stories.md`  
+> - **Tài liệu tham chiếu:** `docs/requirements/requirements-api.md`, `docs/requirements/requirements-web.md` và `docs/BACKLOG.md`  
 > **Cấu trúc chuẩn Agile:** *"Là <vai trò>, tôi muốn <hành động> để <lợi ích mang lại>"*
 
 ---
@@ -19,7 +19,7 @@
 * **User Story:** Là **Khách hàng**, tôi muốn **xem danh sách các món cà phê phân theo danh mục trên màn hình điện thoại**, để **dễ dàng lựa chọn được đồ uống mình yêu thích mà không cần tới quầy gọi món**.
 * **Tiêu chí chấp nhận ngắn:**
   - Danh sách lấy từ API `GET /products`, hiển thị ảnh đại diện, tên đồ uống, giá cơ bản Size S.
-  - Món bán vượt hạn mức ngày (`soldToday >= dailyQuota`) tự động hiển thị nhãn "Hết hàng" (Sold out) màu xám và khóa nút chọn.
+  - Món có `isAvailable: false` tự động hiển thị nhãn "Hết hàng" (Sold out) màu xám và khóa nút chọn.
   - Có thanh điều hướng danh mục đồ uống (Cà phê phin, Espresso, Cold Brew).
 
 ---
@@ -47,7 +47,7 @@
 
 ### [US-04] Đăng ký & Đăng nhập tài khoản khách hàng
 * **Ánh xạ yêu cầu:** `FR-04` | **Phân loại MoSCoW:** **Must Have**
-* **User Story:** Là **Khách hàng**, tôi muốn **đăng ký tài khoản và đăng nhập bằng email/mật khẩu**, để **lưu trữ lịch sử mua hàng cá nhân và tích lũy điểm thưởng thành viên**.
+* **User Story:** Là **Khách hàng**, tôi muốn **đăng ký tài khoản và đăng nhập bằng số điện thoại/mật khẩu**, để **lưu trữ lịch sử mua hàng cá nhân và tích lũy điểm thưởng thành viên**.
 * **Tiêu chí chấp nhận ngắn:**
   - Mật khẩu đăng ký tối thiểu 6 ký tự, mã hóa băm an toàn bằng `bcryptjs`.
   - Đăng nhập thành công cấp phát `accessToken` JWT, lưu tại client và tự động đính kèm vào header các request sau.
@@ -87,7 +87,7 @@
 ---
 
 ### [US-08] Kiểm soát máy trạng thái đơn hàng (Order State Machine)
-* **Ánh xạ yêu cầu:** `FR-08` | **Phân loại MoSCoW:** **Should Have**
+* **Ánh xạ yêu cầu:** `FR-08` | **Phân loại MoSCoW:** **Must Have**
 * **User Story:** Là **Quản lý cửa hàng**, tôi muốn **hệ thống kiểm soát chặt chẽ các bước chuyển trạng thái đơn hàng**, để **ngăn ngừa lỗi nghiệp vụ (như thanh toán lại đơn đã hoàn tất)**.
 * **Tiêu chí chấp nhận ngắn:**
   - Máy trạng thái hữu hạn chỉ cho phép chuyển đổi: `PENDING → PAID | PAYMENT_FAILED`, `PAYMENT_FAILED → PAID`.
@@ -96,7 +96,7 @@
 ---
 
 ### [US-09] Chống gửi trùng lặp thanh toán (Idempotency)
-* **Ánh xạ yêu cầu:** `FR-09` | **Phân loại MoSCoW:** **Should Have**
+* **Ánh xạ yêu cầu:** `FR-09` | **Phân loại MoSCoW:** **Must Have**
 * **User Story:** Là **Khách hàng**, tôi muốn **không bị trừ tiền 2 lần khi mạng lag hoặc bấm nút thanh toán liên tục**, để **an tâm về tính chính xác và an toàn của giao dịch tài chính**.
 * **Tiêu chí chấp nhận ngắn:**
   - Client tự động sinh UUID và gửi kèm trong header `Idempotency-Key`.
@@ -132,7 +132,7 @@
 * **User Story:** Là **Khách hàng / Nhân viên quầy**, tôi muốn **có thể hủy đơn hàng trước khi quán tiến hành pha chế**, để **kịp thời xử lý khi khách đổi ý hoặc cửa hàng gặp sự cố đột xuất**.
 * **Tiêu chí chấp nhận ngắn:**
   - Chuyển trạng thái đơn hàng sang `CANCELLED`.
-  - Chỉ cho phép hủy khi đơn ở trạng thái `PENDING` hoặc `PAID` (chưa chuyển sang bước pha chế).
+  - Chỉ cho phép hủy khi đơn ở trạng thái `PENDING`, `PAYMENT_FAILED` hoặc `PAID` (chưa chuyển sang bước pha chế); hủy từ `PENDING`/`PAYMENT_FAILED` không hoàn tiền vì chưa trả, hủy từ `PAID` mới hoàn tiền mô phỏng.
   - Ghi nhận người thực hiện hủy (`cancelledBy`) và lý do hủy (`cancelNote`).
 
 ---
@@ -150,5 +150,5 @@
 * **Ánh xạ yêu cầu:** `FR-14` | **Phân loại MoSCoW:** **Could Have (Mở rộng)**
 * **User Story:** Là **Quản lý cửa hàng**, tôi muốn **xem báo cáo tổng hợp doanh thu và số lượng đơn theo ngày/tuần**, để **đánh giá hiệu quả kinh doanh và lên kế hoạch nhập nguyên liệu hợp lý**.
 * **Tiêu chí chấp nhận ngắn:**
-  - API `GET /admin/stats/overview` tổng hợp: Tổng doanh thu, số đơn thành công và danh sách Top 5 món bán chạy nhất.
+  - API báo cáo tổng hợp (Planned, tên endpoint chốt khi vào Sprint 4): Tổng doanh thu, số đơn thành công và danh sách Top 5 món bán chạy nhất.
   - Hiển thị số liệu trực quan dạng biểu đồ thống kê cơ bản.
