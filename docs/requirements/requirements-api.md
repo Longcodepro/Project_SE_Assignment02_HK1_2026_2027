@@ -55,13 +55,13 @@ Thanh toán bị từ chối theo luật mô phỏng (thẻ đuôi `0000`, ví t
 
 ### FR-04. Đăng ký, đăng nhập, JWT (Sprint 2, Must)
 
-- **Đăng ký:** `phone` (bắt buộc, duy nhất, số di động Việt Nam: đầu số `0` hoặc `+84`, tiếp theo là `3`, `5`, `7`, `8` hoặc `9` và 8 chữ số; server chuẩn hóa về dạng 10 chữ số bắt đầu bằng `0` trước khi lưu và so trùng), `password` (6 đến 72 ký tự), `name` (tùy chọn), `email` (tùy chọn, đúng định dạng, lưu chữ thường). Mật khẩu băm `bcryptjs` salt rounds 10, không bao giờ trả `passwordHash`. `role` mặc định `CUSTOMER`; client không được gửi `role`.
+- **Đăng ký:** `phone` (**khóa chính (Primary Key) của bảng `User`**, bắt buộc, duy nhất, số di động Việt Nam: đầu số `0` hoặc `+84`, tiếp theo là `3`, `5`, `7`, `8` hoặc `9` và 8 chữ số; server chuẩn hóa về dạng 10 chữ số bắt đầu bằng `0` trước khi lưu và so trùng), `password` (6 đến 72 ký tự), `name` (tùy chọn), `email` (tùy chọn, không duy nhất, đúng định dạng, lưu chữ thường). Mật khẩu băm `bcryptjs` salt rounds 10, không bao giờ trả `passwordHash`. `role` mặc định `CUSTOMER`; client không được gửi `role`.
 - **Đăng nhập:** `phone` và `password`, thành công trả `{ "accessToken" }`. Sai SĐT hoặc sai mật khẩu đều trả cùng một thông báo 401, không lộ SĐT có tồn tại hay không.
-- **JWT:** hạn 24 giờ (`JWT_EXPIRES_IN`), chứa `userId` và `role`. Không có giá trị mặc định cho `JWT_SECRET`; thiếu thì API không khởi động.
+- **JWT:** hạn 24 giờ (`JWT_EXPIRES_IN`), chứa `phone` (khóa chính, dùng làm định danh người dùng thay cho `id` riêng) và `role`. Không có giá trị mặc định cho `JWT_SECRET`; thiếu thì API không khởi động.
 - `JwtAuthGuard` bảo vệ `POST /orders`, `POST /payments`, `GET /orders/me`, `GET /loyalty/me`.
 
 **Tiêu chí chấp nhận:**
-- Đăng ký hợp lệ trả 201 gồm `id`, `phone`, `name`, `email`, `role: "CUSTOMER"`; phản hồi không có `passwordHash`.
+- Đăng ký hợp lệ trả 201 gồm `phone` (khóa chính), `name`, `email`, `role: "CUSTOMER"`; phản hồi không có `passwordHash`.
 - Đăng ký trùng SĐT trả 409; `0912345678` và `+84912345678` được coi là cùng một SĐT.
 - SĐT không phải số di động Việt Nam (ví dụ `0212345678`, `091234567`), mật khẩu ngoài 6 đến 72 ký tự, hoặc body có `role` trả 400.
 - Đăng nhập đúng trả 200 kèm `accessToken`; sai SĐT hoặc sai mật khẩu trả 401 cùng nội dung.
@@ -199,7 +199,7 @@ Endpoint dành cho vai trò nhân viên trả 403 khi sai vai trò.
 
 `api-contract.md` là hợp đồng chung với Tài nên phải cập nhật và báo Tài trước khi sửa:
 
-1. Định danh bằng **`phone`** (số di động Việt Nam, chuẩn hóa về 10 chữ số) thay cho `email` ở `POST /auth/register`, `POST /auth/login`; thêm `role` vào phản hồi đăng ký và vào JWT. `email` thành tùy chọn.
+1. Định danh bằng **`phone`** (số di động Việt Nam, chuẩn hóa về 10 chữ số, **là khóa chính của bảng `User`, thay cho `id` riêng**) thay cho `email` ở `POST /auth/register`, `POST /auth/login`; thêm `role` vào phản hồi đăng ký và vào JWT. `email` thành tùy chọn, không duy nhất.
 2. `GET /products` thêm `category` (`{ id, name }`) và `isAvailable`; thêm `GET /products/:id`.
 3. `POST /orders` từ chối món `isAvailable: false` bằng 409.
 4. Thêm endpoint mới `GET /loyalty/me`.
