@@ -21,7 +21,7 @@
 | **Mã định danh** | **UC-05** *(Theo danh mục 21 UC SSOT; tương ứng với Use-case trọng tâm Task 1.3 của đề bài)* |
 | **Mức độ ưu tiên** | **MUST HAVE** *(Theo chuẩn MoSCoW — Nghiệp vụ sống còn của MVP)* |
 | **Phân hệ** | Phân hệ Bán hàng & Xử lý Giao dịch *(Order & Payment Subsystem)* |
-| **Mục tiêu nghiệp vụ** | Cho phép khách hàng tự chọn hình thức nhận (Mang về / Tại quán), áp dụng voucher giảm giá, chọn phương thức thanh toán điện tử (Thẻ / Ví); hệ thống tính giá an toàn phía server, trừ tiền mô phỏng và sinh mã nhận đồ 6 chữ số mà không cần nhân viên thu ngân thủ công. |
+| **Mục tiêu nghiệp vụ** | Cho phép khách hàng xem lại giỏ hàng, chọn phương thức thanh toán điện tử (Thẻ / Ví); hệ thống tính giá an toàn phía server (Server-side Pricing), trừ tiền mô phỏng và lưu vết đơn hàng mà không cần nhân viên thu ngân thủ công. |
 
 ---
 
@@ -31,7 +31,7 @@
    - **Khách hàng (Customer):** Người dùng thao tác trực tiếp trên trình duyệt Web/PWA di động, có nhu cầu đặt thức uống và thanh toán nhanh chóng bằng phương thức không tiền mặt.
 2. **Tác nhân phụ / Hỗ trợ (Supporting / Secondary Actors):**
    - **Cổng thanh toán mô phỏng (Payment Gateway - Mock External System):** Hệ thống dịch vụ ngoài mô phỏng tiếp nhận yêu cầu thanh toán (Thẻ ngân hàng hoặc Ví điện tử), thực hiện phê duyệt giao dịch (`PAYMENT_SUCCESS`) hoặc từ chối giao dịch (`PAYMENT_FAILED`) theo kịch bản kiểm thử.
-   - **Nhân viên Pha chế / Quầy (Barista / Cashier):** Tiếp nhận đơn hàng trên màn hình vận hành sau khi khách thanh toán thành công để thực hiện pha chế và bàn giao thức uống bằng mã nhận hàng 6 số.
+   - **Nhân viên Pha chế / Quầy (Barista / Cashier):** Tiếp nhận đơn hàng sau khi khách thanh toán thành công để thực hiện pha chế và bàn giao thức uống theo mã đơn hàng (hoặc mã nhận hàng 6 số ở Sprint 3 Planned).
 
 ---
 
@@ -223,7 +223,7 @@ Các kịch bản kiểm thử theo chuẩn **Given - When - Then** để phục
 
 ### Kịch bản 1: Thanh toán thẻ thành công (Happy Path)
 - **Given:** Khách hàng đã đăng nhập, giỏ hàng có 1 ly "Cà phê sữa đá" Size M (giá 30.000đ) và 1 Topping "Trân châu trắng" (5.000đ).
-- **When:** Khách hàng chọn hình thức "Mang về", chọn phương thức "Thẻ ngân hàng", nhập số thẻ hợp lệ (đuôi `1234`) và bấm "Xác nhận Thanh toán".
+- **When:** Khách hàng chọn phương thức "Thẻ ngân hàng", nhập số thẻ hợp lệ (đuôi `1234`) và bấm "Xác nhận Thanh toán".
 - **Then:**
   - Hệ thống tạo đơn hàng mới trạng thái `PAID`, tổng tiền chính xác 35.000 VNĐ.
   - Tài khoản khách hàng được cộng thêm đúng 35 điểm tích lũy.
