@@ -24,31 +24,34 @@ Sơ đồ lớp miền (**Domain Class Diagram**) thể hiện cấu trúc tĩnh
 
 1. **`User` (Người dùng hệ thống):**
    - Đại diện cho các tác nhân tương tác với hệ thống.
-   - Định danh duy nhất bằng **Số điện thoại** (`phone: String [Unique]`, định dạng 10 chữ số chuẩn Việt Nam theo `FR-04`).
+   - Định danh bằng **Số điện thoại**, là **khóa chính (`phone: String [PK]`)** của bảng `User` — không có cột `id` riêng, định dạng 10 chữ số chuẩn Việt Nam theo `FR-04`.
    - Phân quyền theo cơ chế RBAC (`role: Role`) gồm 4 vai trò: `CUSTOMER`, `BARISTA`, `CASHIER`, `MANAGER`.
    - Lưu trữ số dư điểm tích lũy thành viên (`loyaltyPoints: Int`) theo quy tắc tích điểm 1 điểm / 1.000đ (`UC-20` / `FR-10`).
    - Mật khẩu băm an toàn (`passwordHash: String`) bằng thuật toán `bcryptjs`.
 
-2. **`Product` (Món đồ uống & Sản phẩm):**
-   - Quản lý danh mục thực đơn đồ uống (`category`, `name`, `price` niêm yết theo Size S, `imageUrl`).
+2. **`Category` (Danh mục đồ uống):**
+   - Phân loại món trên thực đơn (Cà phê phin, Espresso, Trà trái cây...).
+   - Định danh: `id: Int [PK]`, `name: String`.
+
+3. **`Product` (Món đồ uống & Sản phẩm):**
+   - Quản lý danh mục thực đơn đồ uống (`categoryId: Int [FK]`, `name`, `price` niêm yết theo Size S, `imageUrl`).
    - Cờ trạng thái phục vụ: **`isAvailable: Boolean = true`** (Đánh dấu món còn hàng hay tạm hết hàng/hết nguyên liệu). Khi `isAvailable = false`, giao diện vô hiệu hóa nút đặt và hệ thống từ chối tạo đơn (`FR-01`, Activity Diagram).
 
-3. **`Order` (Đơn hàng tổng thể):**
+4. **`Order` (Đơn hàng tổng thể):**
    - Quản lý toàn bộ vòng đời của một đơn hàng đặt qua ứng dụng.
    - Hỗ trợ cơ chế **Khóa lạc quan (`version: Int = 0`)** để ngăn chặn xung đột dữ liệu đồng thời (Optimistic Concurrency Control).
    - Lưu trữ khóa chống trùng lặp **`idempotencyKey: String?`** (UUID v4 do Client gửi lên theo `FR-09`).
-   - **`pickupCode: String?`**: Mã nhận đồ uống 6 chữ số ngẫu nhiên duy nhất (ví dụ `839201`), cấp phát ngay khi đơn chuyển trạng thái `PAID` để khách nhận đồ tại quầy (`UC-07` / `UC-12`).
-   - **`orderType: OrderType`**: Hình thức nhận đồ uống (**"Mang về"** `TAKE_AWAY` hoặc **"Dùng tại quán"** `DINE_IN`).
-   - **`total: Int`**: Tổng tiền thực trả do máy chủ tính toán độc quyền (**Server-side Pricing** theo `FR-08`).
+   - **`pickupCode: String?`** *(Sprint 3, Planned)*: Mã nhận đồ uống 6 chữ số ngẫu nhiên duy nhất (ví dụ `839201`), cấp phát khi đơn chuyển trạng thái `READY` (sau khi pha chế xong) để khách nhận đồ tại quầy (`UC-07` / `UC-12`). Không áp dụng ở MVP Sprint 1-2.
+   - **`total: Int`**: Tổng tiền thực trả do máy chủ tính toán độc quyền (**Server-side Pricing** theo `FR-05`).
 
-4. **`OrderItem` (Chi tiết ly nước trong đơn):**
+5. **`OrderItem` (Chi tiết ly nước trong đơn):**
    - Mỗi bản ghi đại diện cho một dòng ly nước đã cấu hình trong giỏ hàng.
    - Thuộc tính cấu hình: kích cỡ (`size: Size`), mảng topping tùy chọn (`toppings: String[]`), số lượng (`quantity: 1..99`).
    - **`unitPrice: Int`**: Đơn giá sau khi đã cộng phụ thu size và toppings, đảm bảo tính bất biến của lịch sử giá tại thời điểm đặt.
 
-5. **`Payment` (Giao dịch thanh toán):**
+6. **`Payment` (Giao dịch thanh toán):**
    - Ghi nhận chi tiết kết quả thẩm định và thanh toán mô phỏng.
-   - Phương thức thanh toán: `method: PaymentMethod` (`CARD`, `WALLET`, `TRANSFER`).
+   - Phương thức thanh toán: `method: PaymentMethod` (`CARD`, `WALLET`).
    - Trạng thái thanh toán: `status: PaymentStatus` (`SUCCESS`, `FAILED`).
    - Lưu trữ mã tham chiếu cổng thanh toán (`transactionId: String?`), nguyên nhân từ chối (`failureReason: String?`) và số điểm thưởng được cấp phát (`pointsEarned: Int`).
 
@@ -56,14 +59,15 @@ Sơ đồ lớp miền (**Domain Class Diagram**) thể hiện cấu trúc tĩnh
 
 ### B. Nhóm Thực Thể Mở Rộng Nghiệp Vụ (Domain Extensions)
 
-6. **`Promotion` (Chương trình khuyến mại & Voucher):**
+7. **`Promotion` (Chương trình khuyến mại & Voucher)** *(Sprint 3, Planned — chưa hiện thực ở MVP)*:
    - Quản lý mã giảm giá ưu đãi (`code: String [Unique]`, ví dụ: `BREW20`, `BANMOI`).
    - Hình thức giảm: `discountType: DiscountType` (`PERCENT` - giảm theo %, `FIXED` - giảm số tiền cố định).
    - Ràng buộc: giá trị đơn hàng tối thiểu (`minOrderAmount: Int`), trạng thái kích hoạt (`isActive: Boolean`) và thời hạn sử dụng (`expiryDate`).
 
-7. **`LoyaltyTransaction` (Nhật ký giao dịch điểm thưởng):**
-   - Quản lý lịch sử chi tiết mọi biến động điểm thưởng của người dùng (`EARN` - cộng điểm sau khi đơn `PAID`, `REDEEM` - đổi điểm lấy voucher hoặc giảm trừ).
+8. **`LoyaltyTransaction` (Nhật ký giao dịch điểm thưởng):**
+   - Quản lý lịch sử chi tiết mọi biến động điểm thưởng của người dùng (`EARN` - cộng điểm sau khi đơn `PAID`, `REDEEM` - đổi điểm lấy voucher hoặc giảm trừ, Sprint 3 Planned).
    - Ghi nhận số dư sau giao dịch (`balanceAfter: Int`) và liên kết chặt chẽ với mã đơn hàng (`orderId`).
+   - **Lưu ý triển khai MVP:** theo quyết định đã chốt (`cac-chuc-nang-thong-nhat.md` mục 6), ở Sprint 2 lịch sử điểm được **suy ra trực tiếp từ các lần thanh toán thành công trong bảng `Payment`**, không cần bảng sổ điểm riêng. Lớp `LoyaltyTransaction` được biểu diễn ở mức domain để đáp ứng yêu cầu tối thiểu của đề bài (Task 2.3), chưa chắc là một bảng vật lý riêng trong Sprint 2.
 
 ---
 
@@ -73,9 +77,8 @@ Sơ đồ lớp miền (**Domain Class Diagram**) thể hiện cấu trúc tĩnh
 |---|---|---|
 | **`Role`** | `CUSTOMER`, `BARISTA`, `CASHIER`, `MANAGER` | Phân quyền vai trò người dùng trong hệ thống theo RBAC |
 | **`OrderStatus`** | `PENDING`, `PAID`, `PAYMENT_FAILED`, `PREPARING`, `READY`, `COMPLETED`, `CANCELLED` | 7 trạng thái phản ánh đầy đủ vòng đời xử lý đơn hàng từ lúc đặt đến lúc nhận món |
-| **`OrderType`** | `TAKE_AWAY`, `DINE_IN` | Hình thức nhận đồ uống của khách hàng |
 | **`Size`** | `S`, `M`, `L` | Kích cỡ đồ uống (Size S giá gốc, Size M/L có phụ thu) |
-| **`PaymentMethod`** | `CARD`, `WALLET`, `TRANSFER` | Các kênh thanh toán không tiền mặt được hỗ trợ |
+| **`PaymentMethod`** | `CARD`, `WALLET` | Các kênh thanh toán không tiền mặt được hỗ trợ |
 | **`PaymentStatus`** | `SUCCESS`, `FAILED` | Trạng thái phê duyệt của cổng thanh toán mô phỏng |
 | **`DiscountType`** | `FIXED`, `PERCENT` | Loại chiết khấu của voucher khuyến mãi |
 
@@ -88,8 +91,9 @@ Sơ đồ lớp miền (**Domain Class Diagram**) thể hiện cấu trúc tĩnh
 | **`User`** | Composition (`*--`) | **`Order`** | `1` đến `0..*` | Một người dùng có thể đặt nhiều đơn hàng; mỗi đơn hàng thuộc sở hữu của duy nhất một người dùng. |
 | **`Order`** | Composition (`*--`) | **`OrderItem`** | `1` đến `1..*` | Một đơn hàng bắt buộc phải chứa ít nhất 1 ly nước (`1..*`); khi đơn bị hủy hoặc xóa thì các dòng item đi kèm cũng bị xóa. |
 | **`OrderItem`** | Association (`-->`) | **`Product`** | `0..*` đến `1` | Mỗi chi tiết món tham chiếu đến đúng 1 sản phẩm gốc trong menu để lấy công thức và định giá. |
+| **`Product`** | Association (`-->`) | **`Category`** | `0..*` đến `1` | Mỗi sản phẩm thuộc về một danh mục đồ uống để hỗ trợ lọc menu trên giao diện. |
 | **`Order`** | Composition (`*--`) | **`Payment`** | `1` đến `0..*` | Một đơn hàng có thể có một hoặc nhiều lần giao dịch thanh toán (ví dụ: lần đầu thất bại do thẻ 0000, lần sau thành công). |
-| **`Order`** | Aggregation (`o--`) | **`Promotion`** | `0..*` đến `0..1` | Mỗi đơn hàng có thể áp dụng tối đa 1 mã giảm giá; voucher tồn tại độc lập không phụ thuộc vào đơn hàng. |
+| **`Order`** | Aggregation (`o--`) | **`Promotion`** | `0..*` đến `0..1` | *(Sprint 3, Planned)* Mỗi đơn hàng có thể áp dụng tối đa 1 mã giảm giá; voucher tồn tại độc lập không phụ thuộc vào đơn hàng. |
 | **`User`** | Composition (`*--`) | **`LoyaltyTransaction`** | `1` đến `0..*` | Một người dùng sở hữu lịch sử điểm thưởng riêng biệt. |
 | **`LoyaltyTransaction`** | Association (`-->`) | **`Order`** | `0..*` đến `0..1` | Mỗi giao dịch cộng điểm liên kết trực tiếp với 1 đơn hàng cụ thể. |
 
