@@ -2,6 +2,16 @@
 
 Base URL: `http://localhost:4003`. Mọi thay đổi phải báo người kia trước khi sửa.
 
+## GET /health
+
+Không cần token, dùng để làm nóng API và kiểm tra tình trạng trước khi demo/triển khai.
+
+200 OK
+
+```json
+{ "status": "ok", "timestamp": "2026-10-26T03:40:26.834Z" }
+```
+
 ## GET /products
 
 200 OK
@@ -12,12 +22,65 @@ Base URL: `http://localhost:4003`. Mọi thay đổi phải báo người kia tr
     "id": 1,
     "name": "Cà phê sữa",
     "price": 29000,
-    "imageUrl": "https://example.com/ca-phe-sua.jpg"
+    "imageUrl": "https://example.com/ca-phe-sua.jpg",
+    "category": { "id": 1, "name": "Cà phê" },
+    "isAvailable": true
   }
 ]
 ```
 
-`price`: số nguyên, đơn vị VND (size S). Size/topping thêm ở Task 4.
+`price`: số nguyên, đơn vị VND (size S). Size/topping thêm ở Task 4. Tìm kiếm và lọc theo `category` do client tự xử lý trên danh sách trả về, không có endpoint danh mục riêng.
+
+## GET /products/:id
+
+200 OK, cùng cấu trúc một phần tử của `GET /products`:
+
+```json
+{
+  "id": 1,
+  "name": "Cà phê sữa",
+  "price": 29000,
+  "imageUrl": "https://example.com/ca-phe-sua.jpg",
+  "category": { "id": 1, "name": "Cà phê" },
+  "isAvailable": true
+}
+```
+
+404 khi `id` không tồn tại. 400 khi `id` không phải số.
+
+## POST /auth/register
+
+Request
+
+```json
+{ "phone": "0912345678", "password": "matkhau123", "name": "Long", "email": "long@test.com" }
+```
+
+`phone` là **khóa chính của `User`**: số di động Việt Nam (đầu số `0` hoặc `+84`, tiếp theo `3`/`5`/`7`/`8`/`9` và 8 chữ số), server chuẩn hóa về dạng 10 chữ số bắt đầu bằng `0` trước khi lưu và so trùng. `password` 6–72 ký tự. `name` không bắt buộc. `email` tùy chọn, không duy nhất, chuẩn hóa chữ thường. Client không được gửi `role`.
+
+201 Created
+
+```json
+{ "phone": "0912345678", "name": "Long", "email": "long@test.com", "role": "CUSTOMER" }
+```
+
+400 khi `phone` không hợp lệ, mật khẩu ngoài 6–72 ký tự, hoặc body có `role`. 409 khi `phone` đã đăng ký (`0912345678` và `+84912345678` tính là cùng một số).
+
+## POST /auth/login
+
+Request
+
+```json
+{ "phone": "0912345678", "password": "matkhau123" }
+```
+
+200 OK
+
+```json
+{ "accessToken": "eyJhbGciOi..." }
+```
+
+401 khi sai SĐT hoặc sai mật khẩu (cùng một thông báo cho cả hai trường hợp, không lộ SĐT có tồn tại hay không). JWT chứa `phone` (khóa chính, dùng làm định danh người dùng) và `role`, hạn 24 giờ (`JWT_EXPIRES_IN`); không có giá trị mặc định cho `JWT_SECRET`, thiếu biến này thì API không khởi động. Gửi token lên bằng header `Authorization: Bearer <accessToken>`.
 
 ## POST /orders
 
@@ -47,41 +110,9 @@ Request
 { "statusCode": 400, "message": ["items must not be empty"], "error": "Bad Request" }
 ```
 
+409 khi món trong giỏ có `isAvailable: false`.
+
 Trạng thái đơn: `PENDING` → `PAID` | `PAYMENT_FAILED`. Đơn `PAYMENT_FAILED` được thanh toán lại (→ `PAID`). `PAID` là trạng thái cuối.
-
-## POST /auth/register
-
-Request
-
-```json
-{ "email": "long@test.com", "password": "matkhau123", "name": "Long" }
-```
-
-`email` được chuẩn hóa chữ thường. `password` 6–72 ký tự. `name` không bắt buộc.
-
-201 Created
-
-```json
-{ "id": 1, "email": "long@test.com", "name": "Long" }
-```
-
-400 khi email/mật khẩu không hợp lệ. 409 khi email đã đăng ký.
-
-## POST /auth/login
-
-Request
-
-```json
-{ "email": "long@test.com", "password": "matkhau123" }
-```
-
-200 OK
-
-```json
-{ "accessToken": "eyJhbGciOi..." }
-```
-
-401 khi sai email hoặc mật khẩu (cùng một thông báo cho cả hai trường hợp). Token hết hạn sau `JWT_EXPIRES_IN` (mặc định 1 ngày); gửi lên bằng header `Authorization: Bearer <accessToken>`.
 
 ## POST /payments
 
@@ -133,6 +164,23 @@ Cần header `Authorization: Bearer <accessToken>`. Trả lịch sử đơn củ
 ```
 
 401 thiếu hoặc sai token.
+
+## GET /loyalty/me
+
+Cần header `Authorization: Bearer <accessToken>`. Trả số dư và lịch sử điểm tích lũy của người dùng đang đăng nhập.
+
+200 OK
+
+```json
+{
+  "balance": 84,
+  "history": [
+    { "orderId": "ord_123", "pointsEarned": 84, "createdAt": "2026-10-26T03:40:26.834Z" }
+  ]
+}
+```
+
+`history` lấy từ các lần thanh toán thành công (`PAID`), mới nhất trước. 401 thiếu hoặc sai token.
 
 ## Idempotency-Key
 
