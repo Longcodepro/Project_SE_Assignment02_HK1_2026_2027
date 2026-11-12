@@ -207,9 +207,14 @@ export default function ProductDetailModel({
                     <button
                         type="button"
                         onClick={handleConfirm}
-                        className="flex-1 bg-gradient-to-r from-[#4A2E1B] to-[#6F4324] hover:from-[#382213] hover:to-[#57341B] active:scale-95 text-white font-bold py-3 sm:py-3.5 px-4 sm:px-6 rounded-xl sm:rounded-2xl shadow-lg shadow-[#4A2E1B]/20 transition-all flex items-center justify-center text-xs sm:text-base"
+                        disabled={product.isAvailable === false}
+                        className={`flex-1 font-bold py-3 sm:py-3.5 px-4 sm:px-6 rounded-xl sm:rounded-2xl shadow-lg transition-all flex items-center justify-center text-xs sm:text-base ${
+                            product.isAvailable === false
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+                                : 'bg-gradient-to-r from-[#4A2E1B] to-[#6F4324] hover:from-[#382213] hover:to-[#57341B] active:scale-95 text-white shadow-[#4A2E1B]/20'
+                        }`}
                     >
-                        Thêm vào giỏ hàng
+                        {product.isAvailable === false ? 'Món đã hết hàng' : 'Thêm vào giỏ hàng'}
                     </button>
                 </div>
             </div>

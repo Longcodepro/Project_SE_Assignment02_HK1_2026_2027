@@ -32,10 +32,13 @@ export const useAuthStore = create<AuthState>()(
                         const payloadPart = token.split('.')[1];
                         if (payloadPart) {
                             const decoded = JSON.parse(atob(payloadPart));
+                            const phone = decoded.phone || decoded.sub;
                             parsedUser = {
-                                id: decoded.sub,
+                                id: phone,
+                                phone,
+                                role: decoded.role || 'CUSTOMER',
                                 email: decoded.email,
-                                name: decoded.name || decoded.email?.split('@')[0],
+                                name: decoded.name || phone,
                             };
                         }
                     } catch {

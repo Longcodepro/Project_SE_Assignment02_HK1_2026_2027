@@ -4,17 +4,32 @@ import Link from "next/link";
 import { Coffee, ShoppingBag, Clock, ReceiptText, User as UserIcon, LogIn, LogOut, Radio } from 'lucide-react';
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { apiService } from "@/services/api";
 import AuthModal from "@/components/AuthModal";
 import ServerConfigModal from "@/components/ServerConfigModal";
-import { useSyncExternalStore, useState } from "react";
+import { useSyncExternalStore, useState, useEffect } from "react";
 
 export default function Navbar() {
     const totalItems = useCartStore((state) => state.getTotalItems());
     const { token, user, openAuthModal, logout } = useAuthStore();
     const [isServerModalOpen, setIsServerModalOpen] = useState(false);
+    const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
 
     // Tránh lỗi hydration mismatch giữa SSR và Client
     const isClient = useSyncExternalStore(() => () => {}, () => true, () => false);
+
+    useEffect(() => {
+        if (!token) return;
+        let isMounted = true;
+        apiService.getLoyalty()
+            .then((data) => {
+                if (isMounted) setLoyaltyPoints(data.balance);
+            })
+            .catch(() => {});
+        return () => {
+            isMounted = false;
+        };
+    }, [token]);
 
     return (
         <header className="sticky top-0 z-40 bg-[#2C1810]/95 backdrop-blur-md text-white border-b border-[#4A2E1B] shadow-md transition-all">
@@ -68,13 +83,18 @@ export default function Navbar() {
 
                     {/* NÚT TÀI KHOẢN / ĐĂNG NHẬP (TASK 7 FE) */}
                     {isClient && token ? (
-                        <div className="flex items-center bg-[#3E2314]/90 border border-[#57341B] rounded-full p-1 sm:pl-3 shadow-sm">
-                            <div className="flex items-center gap-1 text-xs text-[#FAF7F2] max-w-[80px] sm:max-w-[140px] truncate pl-1 sm:pl-0">
+                        <div className="flex items-center gap-1.5 bg-[#3E2314]/90 border border-[#57341B] rounded-full p-1 sm:pl-3 shadow-sm">
+                            <div className="flex items-center gap-1 text-xs text-[#FAF7F2] max-w-[100px] sm:max-w-[160px] truncate pl-1 sm:pl-0">
                                 <UserIcon className="w-3.5 h-3.5 text-[#D4A373] shrink-0" />
                                 <span className="font-semibold truncate hidden xs:inline sm:inline">
-                                    {user?.name || user?.email?.split('@')[0] || 'Tôi'}
+                                    {user?.name || user?.phone || 'Tôi'}
                                 </span>
                             </div>
+                            {token && loyaltyPoints !== null && (
+                                <span className="hidden sm:inline-flex items-center gap-0.5 text-[11px] font-bold text-amber-300 bg-amber-950/70 px-2 py-0.5 rounded-full border border-amber-700/50">
+                                    ⭐ {loyaltyPoints.toLocaleString('vi-VN')}đ
+                                </span>
+                            )}
                             <button
                                 onClick={logout}
                                 title="Đăng xuất tài khoản"

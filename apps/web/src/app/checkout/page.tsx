@@ -85,7 +85,7 @@ export default function CheckoutPage(){
             }
 
             if (resultOrder.status !== 'PAID') {
-                throw new Error('Thanh toán thất bại (PAYMENT_FAILED). Vui lòng thử lại.');
+                throw new Error(`Thanh toán đơn hàng #${resultOrder.orderId} không thành công (PAYMENT_FAILED). Bạn có thể thử lại hoặc tra cứu đơn trong mục "Lịch sử đơn".`);
             }
 
             // Nếu thanh toán thành công, làm sạch giỏ hàng và chuyển sang màn hình xác nhận
