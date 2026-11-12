@@ -28,8 +28,8 @@ Toàn bộ dịch vụ đã được triển khai trực tiếp trên nền tả
 
 | Thành phần | Nền tảng hạ tầng | Địa chỉ truy cập Production | Giao thức | Ghi chú nghiệm thu |
 |---|---|---|:---:|---|
-| **Frontend Web App** | **Vercel Edge Network** | [`https://brewlite-web.vercel.app`](https://brewlite-web.vercel.app) | HTTPS | Ứng dụng Next.js 16 Mobile-first, CDN toàn cầu |
-| **Backend API Service** | **Render Cloud Services** | [`https://brewlite-api.onrender.com`](https://brewlite-api.onrender.com) | HTTPS | Container NestJS triển khai tự động từ GHCR |
+| **Frontend Web App** | **Vercel Edge Network** | [`https://se-as2-brewlite.vercel.app`](https://se-as2-brewlite.vercel.app) | HTTPS | Ứng dụng Next.js 16 Mobile-first, CDN toàn cầu |
+| **Backend API Service** | **Render Cloud Services** | [`https://brewlite-api.onrender.com`](https://brewlite-api.onrender.com) | HTTPS | NestJS build từ `apps/api/Dockerfile`, Render tự deploy theo kết nối Git |
 | **Endpoint Health Check** | **Render Cloud** | [`https://brewlite-api.onrender.com/health`](https://brewlite-api.onrender.com/health) | HTTPS | Trả về HTTP 200 `{ "status": "ok" }` |
 | **Tài liệu API (Swagger)** | **Render Cloud** | [`https://brewlite-api.onrender.com/docs`](https://brewlite-api.onrender.com/docs) | HTTPS | Giao diện thử nghiệm API OpenAPI 3.0 |
 | **Cơ sở dữ liệu** | **Neon Serverless PostgreSQL** | `ep-dry-pond-xxx.ap-southeast-1.aws.neon.tech` | TLS 5432 | Đặt tại Singapore (`ap-southeast-1`), SSL Mode |
@@ -63,7 +63,7 @@ Giảng viên và người nghiệm thu có thể sử dụng các tài khoản 
 * **Modal tùy biến đồ uống (`FR-02`):** Cho phép chọn duy nhất 1 Size (S +0đ, M +5.000đ, L +10.000đ) và tick chọn nhiều Topping (Trân châu đen +8.000đ, Kem cheese +10.000đ, Thạch cà phê +6.000đ). Giá tạm tính tự động nhảy số theo thời gian thực.
 * **Giỏ hàng Client Store (`FR-03`):** Quản lý bằng Zustand, tự động lưu bền vững vào `localStorage`. Cho phép tăng/giảm số lượng, xóa từng món, tự xóa giỏ khi thanh toán xong; hiển thị badge đếm số ly trên thanh điều hướng.
 * **Modal Xác thực SĐT (`FR-04`):** Giao diện đăng ký/đăng nhập chuẩn di động, validate regex SĐT 10 số Việt Nam (`^(?:03|05|07|08|09)\d{8}$`), lưu token JWT vào Axios headers.
-* **Màn hình Thanh toán Checkout (`FR-05`, `FR-06`):** Tóm tắt đơn hàng, lựa chọn phương thức Thẻ/Ví, sinh mã UUID `Idempotency-Key` bảo vệ giao dịch.
+* **Màn hình Thanh toán Checkout (`FR-05`, `FR-06`):** Tóm tắt đơn hàng, lựa chọn phương thức Thẻ/Ví, sinh mã duy nhất `Idempotency-Key` bảo vệ giao dịch.
 * **Lịch sử & Theo dõi đơn hàng (`FR-07`, `FR-10`):** Màn hình `/orders` hiển thị danh sách đơn cá nhân, cơ chế Polling tự động làm mới trạng thái mỗi 5 giây, hiển thị số dư điểm tích lũy và lịch sử cộng điểm.
 
 ### 4.2. Phân hệ Dịch vụ Máy chủ (Backend API — `apps/api`)
