@@ -23,7 +23,7 @@ Phương án xử lý:
 
 ## 2. Quyết Định (Decision)
 Nhóm quyết định áp dụng chuẩn **Idempotency-Key** (theo đặc tả kỹ thuật IETF RFC HTTP Idempotency):
-- **Phía Frontend:** Mỗi khi người dùng bấm "Đặt hàng" hoặc "Thanh toán", Next.js tự động sinh một chuỗi UUID v4 ngẫu nhiên (ví dụ: `e827d0a4-4f2a-4a2e-8c3d-1a2b3c4d5e6f`) và đính kèm vào HTTP Header: `Idempotency-Key: <UUID>`.
+- **Phía Frontend:** Mỗi khi người dùng bấm "Đặt hàng" hoặc "Thanh toán", Next.js tự động sinh một chuỗi ngẫu nhiên duy nhất cho mỗi lần thao tác (hiện dùng dạng `ord_<thời gian>_<ngẫu nhiên>` cho đơn và `pay_<thời gian>_<ngẫu nhiên>` cho thanh toán; UUID v4 cũng hợp lệ) và đính kèm vào HTTP Header: `Idempotency-Key: <key>`.
 - **Phía Backend:** 
   - Đọc header `Idempotency-Key` từ request.
   - Sử dụng ràng buộc duy nhất trong cơ sở dữ liệu PostgreSQL:
@@ -52,5 +52,5 @@ Nhóm quyết định áp dụng chuẩn **Idempotency-Key** (theo đặc tả k
 * **Trải nghiệm người dùng mượt mà:** Khách hàng gặp mạng lag bấm lại nút vẫn nhận được kết quả đơn hàng chính xác mà không gặp lỗi xung đột khó hiểu.
 
 ### Tiêu cực (Hạn chế & Đánh đổi):
-* **Ràng buộc phối hợp Client - Server:** Phía Frontend bắt buộc phải sinh UUID và truyền đúng header; header là tùy chọn ở phía API: nếu client không truyền key, hệ thống xử lý như bình thường và không có bảo vệ chống gửi trùng, nên Frontend phải luôn gửi key.
+* **Ràng buộc phối hợp Client - Server:** Phía Frontend bắt buộc phải sinh key duy nhất (1–128 ký tự `A-Za-z0-9_-`, không bắt buộc UUID) và truyền đúng header; header là tùy chọn ở phía API: nếu client không truyền key, hệ thống xử lý như bình thường và không có bảo vệ chống gửi trùng, nên Frontend phải luôn gửi key.
 * **Chi phí lưu trữ chỉ mục (Index Overhead):** CSDL cần duy trì chỉ mục Unique kép `[userPhone, idempotencyKey]` trên bảng `Order` và `[orderId, idempotencyKey]` trên bảng `Payment`, tốn thêm một phần dung lượng lưu trữ nhỏ không đáng kể.
