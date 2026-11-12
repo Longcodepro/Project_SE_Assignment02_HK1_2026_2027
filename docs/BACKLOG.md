@@ -4,7 +4,7 @@
 > **Môn học:** Công nghệ phần mềm — Học kỳ 1, Năm học 2026–2027  
 > **Nhóm phát triển:**
 > - **Nguyễn Thành Long (`Longcodepro`)** — Backend, Scrum Master, DevOps, Kiến trúc
-> - **Trần Tấn Tài (`TaiTran263`)** — Frontend UI/UX, Quản trị trạng thái Client, QA
+> - **Trần Quốc Tài (`TaiTran263`)** — Frontend UI/UX, Quản trị trạng thái Client, QA
 >
 > **Mô hình ưu tiên:** **MoSCoW** (Must have · Should have · Could have · Won't have)
 
@@ -28,9 +28,9 @@ Task 1: Yêu cầu  ──>  Task 2: Sơ đồ  ──>  Task 3: Kiến trúc  �
 | Mã Issue | Tiêu đề Issue | Phân loại MoSCoW | Sprint | Người phụ trách | Trạng thái |
 |:---:|---|:---:|:---:|:---:|:---:|
 | **#01** | Thiết lập cấu trúc Monorepo, quy ước Git và Definition of Done | **Must** | Sprint 1 | Long | **Done** |
-| **#02** | Đặc tả bối cảnh, stakeholder, phạm vi và SRS rút gọn (Task 1) | **Must** | Sprint 1 | Long & Tài | **To do** |
-| **#03** | Mô hình hóa hệ thống bằng PlantUML: Activity, Sequence, Class (Task 2) | **Must** | Sprint 1 | Long & Tài | **To do** |
-| **#04** | Thiết kế kiến trúc Modular Monolith, ADR 001–005 & Deployment (Task 3) | **Must** | Sprint 1 | Long | **To do** |
+| **#02** | Đặc tả bối cảnh, stakeholder, phạm vi và SRS rút gọn (Task 1) | **Must** | Sprint 1 | Long & Tài | **Done** |
+| **#03** | Mô hình hóa hệ thống bằng PlantUML: Activity, Sequence, Class (Task 2) | **Must** | Sprint 1 | Long & Tài | **Done** |
+| **#04** | Thiết kế kiến trúc Modular Monolith, ADR 001–005 & Deployment (Task 3) | **Must** | Sprint 1 | Long | **Done** |
 | **#05** | Thiết lập pipeline Continuous Integration (CI GitHub Actions) | **Must** | Sprint 1 | Long | **Done** |
 | **#06** | API danh sách sản phẩm `GET /products` và chi tiết `GET /products/:id` | **Must** | Sprint 1 | Long | **Done** |
 | **#07** | Màn hình Menu Mobile-first, Product Card, loading/empty/error state | **Must** | Sprint 1 | Tài | **Done** |
@@ -44,7 +44,7 @@ Task 1: Yêu cầu  ──>  Task 2: Sơ đồ  ──>  Task 3: Kiến trúc  �
 | **#15** | API `GET /orders/me` & Màn hình lịch sử đơn hàng của người dùng | **Must** | Sprint 2 | Long & Tài | **Done** |
 | **#16** | Bộ kiểm thử tự động: Unit test, Integration test và kịch bản Postman | **Must** | Sprint 2 | Long & Tài | **Done** |
 | **#17** | Pipeline Continuous Delivery (CD) đóng gói Docker Image lên GHCR | **Must** | Sprint 2 | Long | **Done** |
-| **#18** | Triển khai Production trực tiếp (Vercel, Render, Neon, Tunnel) & Traceability | **Must** | Sprint 2 | Cả hai | **Doing** |
+| **#18** | Triển khai Production trực tiếp (Vercel, Render, Neon, Tunnel) & Traceability | **Must** | Sprint 2 | Cả hai | **Done** |
 | **#19** | Máy trạng thái Order State Machine chặn chuyển trạng thái đơn sai | **Should** | Sprint 2 | Long | **Done** |
 | **#20** | Chống gửi trùng lặp thanh toán bằng header `Idempotency-Key` | **Should** | Sprint 2 | Long & Tài | **Done** |
 | **#21** | Khóa lạc quan (Optimistic Locking cột `version`) chống xung đột đơn | **Should** | Sprint 2 | Long | **Done** |
@@ -73,12 +73,12 @@ Task 1: Yêu cầu  ──>  Task 2: Sơ đồ  ──>  Task 3: Kiến trúc  �
 
 ### [Issue #02] Đặc tả bối cảnh, stakeholder, phạm vi và SRS rút gọn (Task 1)
 - **Phân loại:** **MUST HAVE** | **Sprint:** 1 | **Phụ trách:** Long & Tài
-- **Mô tả:** Soạn thảo tài liệu Task 1 gồm `context-and-scope.md` và `requirements.md` theo chuẩn đề bài.
+- **Mô tả:** Soạn thảo tài liệu Task 1 gồm `context-and-scope.md`, `requirements-api.md`, `requirements-web.md`, `user-stories.md` và `use-case-checkout.md` theo chuẩn đề bài.
 - **Tiêu chí chấp nhận:**
-  - [ ] Bảng Stakeholder (Khách hàng, Nhân viên, Quản lý, Giảng viên, Đơn vị thanh toán).
-  - [ ] Danh mục In-Scope (MVP), Out-of-Scope, Giả định và Ràng buộc.
-  - [ ] Danh sách FR (FR-01 đến FR-10) và NFR (NFR-01 đến NFR-05) có mức ưu tiên MoSCoW.
-  - [ ] Đặc tả chi tiết Use-Case trọng tâm: *Đặt hàng & Thanh toán không dùng tiền mặt*.
+  - [x] Bảng Stakeholder (Khách hàng, Nhân viên, Quản lý, Giảng viên, Đơn vị thanh toán).
+  - [x] Danh mục In-Scope (MVP), Out-of-Scope, Giả định và Ràng buộc.
+  - [x] Danh sách FR (FR-01 đến FR-21, trong đó FR-01 đến FR-10 là MVP) và NFR (NFR-01 đến NFR-05) có mức ưu tiên MoSCoW.
+  - [x] Đặc tả chi tiết Use-Case trọng tâm: *Đặt hàng & Thanh toán không dùng tiền mặt*.
 
 ---
 
@@ -86,9 +86,9 @@ Task 1: Yêu cầu  ──>  Task 2: Sơ đồ  ──>  Task 3: Kiến trúc  �
 - **Phân loại:** **MUST HAVE** | **Sprint:** 1 | **Phụ trách:** Long & Tài
 - **Mô tả:** Thiết kế các sơ đồ UML cho hệ thống theo yêu cầu Task 2 bằng PlantUML, xuất đầy đủ file `.puml` và ảnh vector `.svg`.
 - **Tiêu chí chấp nhận:**
-  - [ ] Task 2.1: Activity Diagram luồng End-to-End có swimlane, nhánh hết hàng, chưa login, lỗi thanh toán.
-  - [ ] Task 2.2: Sequence Diagram cho luồng Đặt & Thanh toán: Customer $\rightarrow$ Next.js $\rightarrow$ NestJS $\rightarrow$ DB $\rightarrow$ Payment Service, có JWT, Validate, Transaction, nhánh Alt và Idempotency.
-  - [ ] Task 2.3: Class Diagram Domain gồm tối thiểu 7 lớp: `User`, `Product`, `Order`, `OrderItem`, `Payment`, `Promotion`, `LoyaltyTransaction`.
+  - [x] Task 2.1: Activity Diagram luồng End-to-End có swimlane, nhánh hết hàng, chưa login, lỗi thanh toán.
+  - [x] Task 2.2: Sequence Diagram cho luồng Đặt & Thanh toán: Customer $\rightarrow$ Next.js $\rightarrow$ NestJS $\rightarrow$ DB $\rightarrow$ Payment Service, có JWT, Validate, Transaction, nhánh Alt và Idempotency.
+  - [x] Task 2.3: Class Diagram Domain gồm tối thiểu 7 lớp: `User`, `Product`, `Order`, `OrderItem`, `Payment`, `Promotion`, `LoyaltyTransaction`.
 
 ---
 
@@ -96,9 +96,9 @@ Task 1: Yêu cầu  ──>  Task 2: Sơ đồ  ──>  Task 3: Kiến trúc  �
 - **Phân loại:** **MUST HAVE** | **Sprint:** 1 | **Phụ trách:** Long
 - **Mô tả:** Trình bày kiến trúc hệ thống theo mô hình Modular Monolith kết hợp Layered Architecture; viết các bản ADR kỹ thuật và vẽ Deployment Diagram production.
 - **Tiêu chí chấp nhận:**
-  - [ ] Tài liệu kiến trúc phân tích ưu/nhược điểm và trade-off so với Clean Architecture / Microservices.
-  - [ ] Các bản ADR trong `docs/architecture/adr/`: Monorepo, Modular Architecture, Prisma PostgreSQL, Quản lý State Zustand, Chống gửi trùng Idempotency.
-  - [ ] Deployment Diagram phản ánh hạ tầng thực tế: Vercel, Render, Neon PostgreSQL, Cloudflare Tunnel.
+  - [x] Tài liệu kiến trúc phân tích ưu/nhược điểm và trade-off so với Clean Architecture / Microservices.
+  - [x] Các bản ADR trong `docs/architecture/adr/`: Monorepo, Modular Architecture, Prisma PostgreSQL, Quản lý State Zustand, Chống gửi trùng Idempotency.
+  - [x] Deployment Diagram phản ánh hạ tầng thực tế: Vercel, Render, Neon PostgreSQL, Cloudflare Tunnel.
 
 ---
 
@@ -178,7 +178,7 @@ Task 1: Yêu cầu  ──>  Task 2: Sơ đồ  ──>  Task 3: Kiến trúc  �
 - **Tiêu chí chấp nhận:**
   - [x] Validate đầu vào chặt chẽ bằng `class-validator`, từ chối các trường lạ (400).
   - [x] Server tính lại tổng tiền = $\sum (\text{giá gốc} + \text{phụ thu size} + \text{topping}) \times \text{số lượng}$.
-  - [x] Tạo đơn hàng gắn với `userId` trong JWT token, trạng thái khởi tạo `PENDING`.
+  - [x] Tạo đơn hàng gắn với `phone` (khóa chính của `User`) trong JWT token, trạng thái khởi tạo `PENDING`.
 
 ---
 
@@ -215,8 +215,9 @@ Task 1: Yêu cầu  ──>  Task 2: Sơ đồ  ──>  Task 3: Kiến trúc  �
 - **Phân loại:** **MUST HAVE** | **Sprint:** 2 | **Phụ trách:** Long & Tài
 - **Mô tả:** Xây dựng bộ test toàn diện đảm bảo chất lượng hệ thống trước khi nghiệm thu.
 - **Tiêu chí chấp nhận:**
-  - [x] Unit test cho nghiệp vụ tính giá, state machine và tích điểm (64/64 tests pass).
+  - [x] Unit test cho nghiệp vụ tính giá, state machine và tích điểm (73/73 test của `apps/api` pass, 9 file).
   - [x] Bộ sưu tập Postman Collection kiểm thử tự động các luồng API chính.
+  - [ ] End-to-end test từ menu đến xác nhận đơn (theo đề, mục 7.2): chưa có, sẽ làm ở nhánh riêng.
 
 ---
 
@@ -237,7 +238,7 @@ Task 1: Yêu cầu  ──>  Task 2: Sơ đồ  ──>  Task 3: Kiến trúc  �
   - [x] Frontend chạy trực tiếp trên Vercel qua HTTPS.
   - [x] Backend chạy trên Render Cloud hoặc Cloudflare Tunnel (HTTPS).
   - [x] Database chạy trên Neon PostgreSQL Cloud (Singapore).
-  - [ ] Hoàn thành tài liệu `docs/traceability-matrix.md` ánh xạ 1-1 các yêu cầu.
+  - [x] Hoàn thành tài liệu `docs/traceability-matrix.md` ánh xạ các yêu cầu.
 
 ---
 
@@ -298,7 +299,7 @@ Task 1: Yêu cầu  ──>  Task 2: Sơ đồ  ──>  Task 3: Kiến trúc  �
 
 ### [Issue #25] [Mở rộng - HK1] Hủy đơn hàng trước pha chế và ghi nhận lý do hủy đơn
 - **Phân loại:** **COULD HAVE** | **Sprint:** Hậu Sprint 2 (Nếu còn thời gian) | **Phụ trách:** Long & Tài
-- **Mô tả:** Cho phép khách hàng hoặc nhân viên hủy đơn đang ở trạng thái `PENDING` hoặc `PAID` (chưa chuyển sang `PREPARING`), ghi lại lý do hủy.
+- **Mô tả:** Cho phép khách hàng hoặc nhân viên hủy đơn đang ở trạng thái `PENDING`, `PAYMENT_FAILED` hoặc `PAID` (chưa chuyển sang `PREPARING`), ghi lại lý do hủy.
 - **Tiêu chí chấp nhận:**
   - [ ] Chuyển trạng thái đơn sang `CANCELLED`.
   - [ ] Lưu người hủy (`cancelledBy`) và ghi chú hủy (`cancelNote`).
@@ -318,15 +319,35 @@ Task 1: Yêu cầu  ──>  Task 2: Sơ đồ  ──>  Task 3: Kiến trúc  �
 - **Phân loại:** **COULD HAVE** | **Sprint:** Hậu Sprint 2 (Nếu còn thời gian) | **Phụ trách:** Long
 - **Mô tả:** API thống kê tổng doanh thu, số đơn thành công và top các món bán chạy nhất trong ngày/tuần.
 - **Tiêu chí chấp nhận:**
-  - [ ] API `GET /admin/stats/overview` tổng hợp số liệu doanh thu.
+  - [ ] API báo cáo tổng hợp số liệu doanh thu (tên endpoint chốt khi vào Sprint 4).
   - [ ] Biểu đồ thống kê cơ bản.
 
 ---
 
-## 4. Các Chức Năng Loại Trừ (WON'T HAVE - Out of Scope)
+## 4. Phạm vi Planned (Sprint 3 và 4, Could Have)
 
-Theo đề bài Assignment 2, để đảm bảo tính khả thi và chất lượng trong thời gian 2 Sprint của nhóm 2 người, các tính năng sau **chính thức không thực hiện**:
-1. **Ví hoàn tiền nội bộ (Wallet Refund) & Rút tiền ngân hàng:** Không tạo hệ thống nạp/rút số dư ví phức tạp.
-2. **Quản lý ca làm việc & chấm công nhân viên:** Không thuộc phạm vi bán cà phê cốt lõi.
-3. **Quản lý định lượng kho chi tiết (hạt cà phê, siro, đường, sữa):** Chỉ kiểm soát tồn kho theo số lượng ly đồ uống hoàn chỉnh bán ra trong ngày (`dailyQuota`).
-4. **Hạ tầng SMS Brandname / Email OTP trả phí:** Chỉ sử dụng JWT đăng nhập mật khẩu và mô phỏng giao dịch thanh toán.
+Chỉ có tài liệu và sơ đồ, chưa hiện thực trong Assignment 2. Mã chức năng (`CN`), yêu cầu (`FR`) và use case (`UC`) theo `docs/requirements/context-and-scope.md`.
+
+| Chức năng | Tên | Sprint | FR | UC |
+|:---:|---|:---:|---|---|
+| `CN-08` | Màn hình pha chế KDS cho Barista | 3 | FR-20 | UC-11 |
+| `CN-09` | Giao nhận quầy và mã nhận hàng 6 số | 3 | FR-21 | UC-07, UC-12 |
+| `CN-10` | Voucher, hủy đơn, đánh giá (Issue #24, #25, #26) | 3 | FR-11, FR-12, FR-13 | UC-10, UC-08, UC-13, UC-09 |
+| `CN-11` | Quản lý menu, danh mục, topping (CRUD) | 4 | FR-18 | UC-15 |
+| `CN-12` | Kho nguyên liệu và công thức pha chế (thay cờ `isAvailable`) | 4 | FR-15, FR-16, FR-17 | UC-14, UC-16, UC-17 |
+| `CN-13` | Nhân sự, voucher, báo cáo (Issue #27) | 4 | FR-11, FR-14, FR-19 | UC-18, UC-21, UC-19 |
+
+---
+
+## 5. Các Chức Năng Loại Trừ (WON'T HAVE - Out of Scope)
+
+Theo đề bài Assignment 2, để đảm bảo tính khả thi và chất lượng trong thời gian 2 Sprint của nhóm 2 người, 7 nội dung sau **chính thức không thực hiện**:
+1. **Ví hoàn tiền nội bộ (Wallet Refund) và rút tiền về ngân hàng:** thanh toán chỉ mô phỏng; hủy đơn chỉ ghi nhận hoàn tiền mô phỏng.
+2. **Hạ tầng SMS Brandname / OTP trả phí:** thay bằng mật khẩu băm và mã nhận hàng 6 số.
+3. **Quản lý nhân sự, chấm công, xếp ca, tính lương:** nghiệp vụ ERP riêng, không tác động luồng đặt hàng.
+4. **Sơ đồ bàn và đặt chỗ ngồi:** khách tự chọn chỗ sau khi lấy đồ uống.
+5. **Ứng dụng di động gốc (iOS/Android) và giao hàng tận nơi:** chỉ làm web Mobile-First.
+6. **Xử lý món không làm được giữa chừng (Item Issue):** thay bằng hủy cả đơn hoặc nhân viên đổi món tương đương tại quầy.
+7. **Đổi điểm thưởng lấy quà hoặc giảm giá:** điểm chỉ tích lũy và hiển thị.
+
+> Kho nguyên liệu theo công thức không còn là Won't Have: nó là `CN-12` (Sprint 4, Planned). Ở MVP chỉ dùng cờ `isAvailable`.
