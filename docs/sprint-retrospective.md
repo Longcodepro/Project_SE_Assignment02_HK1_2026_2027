@@ -75,7 +75,7 @@ Dự án BrewLite được tổ chức thực hiện nghiêm ngặt theo khung l
     - Triển khai Production thành công: Frontend trên Vercel, Backend trên Render, CSDL trên Neon Singapore.
     - Hoàn thiện Ma trận truy vết `docs/traceability-matrix.md` cho 21 FR và 5 NFR (FR-11 đến FR-21 là Planned, chưa có mã nguồn và kiểm thử).
     - Soạn thảo Release Notes `docs/release-notes.md` và Kế hoạch vận hành/Rollback `docs/deployment.md`.
-* **Mức độ hoàn thành Backlog:** hoàn thành các hạng mục **Must Have** và **Should Have** cam kết cho mốc nghiệm thu Assignment 2, ngoại trừ kiểm thử end-to-end tự động (mục #16 của `docs/BACKLOG.md`) chưa thực hiện.
+* **Mức độ hoàn thành Backlog:** hoàn thành các hạng mục **Must Have** và **Should Have** cam kết cho mốc nghiệm thu Assignment 2, trong đó kiểm thử end-to-end tự động (mục #16 của `docs/BACKLOG.md`) được bổ sung sau bản v1.0.0 bằng Playwright (`tests/e2e`).
 
 ### 3.2. Sprint 2 Retrospective (Rút kinh nghiệm)
 

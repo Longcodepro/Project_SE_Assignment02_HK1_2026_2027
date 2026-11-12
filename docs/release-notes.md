@@ -105,7 +105,7 @@ Giảng viên và người nghiệm thu có thể sử dụng các tài khoản 
 
 ### 6.1. Giới hạn kỹ thuật chấp nhận ở phiên bản v1.0.0
 - Xác thực tài khoản khách hàng thực hiện qua Số điện thoại + Mật khẩu (chưa tích hợp tổng đài gửi mã OTP SMS trả phí do chi phí hạ tầng).
-- Chưa có kiểm thử end-to-end tự động (Playwright hoặc Cypress). Hiện có unit test và integration test của API (Vitest) cùng kịch bản Postman.
+- Giao diện web chưa có test đơn vị. Kiểm thử tự động gồm unit/integration test của API (Vitest), kịch bản Postman và 3 test E2E Playwright cho luồng đặt hàng (`tests/e2e`).
 - Cơ chế theo dõi trạng thái đơn hàng sử dụng kỹ thuật Polling (thăm dò chu kỳ 5 giây) thay cho WebSocket để tối ưu tài nguyên máy chủ miễn phí.
 
 ### 6.2. Lộ trình phát triển mở rộng (Sprint 3 & Sprint 4 — Planned)

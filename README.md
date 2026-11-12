@@ -50,7 +50,7 @@ brewlite/
 |   |-- release-notes.md       # Task 5.4: Bản ghi chú phát hành phiên bản v1.0.0
 |   `-- sprint-retrospective.md# Task 5.4: Báo cáo Sprint Review & Sprint Retrospective
 |-- scripts/                   # Tiện ích: logs.sh, start-tunnel.sh, studio-cloud.sh
-|-- tests/                     # Dành cho kiểm thử E2E (chưa có nội dung)
+|-- tests/                     # Kiểm thử E2E luồng đặt hàng (Playwright, tests/e2e)
 |-- .github/workflows/         # Pipeline tự động hóa: ci.yml (Quality Gate) và cd.yml (Deploy)
 |-- docker-compose.yml         # Chạy trọn gói 3 dịch vụ Web, API và DB bằng 1 câu lệnh
 |-- .env.example               # Mẫu cấu hình biến môi trường chuẩn Twelve-Factor
@@ -105,7 +105,7 @@ NEXT_PUBLIC_API_URL=http://localhost:4003 npm run dev
 
 ## 4. Hướng Dẫn Kiểm Thử Tự Động (Testing)
 
-Dự án có Unit/Integration test cho API (Vitest), Postman Collection; giao diện web hiện chỉ kiểm tra lint và build, chưa có test tự động:
+Dự án có Unit/Integration test cho API (Vitest), Postman Collection; giao diện web kiểm tra lint, build và có E2E Playwright cho luồng đặt hàng (chưa có test đơn vị cho `apps/web`):
 
 ```bash
 # 1. Kiểm thử Backend (Lint, Build, Unit/Integration test)
@@ -113,7 +113,7 @@ cd apps/api
 npm run lint                  # Kiểm tra quy chuẩn mã nguồn (oxlint)
 npm run build                 # Biên dịch mã nguồn TypeScript
 npm test                      # Chạy toàn bộ Unit test với Vitest
-npm run test:e2e              # E2E mức tối thiểu của API (hiện chỉ kiểm tra GET /); chưa có E2E luồng đặt hàng
+npm run test:e2e              # Test mẫu của API (chỉ kiểm tra GET /), không phải E2E luồng đặt hàng
 
 # 2. Kiểm thử kịch bản Postman tự động (Yêu cầu API đang chạy)
 npm run postman
@@ -122,6 +122,12 @@ npm run postman
 cd apps/web
 npm run lint                  # Kiểm tra cú pháp và quy chuẩn React/Next.js
 npm run build                 # Kiểm tra build tĩnh và tối ưu giao diện
+
+# 4. Kiểm thử E2E luồng đặt hàng (Playwright; yêu cầu hệ thống đang chạy, ví dụ docker compose up -d --build)
+cd tests/e2e
+npm ci
+npx playwright install chromium
+npm test                      # Mặc định web ở :4004, API ở :4003; đổi bằng E2E_WEB_URL, E2E_API_URL
 ```
 
 ---

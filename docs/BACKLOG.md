@@ -217,7 +217,7 @@ Task 1: Yêu cầu  ──>  Task 2: Sơ đồ  ──>  Task 3: Kiến trúc  �
 - **Tiêu chí chấp nhận:**
   - [x] Unit test cho nghiệp vụ tính giá, state machine và tích điểm (73/73 test của `apps/api` pass, 9 file).
   - [x] Bộ sưu tập Postman Collection kiểm thử tự động các luồng API chính.
-  - [ ] End-to-end test từ menu đến xác nhận đơn (theo đề, mục 7.2): chưa có, sẽ làm ở nhánh riêng.
+  - [x] End-to-end test từ menu đến xác nhận đơn (theo đề, mục 7.2): `tests/e2e/checkout.spec.ts` (Playwright, 3 test), chạy trong CI (job 4).
 
 ---
 
