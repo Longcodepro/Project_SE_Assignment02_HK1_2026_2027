@@ -89,7 +89,7 @@ Sơ đồ **`Activity-01`** mô hình hóa luồng nghiệp vụ **End-to-End MV
 ### Giai đoạn 5: UC-05 — Đặt hàng & thanh toán (FR-05, FR-06, FR-08, FR-09)
 19. `Next.js Web` chuyển sang màn hình Thanh toán (`/checkout`).
 20. Khách hàng chọn 1 trong 2 phương thức thanh toán mô phỏng: **Thẻ ngân hàng (`CARD`)** hoặc **Ví điện tử (`WALLET`)**, rồi bấm nút **"Xác nhận Đặt hàng & Thanh toán"**.
-21. `Next.js Web` sinh UUID đính kèm header **`Idempotency-Key`**, gửi `POST /orders` kèm danh sách món (`productId`, `size`, `toppings`, `quantity`) — **tuyệt đối không gửi giá tiền**.
+21. `Next.js Web` sinh key duy nhất đính kèm header **`Idempotency-Key`**, gửi `POST /orders` kèm danh sách món (`productId`, `size`, `toppings`, `quantity`) — **tuyệt đối không gửi giá tiền**.
 22. `NestJS API` xác thực JWT qua `JwtAuthGuard`, kiểm tra `Idempotency-Key`, thực hiện **Server-side Pricing** (đọc giá gốc từ CSDL để tự tính tổng tiền), tạo bản ghi `Order` trạng thái `PENDING`, `version = 0`, trả về `HTTP 201 Created` kèm `id` và `total`.
 23. `Next.js Web` gửi tiếp `POST /payments` kèm `orderId`, `method` (và `cardNumber` nếu `CARD`) cùng header `Idempotency-Key` mới.
 24. `NestJS API` chuyển tiếp yêu cầu sang Cổng thanh toán mô phỏng, xử lý theo quy tắc mô phỏng:
@@ -125,7 +125,7 @@ Sơ đồ **`Activity-01`** mô hình hóa luồng nghiệp vụ **End-to-End MV
 ## 5. Các Cơ Chế Kỹ Thuật & Bảo Vệ Cốt Lõi Được Tích Hợp
 
 1. **Khóa chống gửi trùng (`Idempotency-Key`, FR-09):**
-   - Client sinh UUID cho mỗi lần bấm "Đặt hàng"/"Thanh toán", đính kèm qua HTTP Header `Idempotency-Key`.
+   - Client sinh key duy nhất cho mỗi lần bấm "Đặt hàng"/"Thanh toán", đính kèm qua HTTP Header `Idempotency-Key`.
    - Nếu mạng lag hoặc khách bấm nhiều lần, Backend kiểm tra key và chỉ xử lý đúng 1 lần duy nhất.
 2. **Định giá độc quyền phía máy chủ (Server-side Pricing, FR-05):**
    - Frontend chỉ gửi mã món (`productId`), `size`, và mảng mã topping (`toppings`).

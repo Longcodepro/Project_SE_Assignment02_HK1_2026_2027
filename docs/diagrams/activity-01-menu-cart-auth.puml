@@ -147,7 +147,7 @@ else (Còn hàng)
   :Chọn phương thức: Thẻ ngân hàng (CARD) hoặc Ví điện tử (WALLET);\nBấm nút "Xác nhận Đặt hàng & Thanh toán";
 
   |Next.js Web\n(Client)|
-  :Sinh UUID gắn vào header Idempotency-Key (FR-09);\nVô hiệu hóa nút bấm chống gửi trùng lặp;\nGửi POST /orders kèm danh sách items (chỉ gửi món, size, topping, KHÔNG gửi giá tiền);
+  :Sinh key duy nhất gắn vào header Idempotency-Key (FR-09);\nVô hiệu hóa nút bấm chống gửi trùng lặp;\nGửi POST /orders kèm danh sách items (chỉ gửi món, size, topping, KHÔNG gửi giá tiền);
 
   |NestJS API\n(Server)|
   :Xác thực JWT (JwtAuthGuard) & kiểm tra Idempotency-Key;\nServer-side Pricing: Đọc CSDL tính tổng tiền đơn hàng;
