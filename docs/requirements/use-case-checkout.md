@@ -54,7 +54,7 @@
 ### 5.1. Khi giao dịch thành công (Success End Condition)
 - Bản ghi đơn hàng mới được tạo trong bảng `Order` với trạng thái `PAID`, phiên bản `version = 1`.
 - Toàn bộ danh sách ly (kèm size, topping, phụ thu) được lưu vào bảng `OrderItem`.
-- Bản ghi giao dịch trong bảng `Payment` được lưu với trạng thái `SUCCESS` kèm mã giao dịch `transactionId`.
+- Bản ghi giao dịch trong bảng `Payment` được lưu với trạng thái `SUCCESS` kèm số điểm thưởng đã cấp (`pointsEarned`).
 - Khách hàng được tự động **cộng điểm tích lũy thưởng** theo tỷ lệ: **1 điểm / 1.000 VNĐ thực trả** (`UC-20`).
 - Giỏ hàng của khách hàng trên trình duyệt (`Zustand Store` & `localStorage`) được xóa sạch hoàn toàn.
 - Khách hàng được chuyển hướng sang trang xác nhận đơn hàng thành công (`/order-success`), tự động kích hoạt tiến trình Polling 5s/lần để theo dõi trạng thái đơn (`UC-06`).
