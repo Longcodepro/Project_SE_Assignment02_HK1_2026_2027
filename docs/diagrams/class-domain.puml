@@ -1,4 +1,11 @@
 @startuml
+' ==============================================================================
+' Diagram: Sơ đồ Class Domain — Mô hình dữ liệu nghiệp vụ BrewLite (Task 2.3)
+' Code: Class-01 | Issue: [D2.3] Task 2.3
+' Yêu cầu chức năng liên quan: FR-01, FR-02, FR-03, FR-04, FR-05, FR-06, FR-07,
+'   FR-08, FR-09, FR-10 (MVP); FR-11, FR-21 (Sprint 3, Planned, đánh dấu riêng)
+' Tài liệu đối chiếu: cac-chuc-nang-thong-nhat.md, docs/requirements/requirements-api.md
+' ==============================================================================
 !theme plain
 skinparam defaultFontName "Segoe UI", Arial, sans-serif
 skinparam defaultFontSize 12
@@ -32,11 +39,6 @@ enum OrderStatus <<Enum>> #F3E5F5 {
   CANCELLED
 }
 
-enum OrderType <<Enum>> #F3E5F5 {
-  TAKE_AWAY
-  DINE_IN
-}
-
 enum Size <<Enum>> #F3E5F5 {
   S
   M
@@ -46,7 +48,6 @@ enum Size <<Enum>> #F3E5F5 {
 enum PaymentMethod <<Enum>> #F3E5F5 {
   CARD
   WALLET
-  TRANSFER
 }
 
 enum PaymentStatus <<Enum>> #F3E5F5 {
@@ -60,16 +61,15 @@ enum DiscountType <<Enum>> #EDE7F6 {
 }
 
 ' ========================================================
-' CORE DOMAIN CLASSES (CÁC THỰC THỂ CỐT LÕI)
+' CORE DOMAIN CLASSES (CÁC THỰC THỂ CỐT LÕI, MVP SPRINT 1-2)
 ' ========================================================
 class User <<Core Entity>> #E8F8F5 {
-  + id : Int [PK]
-  + phone : String [Unique, 10 digits]
+  + phone : String [PK, 10 digits]
   - passwordHash : String
   + name : String?
   + role : Role = CUSTOMER
   + loyaltyPoints : Int = 0
-  + email : String?
+  + email : String? {Tùy chọn, không duy nhất}
   + createdAt : DateTime
   __
   + register(phone, password)
@@ -78,10 +78,15 @@ class User <<Core Entity>> #E8F8F5 {
   + addLoyaltyPoints(pts: Int)
 }
 
+class Category <<Core Entity>> #E1F5FE {
+  + id : Int [PK]
+  + name : String
+}
+
 class Product <<Core Entity>> #E1F5FE {
   + id : Int [PK]
   + name : String
-  + category : String
+  + categoryId : Int [FK]
   + price : Int  {VND - Size S}
   + isAvailable : Boolean = true
   + imageUrl : String
@@ -93,20 +98,19 @@ class Product <<Core Entity>> #E1F5FE {
 
 class Order <<Core Entity>> #FFF9C4 {
   + id : String [PK]
-  + userId : Int [FK]
+  + userPhone : String [FK -> User.phone]
   + idempotencyKey : String?
   + status : OrderStatus = PENDING
-  + orderType : OrderType = TAKE_AWAY
-  + pickupCode : String?  {6 random digits}
-  + total : Int  {Server-side Pricing}
-  + version : Int = 0  {Optimistic Lock}
-  + promotionId : Int? [FK]
-  + discountAmount : Int = 0
+  + total : Int  {Server-side Pricing, FR-05}
+  + version : Int = 0  {Optimistic Lock, FR-08}
+  + pickupCode : String?  {6 chữ số, Sprint 3 Planned — sinh khi chuyển READY}
+  + promotionId : Int? [FK]  {Sprint 3 Planned}
+  + discountAmount : Int = 0  {Sprint 3 Planned}
   + createdAt : DateTime
   __
   + calculateTotal() : Int
   + transitionTo(status: OrderStatus)
-  + generatePickupCode() : String
+  + generatePickupCode() : String  {Sprint 3 Planned}
 }
 
 class OrderItem <<Core Entity>> #FFF9C4 {
@@ -137,9 +141,9 @@ class Payment <<Core Entity>> #E8F5E9 {
 }
 
 ' ========================================================
-' EXTENSION CLASSES (MÔ HÌNH MỞ RỘNG)
+' EXTENSION CLASSES (MÔ HÌNH MỞ RỘNG, SPRINT 3 PLANNED)
 ' ========================================================
-class Promotion <<Domain Extension>> #FFF3E0 {
+class Promotion <<Domain Extension (Planned)>> #FFF3E0 {
   + id : Int [PK]
   + code : String [Unique]
   + discountType : DiscountType
@@ -154,7 +158,7 @@ class Promotion <<Domain Extension>> #FFF3E0 {
 
 class LoyaltyTransaction <<Domain Extension>> #FFF3E0 {
   + id : Int [PK]
-  + userId : Int [FK]
+  + userPhone : String [FK -> User.phone]
   + orderId : String? [FK]
   + pointsEarned : Int = 0
   + pointsUsed : Int = 0
@@ -173,16 +177,16 @@ User "1" *-- "0..*" LoyaltyTransaction : "owns >"
 
 Order "1" *-- "1..*" OrderItem : "contains >"
 Product "1" <-- "0..*" OrderItem : "references >"
+Category "1" <-- "0..*" Product : "categorizes >"
 
 Order "1" *-- "0..*" Payment : "settled by >"
-Order "0..*" o-- "0..1" Promotion : "applies >"
+Order "0..*" o-- "0..1" Promotion : "applies > (Sprint 3 Planned)"
 
 LoyaltyTransaction "0..*" --> "0..1" Order : "tied to >"
 
 ' Enum dependencies
 User ..> Role : uses
 Order ..> OrderStatus : uses
-Order ..> OrderType : uses
 OrderItem ..> Size : uses
 Payment ..> PaymentMethod : uses
 Payment ..> PaymentStatus : uses
