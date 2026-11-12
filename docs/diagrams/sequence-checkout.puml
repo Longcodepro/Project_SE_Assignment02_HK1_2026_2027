@@ -15,7 +15,7 @@ participant "Payment Gateway" as PG
 autonumber 1 "<b>[0]</b>"
 
 ' 1. Tạo đơn hàng (POST /orders)
-Customer -> Web : Bấm "Đặt hàng" trên giỏ hàng
+Customer -> Web : Chọn Thẻ / Ví tại /checkout và bấm "Xác nhận Đặt hàng & Thanh toán"
 Web -> API : POST /orders (Header: Bearer JWT, Idempotency-Key)\nPayload: { items }
 
 API -> API : [1. JWT & Validate] Xác thực token và kiểm tra dữ liệu DTO
@@ -27,20 +27,19 @@ API -> DB : [3. Transaction] Lưu Order (status: PENDING) và các OrderItem
 DB --> API : Lưu đơn hàng thành công
 
 API --> Web : 201 Created (id, total)
-Web --> Customer : Hiển thị màn hình thanh toán, chọn Thẻ / Ví
+Web -> Web : Dùng id đơn vừa tạo để gửi tiếp thanh toán (cùng một lần bấm)
 
 ' 2. Thanh toán đơn hàng (POST /payments)
-Customer -> Web : Chọn Thẻ/Ví và bấm "Xác nhận thanh toán"
-Web -> API : POST /payments (Header: Bearer JWT, Idempotency-Key)\nPayload: { orderId, method }
+Web -> API : POST /payments (Header: Bearer JWT, Idempotency-Key)\nPayload: { orderId, method, cardNumber (bắt buộc khi CARD) }
 
-API -> API : Xác thực token và kiểm tra đơn hàng PENDING
+API -> API : Xác thực token; kiểm tra đơn thuộc người dùng và đang PENDING hoặc PAYMENT_FAILED (đã PAID trả 409)
 API -> PG : [4. Thanh toán mô phỏng] Gửi yêu cầu trừ tiền (orderId, total, method)
 
 alt Thất bại (Thẻ đuôi 0000 hoặc Ví > 500.000đ)
     PG --> API : Từ chối giao dịch (PAYMENT_REJECTED)
     API -> DB : Cập nhật Order (status: PAYMENT_FAILED) và lưu Payment FAILED
-    API --> Web : Báo lỗi thanh toán thất bại
-    Web --> Customer : Hiển thị lỗi, giữ nguyên đơn để khách thử lại
+    API --> Web : 201 Created (status: PAYMENT_FAILED, reason)
+    Web --> Customer : Hiển thị lỗi, giữ nguyên đơn để khách thử lại (thanh toán lại dùng Idempotency-Key mới)
 else Thành công (Thẻ hợp lệ & Ví <= 500.000đ)
     PG --> API : Phê duyệt giao dịch (PAYMENT_APPROVED)
     API -> DB : [3. Transaction] Cập nhật Order (PAID), tích điểm
@@ -52,7 +51,7 @@ end
 ' 3. Chống gửi trùng lặp (Idempotency)
 opt [5. Idempotency-Key] Khách gửi lại do lag mạng (Trùng Idempotency-Key)
     Web -> API : POST /payments (Cùng Idempotency-Key)
-    API --> Web : Trả về ngay kết quả đã lưu trước đó (không trừ tiền lần 2)
+    API --> Web : 201 Created với kết quả của lần đầu (không trừ tiền lần 2)
 end
 
 @enduml
