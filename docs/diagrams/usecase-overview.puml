@@ -3,7 +3,7 @@
 ' Sơ đồ: Use case tổng quát hệ thống BrewLite
 ' Mã: UseCase-01
 ' Liên quan: UC-01..UC-21; FR-01..FR-21; NFR-01..NFR-04
-' Nguồn: docs/requirements/cac-chuc-nang-thong-nhat.md (mục 3: danh sách use case)
+' Nguồn: docs/requirements/context-and-scope.md (mục 6.2: danh sách use case)
 ' Quy ước:
 '   - Tô xanh = MVP (Sprint 1-2): UC-01..06, UC-20. Trắng = Planned (Sprint 3-4): các use case còn lại.
 '   - UC-01..03 không cần đăng nhập; các use case còn lại cần đăng nhập, nhân viên và quản lý cần đúng vai trò.
