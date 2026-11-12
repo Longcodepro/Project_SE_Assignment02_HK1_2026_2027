@@ -16,7 +16,7 @@ autonumber 1 "<b>[0]</b>"
 
 ' 1. Tạo đơn hàng (POST /orders)
 Customer -> Web : Bấm "Đặt hàng" trên giỏ hàng
-Web -> API : POST /orders (Header: Bearer JWT, Idempotency-Key)\nPayload: { items, orderType }
+Web -> API : POST /orders (Header: Bearer JWT, Idempotency-Key)\nPayload: { items }
 
 API -> API : [1. JWT & Validate] Xác thực token và kiểm tra dữ liệu DTO
 API -> DB : [2. Server-side Pricing] Truy vấn giá gốc món & cờ isAvailable
@@ -26,7 +26,7 @@ API -> API : [2. Server-side Pricing] Tự tính tổng tiền đơn hàng
 API -> DB : [3. Transaction] Lưu Order (status: PENDING) và các OrderItem
 DB --> API : Lưu đơn hàng thành công
 
-API --> Web : 201 Created (orderId, total)
+API --> Web : 201 Created (id, total)
 Web --> Customer : Hiển thị màn hình thanh toán, chọn Thẻ / Ví
 
 ' 2. Thanh toán đơn hàng (POST /payments)
@@ -43,10 +43,10 @@ alt Thất bại (Thẻ đuôi 0000 hoặc Ví > 500.000đ)
     Web --> Customer : Hiển thị lỗi, giữ nguyên đơn để khách thử lại
 else Thành công (Thẻ hợp lệ & Ví <= 500.000đ)
     PG --> API : Phê duyệt giao dịch (PAYMENT_APPROVED)
-    API -> DB : [3. Transaction] Cập nhật Order (PAID), cấp mã 6 số (pickupCode), tích điểm
+    API -> DB : [3. Transaction] Cập nhật Order (PAID), tích điểm
     DB --> API : Cập nhật thành công
-    API --> Web : 201 Created (status: PAID, mã 6 số, điểm thưởng)
-    Web --> Customer : Xóa giỏ hàng, hiển thị Mã nhận đồ 6 số và theo dõi đơn
+    API --> Web : 201 Created (status: PAID, điểm thưởng)
+    Web --> Customer : Xóa giỏ hàng, chuyển hướng trang xác nhận và theo dõi đơn
 end
 
 ' 3. Chống gửi trùng lặp (Idempotency)
