@@ -1,0 +1,12 @@
+{
+  "name": "brewlite-e2e",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Kiểm thử E2E luồng đặt hàng BrewLite (Playwright)",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0"
+  }
+}
