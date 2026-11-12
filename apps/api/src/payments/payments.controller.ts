@@ -15,6 +15,6 @@ export class PaymentsController {
     @Body() dto: CreatePaymentDto,
     @Headers('idempotency-key') key?: string,
   ) {
-    return this.payments.pay(user.id, dto, parseIdempotencyKey(key));
+    return this.payments.pay(user.phone, dto, parseIdempotencyKey(key));
   }
 }

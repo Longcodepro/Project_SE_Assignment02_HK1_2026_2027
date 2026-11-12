@@ -21,7 +21,7 @@ Sơ đồ đáp ứng **100% tất cả tiêu chí bắt buộc trong đề bài
 2. **Thứ tự gọi API thật:** Phân tách rõ ràng giữa tạo đơn (`POST /orders`) và thanh toán (`POST /payments`).
 3. **Kiểm tra JWT & Validate dữ liệu:** Kiểm tra token xác thực qua `JwtAuthGuard` và kiểm tra DTO qua `ValidationPipe`.
 4. **Định giá độc quyền máy chủ (Server-side Pricing):** API tự đọc bảng giá trong CSDL để tính toán tổng tiền, cấm client can thiệp giá.
-5. **Database Transaction (ACID):** Đảm bảo tính nguyên tử khi tạo đơn và khi hoàn tất cập nhật `PAID`, cấp mã 6 số `pickupCode`, cộng điểm thưởng thành viên (`UC-20`).
+5. **Database Transaction (ACID):** Đảm bảo tính nguyên tử khi tạo đơn và khi hoàn tất cập nhật `PAID`, cộng điểm thưởng thành viên (`UC-20`).
 6. **Nhánh rẽ Alt (Thành công / Thất bại):** Mô phỏng đầy đủ trường hợp thẻ đuôi `0000` hoặc ví `> 500k` bị từ chối và xử lý thanh toán lại.
 7. **Cơ chế chống gửi trùng Idempotency:** Header `Idempotency-Key` bảo vệ giao dịch tài chính khi client gửi lại yêu cầu do mạng giật lag.
 
@@ -31,7 +31,7 @@ Sơ đồ đáp ứng **100% tất cả tiêu chí bắt buộc trong đề bài
 
 | STT | Tên Lifeline | Kiểu đối tượng | Vai trò trong luồng tuần tự |
 |:---:|---|:---:|---|
-| **1** | **`Customer`** | Actor | Khách hàng thực hiện thao tác bấm nút đặt món, chọn hình thức thanh toán và nhận mã đồ uống. |
+| **1** | **`Customer`** | Actor | Khách hàng thực hiện thao tác bấm nút đặt món, chọn phương thức thanh toán và theo dõi trạng thái đơn. |
 | **2** | **`Next.js Web (UI Client)`** | Participant (Giao diện) | Ứng dụng Frontend client-side, quản lý Zustand Cart Store, sinh mã UUID `Idempotency-Key`, điều hướng màn hình và kích hoạt Polling 5s. |
 | **3** | **`NestJS API (Backend)`** | Participant (Máy chủ) | Máy chủ backend xử lý nghiệp vụ, kiểm tra JWT Guard, tính Server-side Pricing, điều phối Transaction và liên lạc cổng thanh toán. |
 | **4** | **`PostgreSQL (Prisma DB)`** | Database | Cơ sở dữ liệu lưu trữ các bảng `Product`, `Order`, `OrderItem`, `Payment`, `User`, `LoyaltyTransaction`. |
@@ -44,12 +44,12 @@ Sơ đồ đáp ứng **100% tất cả tiêu chí bắt buộc trong đề bài
 ### Giai đoạn 1: Tạo đơn hàng `POST /orders` (Server-side Pricing)
 - Khách hàng bấm **"Tiến hành Đặt hàng"** trên giỏ hàng `/cart`.
 - Next.js Client tự động sinh UUID phiên bản 4 gán vào header `Idempotency-Key` và vô hiệu hóa nút bấm chống click đúp.
-- Gửi HTTP `POST /orders` mang theo danh sách món (`productId`, `size`, `toppings`, `quantity`) và `orderType` ("Mang về" hoặc "Tại quán"). **Tuyệt đối không gửi giá tiền**.
+- Gửi HTTP `POST /orders` mang theo danh sách món (`productId`, `size`, `toppings`, `quantity`). **Tuyệt đối không gửi giá tiền**.
 - NestJS API xác thực danh tính qua JWT Token, kiểm tra xem `Idempotency-Key` đã từng xử lý chưa.
 - API truy vấn thông tin sản phẩm từ bảng `Product` trong CSDL:
   - Nếu có món tạm hết hàng (`isAvailable == false`): Trả về `HTTP 409 Conflict`, Client cảnh báo màu cam và giữ nguyên giỏ hàng để khách đổi món.
   - Nếu tất cả món còn hàng: API tự động tính toán tổng tiền chính xác từ giá gốc, phụ thu size và toppings.
-- API mở **Database Transaction**: Lưu bản ghi `Order` (trạng thái `PENDING`, `version = 0`) và các dòng `OrderItem`. Commit transaction và phản hồi `HTTP 201 Created` kèm `orderId` và `total`.
+- API mở **Database Transaction**: Lưu bản ghi `Order` (trạng thái `PENDING`, `version = 0`) và các dòng `OrderItem`. Commit transaction và phản hồi `HTTP 201 Created` kèm `id` và `total`.
 - Client chuyển hướng sang màn hình `/checkout` hiển thị tổng tiền và danh mục phương thức thanh toán.
 
 ### Giai đoạn 2: Xử lý thanh toán không tiền mặt `POST /payments`
@@ -65,13 +65,13 @@ Sơ đồ đáp ứng **100% tất cả tiêu chí bắt buộc trong đề bài
   - **Nhánh THÀNH CÔNG (Thẻ hợp lệ và Ví `\le 500.000đ`):**
     - Cổng thanh toán phê duyệt `PAYMENT_APPROVED` kèm mã `transactionId`.
     - Backend mở **Database Transaction (ACID)**:
-      1. Cập nhật `Order`: `status = 'PAID'`, sinh mã nhận đồ 6 số ngẫu nhiên duy nhất `pickupCode = '839201'`, tăng `version = 1`.
+      1. Cập nhật `Order`: `status = 'PAID'`, tăng `version = 1`.
       2. Lưu bản ghi `Payment`: `status = 'SUCCESS'`, ghi nhận `transactionId`.
       3. Cộng điểm thưởng thành viên vào bảng `User`: 1 điểm / 1.000 VNĐ thực trả (`UC-20`).
       4. Lưu bản ghi nhật ký `LoyaltyTransaction` loại `EARN`.
       5. Commit Database Transaction toàn vẹn.
-    - Backend phản hồi `HTTP 201 Created` kèm `status: PAID`, mã 6 số và điểm tích lũy.
-    - Client xóa sạch giỏ hàng trong Zustand Store, chuyển hướng sang `/order-success`, hiển thị mã 6 số và kích hoạt cơ chế Polling 5s/lần gọi `GET /orders/me` để cập nhật tiến độ đơn hàng.
+    - Backend phản hồi `HTTP 201 Created` kèm `status: PAID` và điểm tích lũy (`pointsEarned`).
+    - Client xóa sạch giỏ hàng trong Zustand Store, chuyển hướng sang `/order-success` và kích hoạt cơ chế Polling 5s/lần gọi `GET /orders/me` để cập nhật tiến độ đơn hàng.
 
 ### Giai đoạn 3: Xử lý Idempotency khi Client gửi lại (Idempotency Retry)
 - Nếu do sự cố trễ mạng, Client hoặc người dùng gửi lại request `POST /payments` mang cùng một header `Idempotency-Key`.

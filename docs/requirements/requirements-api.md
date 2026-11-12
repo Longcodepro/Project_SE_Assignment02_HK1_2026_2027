@@ -1,249 +1,206 @@
-# Đặc Tả Yêu Cầu Kỹ Thuật Phần Backend — BrewLite (Assignment 2)
+# SRS phần API — BrewLite (Task 1.2, backend)
 
-> **Mã tài liệu:** `REQ-API` (Liên kết: Issue #36 `[D1.2b]`)  
-> **Người thực hiện:** Nguyễn Thành Long (`Longcodepro`) — Backend, Scrum Master, DevOps, Kiến trúc  
-> **Phạm vi mã nguồn:** `apps/api` (NestJS 12, Prisma 7, PostgreSQL 16, TypeScript ESM)  
-> **Tài liệu tham chiếu:** [`docs/architecture/api-contract.md`]
----
+> **Mã tài liệu:** `REQ-API` · **Phụ trách:** Nguyễn Thành Long (`Longcodepro`)  
+> **Phạm vi mã nguồn:** `apps/api` (NestJS, Prisma, PostgreSQL)  
+> **Đường dẫn đích:** `docs/requirements/requirements-api.md`  
+> **Tham chiếu:** `cac-chuc-nang-thong-nhat.md` (nguồn sự thật: mã `CN`, `UC`, `FR`, `NFR`, bảng trạng thái đơn), `docs/architecture/api-contract.md`
 
-## 1. Yêu Cầu Chức Năng Backend (Functional Requirements - FR)
-
-Tất cả các yêu cầu chức năng bên dưới được ánh xạ với mã FR chung của toàn hệ thống và phân loại mức độ ưu tiên theo chuẩn **MoSCoW** (Must have · Should have · Could have · Won't have).
+**Hướng dẫn đọc:** mã FR/NFR là mã chung của cả hệ thống. File này chỉ đặc tả **phần API**; phần giao diện của FR-01, FR-07, FR-02, FR-03 và NFR-04 thuộc SRS web (Tài). Tên trong `backtick` là tên đúng trong mã nguồn. Mâu thuẫn thì theo `cac-chuc-nang-thong-nhat.md`. Tiền là số nguyên VND. Lỗi trả dạng `{ "statusCode", "message", "error" }`.
 
 ---
 
-### [FR-04] Xác Thực Và Phân Quyền Người Dùng (User Authentication & JWT)
-- **Độ ưu tiên:** **MUST HAVE** | **Sprint:** 2 | **Endpoint:** `POST /auth/register`, `POST /auth/login`
-- **Mô tả nghiệp vụ:** Cung cấp cơ chế đăng ký tài khoản mới và đăng nhập an toàn để nhận mã xác thực (JSON Web Token), phục vụ việc gắn quyền sở hữu cho các đơn hàng và lượt thanh toán.
-- **Quy tắc xử lý:**
-  1. **Đăng ký (`POST /auth/register`):**
-     - Email đầu vào được tự động chuẩn hóa về chữ thường (lowercase) và loại bỏ khoảng trắng thừa.
-     - Mật khẩu phải có độ dài từ 6 đến 72 ký tự; được băm tự động bằng `bcryptjs` với salt rounds = 10 trước khi lưu vào cơ sở dữ liệu (`passwordHash`).
-     - Tên người dùng (`name`): Tùy chọn (optional).
-     - Kiểm tra trùng lặp email: Nếu email đã tồn tại trong bảng `User`, trả về mã lỗi HTTP `409 Conflict`.
-     - Phản hồi thành công: HTTP `201 Created` kèm thông tin người dùng (`id`, `email`, `name`), tuyệt đối không trả `passwordHash`.
-  2. **Đăng nhập (`POST /auth/login`):**
-     - Xác thực email và so khớp mật khẩu bằng `bcrypt.compare`.
-     - Chống dò quét thông tin người dùng (User Enumeration): Nếu sai email hoặc sai mật khẩu, trả về cùng một mã HTTP `401 Unauthorized` với thông điệp chung: `"Invalid email or password"`.
-     - Phản hồi thành công: HTTP `200 OK` chứa chuỗi mã hóa `accessToken`.
-     - Token được cấu hình thời hạn hiệu lực qua biến môi trường `JWT_EXPIRES_IN` (mặc định 24 giờ).
-  3. **Bảo vệ Endpoint:**
-     - Các API nghiệp vụ phía sau (`POST /orders`, `POST /payments`, `GET /orders/me`) được bảo vệ bằng `JwtAuthGuard`. Request thiếu hoặc sai header `Authorization: Bearer <accessToken>` sẽ bị từ chối với mã HTTP `401 Unauthorized`.
-- **Tiêu chí chấp nhận (Acceptance Criteria):**
-  - [x] Đăng ký thành công trả về 201 kèm ID và email.
-  - [x] Đăng ký trùng email trả về 409.
-  - [x] Đăng nhập đúng trả về 200 kèm JWT accessToken hợp lệ.
-  - [x] Đăng nhập sai mật khẩu hoặc sai email trả về 401.
-  - [x] Các endpoint được bảo vệ chặn đứng request không có Bearer token hợp lệ.
+## 1. Tổng hợp yêu cầu chức năng
+
+| Mã | Yêu cầu (phần API) | Endpoint | Sprint | MoSCoW | UC |
+|:---:|---|---|:---:|:---:|:---:|
+| `FR-01` | Danh sách và chi tiết sản phẩm | `GET /products`, `GET /products/:id` | 1 | Must | UC-01 |
+| `FR-04` | Đăng ký, đăng nhập, JWT, vai trò | `POST /auth/register`, `POST /auth/login` | 2 | Must | UC-04 |
+| `FR-05` | Tạo đơn, Server-side Pricing | `POST /orders` | 2 | Must | UC-05 |
+| `FR-06` | Thanh toán mô phỏng Thẻ/Ví | `POST /payments` | 2 | Must | UC-05 |
+| `FR-07` | Lịch sử đơn của chính mình | `GET /orders/me` | 2 | Must | UC-06 |
+| `FR-08` | Máy trạng thái đơn, khóa lạc quan | (trong `orders`, `payments`) | 2 | Must | UC-05 |
+| `FR-09` | Chống gửi trùng `Idempotency-Key` | header của `POST /orders`, `POST /payments` | 2 | Must | UC-05 |
+| `FR-10` | Tích điểm, xem số dư và lịch sử điểm | `POST /payments` (`pointsEarned`), `GET /loyalty/me` | 2 | Should | UC-20 |
+
+Bảng giá dùng chung: Size `S` +0đ, `M` +5.000đ, `L` +10.000đ. Topping `tran-chau` 8.000đ, `kem-cheese` 10.000đ, `thach-cafe` 6.000đ.
+
+**Quy ước mã lỗi (áp dụng cho toàn API):**
+
+| Mã | Dùng khi |
+|:---:|---|
+| `400` | Dữ liệu không hợp lệ: sai định dạng, thiếu trường, trường lạ, ngoài khoảng cho phép, `productId` trong giỏ không tồn tại, `Idempotency-Key` sai định dạng, id trên đường dẫn sai kiểu |
+| `401` | Thiếu, sai hoặc hết hạn token; sai SĐT hoặc mật khẩu khi đăng nhập |
+| `403` | Đã đăng nhập nhưng không đủ vai trò (endpoint của nhân viên, Planned) |
+| `404` | Tài nguyên không tồn tại, hoặc không thuộc về người dùng (ví dụ đơn của người khác) |
+| `409` | Xung đột với trạng thái hiện tại: SĐT đã đăng ký, đơn đã `PAID` hoặc chuyển trạng thái không hợp lệ, sai `version`, món `isAvailable: false` |
+| `5xx` | Lỗi hệ thống; phản hồi không lộ chi tiết nội bộ |
+
+Thanh toán bị từ chối theo luật mô phỏng (thẻ đuôi `0000`, ví trên 500.000đ) **không phải lỗi HTTP**: hệ thống đã ghi nhận một lần thanh toán nên trả 201 kèm `status: "PAYMENT_FAILED"`.
 
 ---
 
-### [FR-05] Tiếp Nhận Và Định Giá Đơn Hàng (Order Creation & Server-side Pricing)
-- **Độ ưu tiên:** **MUST HAVE** | **Sprint:** 2 | **Endpoint:** `POST /orders`
-- **Mô tả nghiệp vụ:** Tiếp nhận danh sách món ăn từ giỏ hàng của khách hàng đã đăng nhập, kiểm tra tính hợp lệ và thực hiện tính toán tổng tiền độc quyền tại Server.
-- **Quy tắc định giá và xử lý:**
-  1. **Server-side Pricing độc quyền:**
-     - Client tuyệt đối **không gửi giá tiền** lên backend. Nếu body chứa trường giá (`price`, `total`, `unitPrice`...) hoặc bất kỳ trường lạ nào ngoài DTO quy định, hệ thống lập tức từ chối với mã HTTP `400 Bad Request` (`forbidNonWhitelisted: true`).
-     - Backend đọc giá gốc của từng sản phẩm từ bảng `Product` trong CSDL theo `productId`.
-     - Công thức tính đơn giá 1 ly (`unitPrice`):
-       $$\text{unitPrice} = \text{basePrice} + \text{sizeSurcharge} + \sum \text{toppingPrice}$$
-     - Bảng phụ thu kích cỡ (Size):
-       - Size `S`: +0 đ (giá gốc niêm yết).
-       - Size `M`: +5.000 đ.
-       - Size `L`: +10.000 đ.
-     - Bảng giá món thêm (Topping):
-       - `tran-chau`: 8.000 đ.
-       - `kem-cheese`: 10.000 đ.
-       - `thach-cafe`: 6.000 đ.
-     - Tổng tiền đơn hàng (`Order.total`):
-       $$\text{total} = \sum_{i=1}^{n} (\text{quantity}_i \times \text{unitPrice}_i)$$
-  2. **Trạng thái và Dữ liệu khởi tạo:**
-     - Đơn hàng được tạo mới luôn có trạng thái ban đầu là `PENDING`.
-     - Khởi tạo giá trị khóa lạc quan: `version = 0`.
-     - Mã đơn hàng được sinh tự động định dạng duy nhất (ví dụ: tiền tố `ord_`).
-     - Lưu chi tiết snapshot từng dòng sản phẩm vào bảng `OrderItem` (gồm `productId`, `quantity`, `size`, `toppings`, và `unitPrice` đã tính).
-- **Tiêu chí chấp nhận (Acceptance Criteria):**
-  - [x] Tạo đơn thành công trả về HTTP `201 Created` gồm `id`, `status: "PENDING"`, và `total` chính xác từng đồng.
-  - [x] Trả về 400 khi giỏ rỗng, số lượng ngoài khoảng 1–99, hoặc mã sản phẩm không tồn tại.
-  - [x] Trả về 400 khi client gửi size lạ hoặc topping không nằm trong bảng giá quy định.
-  - [x] Trả về 401 khi chưa gửi kèm Authorization Bearer token.
+## 2. Đặc tả chi tiết (MVP)
+
+### FR-01. Danh sách và chi tiết sản phẩm (Sprint 1, Must)
+
+- `GET /products` công khai, chỉ trả danh sách món. Tìm kiếm và lọc danh mục do client thực hiện; tab danh mục lấy từ `category` của các món, không có endpoint danh mục riêng.
+- Mỗi món có: `id`, `name`, `price` (giá size S), `imageUrl`, `category` (`{ id, name }`), `isAvailable`.
+- `GET /products/:id` trả một món, cùng các trường trên.
+- Có dữ liệu seed để chạy ngay sau khi migrate.
+
+**Tiêu chí chấp nhận:**
+- `GET /products` trả 200 và mảng; mỗi phần tử đủ 6 trường, trong đó `category` có `id` và `name`; `price` là số nguyên không âm.
+- Món hết hàng có `isAvailable: false`.
+- `GET /products/:id` trả 200 với id tồn tại, 404 với id không tồn tại, 400 với id không phải số.
+
+### FR-04. Đăng ký, đăng nhập, JWT (Sprint 2, Must)
+
+- **Đăng ký:** `phone` (**khóa chính (Primary Key) của bảng `User`**, bắt buộc, duy nhất, số di động Việt Nam: đầu số `0` hoặc `+84`, tiếp theo là `3`, `5`, `7`, `8` hoặc `9` và 8 chữ số; server chuẩn hóa về dạng 10 chữ số bắt đầu bằng `0` trước khi lưu và so trùng), `password` (6 đến 72 ký tự), `name` (tùy chọn), `email` (tùy chọn, không duy nhất, đúng định dạng, lưu chữ thường). Mật khẩu băm `bcryptjs` salt rounds 10, không bao giờ trả `passwordHash`. `role` mặc định `CUSTOMER`; client không được gửi `role`.
+- **Đăng nhập:** `phone` và `password`, thành công trả `{ "accessToken" }`. Sai SĐT hoặc sai mật khẩu đều trả cùng một thông báo 401, không lộ SĐT có tồn tại hay không.
+- **JWT:** hạn 24 giờ (`JWT_EXPIRES_IN`), chứa `phone` (khóa chính, dùng làm định danh người dùng thay cho `id` riêng) và `role`. Không có giá trị mặc định cho `JWT_SECRET`; thiếu thì API không khởi động.
+- `JwtAuthGuard` bảo vệ `POST /orders`, `POST /payments`, `GET /orders/me`, `GET /loyalty/me`.
+
+**Tiêu chí chấp nhận:**
+- Đăng ký hợp lệ trả 201 gồm `phone` (khóa chính), `name`, `email`, `role: "CUSTOMER"`; phản hồi không có `passwordHash`.
+- Đăng ký trùng SĐT trả 409; `0912345678` và `+84912345678` được coi là cùng một SĐT.
+- SĐT không phải số di động Việt Nam (ví dụ `0212345678`, `091234567`), mật khẩu ngoài 6 đến 72 ký tự, hoặc body có `role` trả 400.
+- Đăng nhập đúng trả 200 kèm `accessToken`; sai SĐT hoặc sai mật khẩu trả 401 cùng nội dung.
+- Gọi endpoint được bảo vệ khi thiếu, sai hoặc hết hạn token trả 401.
+
+### FR-05. Tạo đơn, Server-side Pricing (Sprint 2, Must)
+
+- Body: `items[]`, mỗi phần tử `productId`, `quantity` (1 đến 99), `size` (`S`/`M`/`L`), `toppings[]` (thuộc 3 topping niêm yết).
+- Client **không gửi giá**: body có trường ngoài DTO (ví dụ `price`, `total`, `unitPrice`) bị 400 (`forbidNonWhitelisted`).
+- Server đọc giá từ bảng `Product`: `unitPrice = price + phụ thu size + Σ giá topping`; `total = Σ quantity × unitPrice`.
+- Món có `isAvailable: false` bị từ chối.
+- Đơn mới: `status = PENDING`, `version = 0`, `id` dạng `ord_...`. Mỗi dòng lưu snapshot vào `OrderItem` (gồm `unitPrice` tại thời điểm đặt).
+
+**Tiêu chí chấp nhận:**
+- Hợp lệ trả 201 `{ id, status: "PENDING", total }`. Ví dụ: món giá 29.000, size `M`, topping `tran-chau`, `quantity` 2 cho `total` = 84.000.
+- Trả 400 khi giỏ rỗng, `quantity` ngoài 1 đến 99, `size` hoặc topping lạ, `productId` không tồn tại, hoặc có trường lạ.
+- Món `isAvailable: false` trả 409.
+- Thiếu token trả 401.
+
+### FR-06. Thanh toán mô phỏng (Sprint 2, Must)
+
+- Body: `orderId`, `method` (`CARD` hoặc `WALLET`), `cardNumber` (13 đến 19 chữ số, bắt buộc khi `CARD`).
+- `amount` lấy từ `Order.total`, client không gửi. Chỉ chủ đơn mới thanh toán được; đơn của người khác hoặc không tồn tại trả 404.
+- `CARD`: từ chối nếu 4 số cuối là `0000`. `WALLET`: từ chối nếu `total` lớn hơn 500.000đ. Còn lại thành công.
+- Mỗi lần thanh toán tạo một bản ghi `Payment` (`SUCCESS` hoặc `FAILED`). **Không lưu `cardNumber`**, kể cả trong log.
+- Thành công: đơn sang `PAID`. Thất bại: đơn sang `PAYMENT_FAILED`, được thanh toán lại.
+- Phản hồi luôn 201, kể cả khi thất bại: `{ paymentId, orderId, method, amount, status, pointsEarned, reason? }`, trong đó `status` là `PAID` hoặc `PAYMENT_FAILED`.
+
+**Tiêu chí chấp nhận:**
+- Thẻ có 4 số cuối khác `0000`, hoặc ví với đơn không quá 500.000đ, trả 201 `status: "PAID"`.
+- Thẻ đuôi `0000` trả 201 `status: "PAYMENT_FAILED"` kèm `reason`; ví với đơn 500.001đ trở lên cũng vậy.
+- Thanh toán lại đơn `PAYMENT_FAILED` thành công chuyển sang `PAID`.
+- Đơn đã `PAID` mà thanh toán tiếp trả 409.
+- Thiếu `cardNumber` khi `CARD` trả 400; thiếu token trả 401; đơn không thuộc người dùng trả 404.
+- Cơ sở dữ liệu không chứa chuỗi số thẻ.
+
+### FR-07. Lịch sử đơn (phần API, Sprint 2, Must)
+
+- `GET /orders/me` chỉ trả đơn của người dùng trong token, mới nhất trước. Chưa có đơn thì trả `[]`.
+- Mỗi đơn: `id`, `status`, `total`, `createdAt`, `items[]` gồm `productId`, `productName`, `quantity`, `size`, `toppings`, `unitPrice`.
+- Màn hình theo dõi đơn polling khoảng 5 giây, nên endpoint chỉ đọc và không có tác dụng phụ.
+
+**Tiêu chí chấp nhận:**
+- Trả 200, `createdAt` giảm dần, không lẫn đơn của người khác.
+- Người dùng chưa có đơn nhận `[]` với 200.
+- Thiếu token trả 401.
+
+### FR-08. Máy trạng thái đơn và khóa lạc quan (Sprint 2, Must)
+
+| Từ | Sang | Khi nào |
+|---|---|---|
+| `PENDING` | `PAID` | Thanh toán thành công |
+| `PENDING` | `PAYMENT_FAILED` | Thanh toán thất bại |
+| `PAYMENT_FAILED` | `PAID` | Thanh toán lại thành công |
+
+- Mọi chuyển trạng thái khác bị chặn, trả 409. Bảng đầy đủ của Sprint 3 (Planned) ở `cac-chuc-nang-thong-nhat.md` mục 5.
+- Cập nhật đơn theo điều kiện `WHERE id = ? AND version = ?` rồi tăng `version` thêm 1. Không cập nhật được dòng nào thì trả 409.
+
+**Tiêu chí chấp nhận:**
+- Mỗi lần chuyển trạng thái hợp lệ làm `version` tăng đúng 1.
+- Hai yêu cầu thanh toán đồng thời cho cùng một đơn: đúng một yêu cầu thành công, yêu cầu còn lại trả 409.
+- `PAID` sang `PENDING` hoặc `PAID` sang `PAID` không thực hiện được.
+
+### FR-09. Chống gửi trùng `Idempotency-Key` (Sprint 2, Must)
+
+- Header tùy chọn cho `POST /orders` và `POST /payments`: 1 đến 128 ký tự gồm chữ, số, `_`, `-`.
+- Gửi lại cùng key trả kết quả của lần đầu (vẫn 201), không tạo thêm đơn hay lần thanh toán, kể cả khi hai yêu cầu đến cùng lúc.
+- Phạm vi key: theo người dùng với `POST /orders`; theo đơn với `POST /payments`.
+- Không gửi header thì xử lý như bình thường. Thanh toán thử lại sau khi thất bại là lần thanh toán mới, dùng key mới.
+
+**Tiêu chí chấp nhận:**
+- Gửi `POST /orders` hai lần cùng key chỉ tạo một đơn; hai phản hồi giống nhau.
+- Gửi `POST /payments` hai lần cùng key chỉ tạo một bản ghi `Payment` và cộng điểm một lần.
+- Key sai định dạng trả 400.
+
+### FR-10. Tích điểm thành viên (Sprint 2, Should)
+
+- Khi thanh toán thành công, cộng `floor(amount / 1000)` điểm vào `User.loyaltyPoints`, trong cùng transaction với việc chuyển `PAID`. Thất bại cộng 0. Điểm chỉ tích, chưa đổi.
+- `GET /loyalty/me` (cần token) trả `{ balance, history[] }`; mỗi phần tử `history` gồm `orderId`, `pointsEarned`, `createdAt`, lấy từ các lần thanh toán thành công, mới nhất trước.
+
+**Tiêu chí chấp nhận:**
+- Đơn 84.000đ cộng 84 điểm; đơn 84.999đ cộng 84 điểm; đơn 999đ cộng 0 điểm.
+- Thanh toán thất bại không cộng điểm.
+- `balance` bằng tổng `pointsEarned` trong `history` (ở Sprint 2, khi chưa có hủy đơn trừ điểm).
+- Thiếu token trả 401.
 
 ---
 
-### [FR-06] Xử Lý Giao Dịch Thanh Toán Mô Phỏng (Simulated Payment Processing)
-- **Độ ưu tiên:** **MUST HAVE** | **Sprint:** 2 | **Endpoint:** `POST /payments`
-- **Mô tả nghiệp vụ:** Xử lý yêu cầu thanh toán cho đơn hàng đã tạo bằng 2 phương thức mô phỏng: Thẻ ngân hàng (`CARD`) hoặc Ví điện tử (`WALLET`).
-- **Quy tắc xử lý:**
-  1. **Số tiền giao dịch (`amount`):**
-     - Lấy trực tiếp từ trường `Order.total` trong CSDL, client không được tự ý gửi số tiền.
-     - Chỉ cho phép thanh toán cho đơn hàng thuộc sở hữu của chính người dùng đang đăng nhập (`Order.userId == req.user.id`), nếu không khớp trả về HTTP `404 Not Found`.
-  2. **Quy tắc mô phỏng nghiệp vụ thanh toán:**
-     - **Thanh toán bằng Thẻ (`CARD`):** Yêu cầu gửi trường `cardNumber` (chuỗi số 13–19 chữ số).
-       - *Kịch bản thất bại mô phỏng:* Nếu thẻ có 4 chữ số cuối là `0000` $\rightarrow$ Từ chối giao dịch, ghi nhận lý do: `"Thẻ bị từ chối"`.
-       - *Kịch bản thành công:* Mọi số thẻ hợp lệ khác có 4 số cuối khác `0000` đều thanh toán thành công.
-       - *Bảo mật:* Tuyệt đối **không lưu chuỗi `cardNumber`** vào cơ sở dữ liệu.
-     - **Thanh toán bằng Ví (`WALLET`):** Không yêu cầu nhập số thẻ.
-       - *Kịch bản thất bại mô phỏng:* Nếu tổng giá trị đơn hàng `> 500.000 đ` $\rightarrow$ Từ chối giao dịch do vượt hạn mức số dư ví.
-       - *Kịch bản thành công:* Các đơn hàng $\le 500.000$ đ thanh toán thành công.
-  3. **Lưu vết giao dịch (`Payment` table):**
-     - Mỗi lượt bấm thanh toán tạo ra một bản ghi trong bảng `Payment` với `status: SUCCESS` hoặc `status: FAILED`.
-     - Nếu thanh toán thành công: Đơn hàng chuyển trạng thái sang `PAID`.
-     - Nếu thanh toán thất bại: Đơn hàng chuyển trạng thái sang `PAYMENT_FAILED`. Hệ thống cho phép người dùng thực hiện thanh toán lại với phương thức khác trên cùng một `orderId`.
-- **Tiêu chí chấp nhận (Acceptance Criteria):**
-  - [x] Trả về HTTP `201 Created` kèm `status: "PAID"` khi thanh toán hợp lệ.
-  - [x] Thẻ có đuôi `0000` trả về `201 Created` kèm `status: "PAYMENT_FAILED"` và lý do từ chối.
-  - [x] Ví điện tử từ chối các đơn hàng trên 500.000 đ.
-  - [x] Đơn thất bại có thể gọi lại API để thanh toán lại thành công.
-  - [x] Trả về 409 Conflict nếu cố thanh toán một đơn hàng đã ở trạng thái `PAID`.
+## 3. Yêu cầu Planned (Sprint 3 và 4, Could)
+
+Chỉ có tài liệu và sơ đồ, chưa hiện thực. Tiêu chí chấp nhận chi tiết viết khi vào Sprint tương ứng. Quy tắc nghiệp vụ lấy từ `cac-chuc-nang-thong-nhat.md` mục 5 và 6.
+
+| Mã | Phần API | Sprint |
+|:---:|---|:---:|
+| `FR-11` | Voucher: chỉ một mã mỗi đơn; kiểm tra hạn dùng, đơn tối thiểu, tổng lượt dùng; server tính giảm giá (`FIXED`/`PERCENT`) | 3, 4 |
+| `FR-12` | Hủy đơn theo bảng trạng thái, ghi lý do; đơn `PAID` được hoàn tiền mô phỏng và trừ lại điểm; từ `PREPARING` trở đi trả 409 | 3 |
+| `FR-13` | Đánh giá 1 đến 5 sao kèm nhận xét, mỗi đơn `COMPLETED` một lần | 3 |
+| `FR-14` | Báo cáo ngày/tuần/tháng: doanh thu thực thu, đơn hoàn tất, tỷ lệ hủy, Top 5 món (`MANAGER`) | 4 |
+| `FR-15` | Kho: nhập kho có lưu vết, trừ kho cùng transaction với `PAID`, hoàn kho khi hủy | 4 |
+| `FR-16` | Công thức pha chế theo món, size, topping | 4 |
+| `FR-17` | Cảnh báo khi nguyên liệu chạm ngưỡng tối thiểu | 4 |
+| `FR-18` | CRUD danh mục, món, topping, phụ thu size (`MANAGER`) | 4 |
+| `FR-19` | Tạo tài khoản nhân viên, gán vai trò, khóa/mở khóa (`MANAGER`) | 4 |
+| `FR-20` | Danh sách đơn `PAID` cho Barista; chuyển `PREPARING`, `READY` (`BARISTA`) | 3 |
+| `FR-21` | Sinh `pickupCode` 6 số khi `READY`, duy nhất trong các đơn đang `READY`; `CASHIER` nhập đúng mã mới chuyển `COMPLETED` | 3 |
+
+Endpoint dành cho vai trò nhân viên trả 403 khi sai vai trò.
 
 ---
 
-### [FR-08] Quản Lý Vòng Đời Trạng Thái Đơn Hàng (Order State Machine & Optimistic Locking)
-- **Độ ưu tiên:** **MUST HAVE** | **Sprint:** 2 | **Module:** `orders`, `payments`
-- **Mô tả nghiệp vụ:** Đảm bảo tính toàn vẹn trạng thái đơn hàng theo máy trạng thái xác định (State Machine) và ngăn ngừa xung đột dữ liệu đồng thời bằng khóa lạc quan (Optimistic Locking).
-- **Quy tắc chuyển trạng thái (State Transitions):**
-  ```
-  [ Khởi tạo ] ──> PENDING ──┬──(Thanh toán thành công)──> PAID [Cuối]
-                             │
-                             └──(Thanh toán thất bại)────> PAYMENT_FAILED ──(Thanh toán lại thành công)──> PAID [Cuối]
-  ```
-  - `PENDING` $\rightarrow$ `PAID`: Khi thanh toán thành công lần đầu.
-  - `PENDING` $\rightarrow$ `PAYMENT_FAILED`: Khi thanh toán thất bại lần đầu.
-  - `PAYMENT_FAILED` $\rightarrow$ `PAID`: Khi thanh toán lại thành công.
-  - Bất kỳ nỗ lực chuyển trạng thái nào ngoài 3 luồng trên (ví dụ: `PAID` $\rightarrow$ `PENDING`, hoặc thanh toán thêm khi đã `PAID`) đều bị chặn và trả về lỗi HTTP `409 Conflict`.
-- **Khóa lạc quan (Optimistic Locking) với cột `version`:**
-  - Bảng `Order` chứa trường `version: Int @default(0)`.
-  - Khi thực hiện cập nhật đơn hàng (đặc biệt là chuyển trạng thái qua thanh toán), câu lệnh UPDATE trong Prisma kiểm tra điều kiện:
-    ```sql
-    UPDATE "Order" SET "status" = $newStatus, "version" = "version" + 1 
-    WHERE "id" = $orderId AND "version" = $expectedVersion;
-    ```
-  - Nếu số bản ghi cập nhật bằng 0 (do một tiến trình khác đã cập nhật trước và tăng `version`), hệ thống trả về mã lỗi HTTP `409 Conflict`, ngăn chặn triệt để hiện tượng ghi đè mất dữ liệu (Lost Update).
-- **Tiêu chí chấp nhận (Acceptance Criteria):**
-  - [x] Chuyển đổi trạng thái đơn hàng tuân thủ nghiêm ngặt State Machine.
-  - [x] Không thể thanh toán lại đơn hàng đã `PAID` (409 Conflict).
-  - [x] Kiểm thử 2 request đồng thời cập nhật trạng thái cùng 1 đơn hàng: 1 request thành công, 1 request trả về 409 Conflict do sai version.
+## 4. Yêu cầu phi chức năng (phần API)
 
----
-
-### [FR-09] Cơ Chế Chống Gửi Trùng Yêu Cầu (Idempotency Control)
-- **Độ ưu tiên:** **SHOULD HAVE** | **Sprint:** 2 | **Header:** `Idempotency-Key`
-- **Mô tả nghiệp vụ:** Đảm bảo khi người dùng hoặc mạng gửi lại cùng một yêu cầu tạo đơn hoặc thanh toán (do lag mạng, timeout, hoặc double-click), hệ thống chỉ thực hiện nghiệp vụ một lần duy nhất và trả về đúng kết quả ban đầu.
-- **Quy tắc kỹ thuật:**
-  1. Hỗ trợ header tùy chọn `Idempotency-Key` (chuỗi từ 1 đến 128 ký tự gồm chữ cái, chữ số, dấu gạch dưới `_` và gạch ngang `-`).
-  2. **Áp dụng cho `POST /orders`:**
-     - Khóa duy nhất theo người dùng: Ràng buộc CSDL `@@unique([userId, idempotencyKey])`.
-     - Nếu gửi lại cùng key: Hệ thống không tạo đơn mới mà trả lại thông tin đơn hàng đã tạo trước đó với mã HTTP `201 Created`.
-  3. **Áp dụng cho `POST /payments`:**
-     - Khóa duy nhất theo đơn hàng: Ràng buộc CSDL `@@unique([orderId, idempotencyKey])`.
-     - Nếu gửi lại cùng key: Hệ thống không gọi lại cổng thanh toán hay trừ kho lần hai, mà trả về nguyên vẹn bản ghi `Payment` cũ (mã HTTP `201 Created`).
-  4. Header sai định dạng trả về mã HTTP `400 Bad Request`. Nếu không gửi header `Idempotency-Key`, hệ thống thực hiện xử lý thông thường.
-- **Tiêu chí chấp nhận (Acceptance Criteria):**
-  - [x] Gửi 2 request tạo đơn cùng `Idempotency-Key` chỉ sinh ra 1 đơn hàng duy nhất trong DB; cả 2 request đều nhận phản hồi 201 với cùng dữ liệu.
-  - [x] Gửi 2 request thanh toán cùng `Idempotency-Key` chỉ lưu 1 bản ghi Payment và không bị cộng trùng điểm loyalty.
-
----
-
-### [FR-10] Tích Lũy Điểm Thưởng Khách Hàng (Loyalty Points Accumulation)
-- **Độ ưu tiên:** **SHOULD HAVE** | **Sprint:** 2 | **Module:** `payments`
-- **Mô tả nghiệp vụ:** Tự động tích lũy điểm thưởng thành viên vào hồ sơ tài khoản người dùng ngay sau khi thanh toán thành công, khuyến khích khách hàng quay lại sử dụng dịch vụ.
-- **Quy tắc tích điểm:**
-  - Tỷ lệ tích điểm: **1 điểm cho mỗi 1.000 đ** giá trị thanh toán thực tế của đơn hàng.
-  - Công thức tính:
-    $$\text{pointsEarned} = \left\lfloor \frac{\text{Order.total}}{1000} \right\rfloor$$
-  - Điểm thưởng chỉ được cộng khi thanh toán có trạng thái `SUCCESS` (đơn chuyển `PAID`). Nếu thanh toán `FAILED`, số điểm tích lũy bằng 0 (`pointsEarned = 0`).
-  - Điểm được cộng dồn vào trường `User.loyaltyPoints` ngay trong cùng transaction hoàn tất thanh toán.
-  - Điểm thưởng nhận được của lượt thanh toán được lưu vết vào trường `Payment.pointsEarned` để phục vụ trả về kết quả nhất quán khi gửi lại request có `Idempotency-Key`.
-- **Tiêu chí chấp nhận (Acceptance Criteria):**
-  - [x] Đơn hàng 84.000 đ thanh toán thành công tích đúng 84 điểm vào tài khoản khách hàng.
-  - [x] Đơn hàng thanh toán thất bại tích 0 điểm; số dư điểm của user giữ nguyên.
-  - [x] Phản hồi `POST /payments` chứa trường `pointsEarned` chính xác.
-
----
-
-### [FR-11] Quản Lý Và Áp Dụng Mã Khuyến Mãi (Promotion / Voucher)
-- **Độ ưu tiên:** **COULD HAVE** | **Phạm vi:** Mở rộng sau MVP | **Module:** `promotions`
-- **Mô tả nghiệp vụ:** Cho phép khách hàng nhập mã ưu đãi giảm giá (theo số tiền cố định hoặc theo phần trăm) vào đơn hàng trước khi thanh toán.
-- **Quy tắc:**
-  - Kiểm tra các điều kiện: Mã còn hiệu lực (ngày bắt đầu, ngày hết hạn), tổng giá trị đơn hàng đạt mức tối thiểu (`minOrderValue`), và mã chưa vượt quá số lượt dùng tối đa (`usageLimit`).
-  - Giảm trừ trực tiếp vào `Order.total` trước khi chuyển sang bước thanh toán.
-
----
-
-### [FR-12] Hủy Đơn Hàng Và Ghi Nhận Lý Do (Order Cancellation)
-- **Độ ưu tiên:** **COULD HAVE** | **Phạm vi:** Mở rộng sau MVP | **Module:** `orders`
-- **Mô tả nghiệp vụ:** Cho phép khách hàng hoặc nhân viên quầy thực hiện hủy đơn hàng khi đơn chưa bước vào giai đoạn pha chế.
-- **Quy tắc:**
-  - Chỉ cho phép hủy khi đơn ở trạng thái `PENDING` hoặc `PAID` (chưa chuyển sang `PREPARING`).
-  - Đơn chuyển sang trạng thái `CANCELLED`, lưu thông tin người hủy (`cancelledBy`) và ghi chú lý do hủy (`cancelReason`).
-
----
-
-### [FR-13] Đánh Giá Và Phản Hồi Chất Lượng (Customer Feedback)
-- **Độ ưu tiên:** **COULD HAVE** | **Phạm vi:** Mở rộng sau MVP | **Module:** `feedbacks`
-- **Mô tả nghiệp vụ:** Khách hàng có thể gửi đánh giá số sao (từ 1 đến 5 sao) kèm nội dung phản hồi sau khi đã nhận đồ uống hoàn tất.
-- **Quy tắc:**
-  - Chỉ những đơn hàng đã hoàn tất mới được phép gửi đánh giá; mỗi đơn hàng chỉ được gửi đánh giá 1 lần duy nhất.
-
----
-
-### [FR-14] Báo Cáo Thống Kê Doanh Thu Và Sản Lượng (Sales Reporting)
-- **Độ ưu tiên:** **COULD HAVE** | **Phạm vi:** Mở rộng sau MVP | **Module:** `reports`
-- **Mô tả nghiệp vụ:** Cung cấp API tổng hợp báo cáo kinh doanh cho tài khoản có vai trò Quản lý (`ADMIN`).
-- **Quy tắc:**
-  - Thống kê tổng doanh thu thực thu, tổng số đơn thành công, tỷ lệ hủy đơn theo ngày, tuần, tháng.
-  - Xếp hạng danh sách các món cà phê và topping bán chạy nhất.
-
----
-
-## 2. Yêu Cầu Phi Chức Năng Backend (Non-Functional Requirements - NFR)
-
----
-
-### [NFR-02] An Toàn Và Bảo Mật Thông Tin (Security & Privacy)
-- **Độ ưu tiên:** **MUST HAVE** | **Mục tiêu:** Đảm bảo an toàn thông tin người dùng, tính toàn vẹn của giao dịch và phòng chống các lỗ hổng bảo mật phổ biến.
-- **Chỉ tiêu kiểm chứng & Giải pháp kỹ thuật:**
-  1. **Bảo mật mật khẩu:** 100% mật khẩu người dùng được băm một chiều bằng thuật toán `bcryptjs` với hệ số salt round = 10. Tuyệt đối không lưu trữ, ghi log hoặc trả về chuỗi mật khẩu thô trong bất kỳ trường hợp nào.
-  2. **Xác thực Không trạng thái (Stateless Authentication):** Sử dụng chuẩn JSON Web Token (JWT) có chữ ký HMAC SHA-256 (`HS256`). Khóa bí mật `JWT_SECRET` bắt buộc phải được truyền qua biến môi trường; ứng dụng từ chối khởi động nếu thiếu biến này (không đặt giá trị mặc định fallback vào code).
-  3. **Lọc và Kiểm tra tính hợp lệ dữ liệu (Input Validation):** Áp dụng toàn cục `ValidationPipe` với cấu hình:
-     ```typescript
-     new ValidationPipe({
-       whitelist: true,              // Loại bỏ hoàn toàn các trường không khai báo trong DTO
-       forbidNonWhitelisted: true,  // Báo lỗi 400 ngay khi nhận payload có trường lạ
-       transform: true,              // Tự động ép kiểu dữ liệu theo DTO
-     })
-     ```
-     Ngăn chặn triệt để các kiểu tấn công Mass Assignment và Parameter Tampering.
-  4. **Bảo vệ dữ liệu tài chính:** Hệ thống **không lưu trữ số thẻ ngân hàng thô** (`cardNumber`) vào bất kỳ bảng nào trong cơ sở dữ liệu. Số thẻ chỉ được tiếp nhận trong bộ nhớ tạm (in-memory) tại thời điểm gọi API thanh toán để kiểm tra quy tắc 4 số cuối mô phỏng rồi giải phóng ngay lập tức.
-  5. **Chống tấn công dò quét (User Enumeration Defense):** Các phản hồi liên quan đến xác thực thất bại dùng chung thông báo lỗi chuẩn hóa và mã HTTP 401, không để lộ thông tin email có tồn tại trong hệ thống hay không.
-
----
-
-### [NFR-04] Khả Năng Triển Khai Và Tự Động Hóa Vận Hành (Deployability & DevOps)
-- **Độ ưu tiên:** **MUST HAVE** | **Mục tiêu:** Hệ thống dễ dàng đóng gói, di chuyển môi trường và tích hợp kiểm thử tự động trong quy trình phát triển.
-- **Chỉ tiêu kiểm chứng & Giải pháp kỹ thuật:**
-  1. **Container hóa bằng Docker:**
-     - Mã nguồn `apps/api` đi kèm file `Dockerfile` tối ưu nhiều tầng (Multi-stage build) trên nền ảnh `node:20-alpine`, tạo ra container kích thước nhỏ (< 250MB) và bảo mật.
-     - Toàn bộ ngăn xếp (PostgreSQL 16, NestJS API cổng 4003, Next.js Web cổng 4004) sẵn sàng khởi động đồng bộ chỉ qua một lệnh: `docker compose up -d`.
-  2. **Di chuyển CSDL tự động (Automated Database Migration):**
-     - Quá trình deploy sử dụng lệnh `npx prisma migrate deploy` để áp dụng các file SQL migration có sẵn mà không cần terminal tương tác (non-interactive/no TTY).
-     - Khởi tạo dữ liệu ban đầu cho menu sản phẩm qua kịch bản `prisma/seed.ts` một cách tự động và lặp lại được (idempotent).
-  3. **Tự động hóa CI/CD (Continuous Integration / Continuous Delivery):**
-     - 100% các Pull Request tạo vào nhánh `main` phải vượt qua quy trình kiểm tra tự động trên GitHub Actions gồm 4 công đoạn bắt buộc:
-       $$\text{Install Dependencies} \longrightarrow \text{Lint Code (oxlint)} \longrightarrow \text{Unit Tests (Vitest)} \longrightarrow \text{TypeScript Build}$$
-     - Khi merge vào `main`: Workflow CD tự động đóng gói image đẩy lên GitHub Packages (GHCR) và thực hiện smoke test kiểm tra tính sẵn sàng của ứng dụng.
-  4. **Giám sát Sức khỏe Dịch vụ (Health Check):**
-     - Cung cấp endpoint kiểm tra trạng thái hoạt động `GET /` hoặc `GET /health` phản hồi mã HTTP `200 OK` với thời gian trễ dưới 200ms để phục vụ bộ theo dõi sức khỏe của Docker Compose và Cloud Orchestration.
-
----
-
-## 3. Danh Mục Tính Năng Loại Trừ (Won't Have - Out of Scope) Và Lý Do Giải Trình
-
-Để đảm bảo tính khả thi và chất lượng kỹ thuật cao nhất trong khung thời gian 2 Sprint của nhóm phát triển 2 người, các tính năng sau được **chính thức xác nhận loại trừ** khỏi phạm vi thực hiện của dự án, kèm lý do cụ thể:
-
-| STT | Tính năng loại trừ (Won't Have) | Lý do kỹ thuật và nghiệp vụ giải trình |
+| Mã | Nhóm | Nội dung và tiêu chí kiểm chứng |
 |:---:|---|---|
-| **1** | **Ví tiền hoàn tiền nội bộ (Wallet Refund) & Rút tiền ngân hàng** | Đồ án thiết kế thanh toán ở mức mô phỏng nghiệp vụ (*Simulated Payment*). Việc xây dựng ví điện tử nạp/rút tiền thật đòi hỏi quy trình đối soát giao dịch liên ngân hàng (reconciliation), xử lý tranh chấp bồi hoàn và tuân thủ các quy chuẩn bảo mật tài chính khắt khe (PCI-DSS), vượt quá giới hạn thời gian và mục tiêu học phần môn học. |
-| **2** | **Quản lý ca làm việc & Chấm công nhân sự** | Trọng tâm cốt lõi của BrewLite là tối ưu hóa trải nghiệm khách hàng trong luồng đặt hàng và thanh toán nhanh không tiền mặt. Quản lý chấm công là nghiệp vụ quản trị nội bộ (ERP/HRM) riêng biệt, không tác động đến luồng giá trị chính của MVP. |
-| **3** | **Quản lý định lượng kho nguyên liệu chi tiết (từng gam cà phê, ml sữa, siro)** | Việc theo dõi trừ kho đến từng gam nguyên liệu đòi hỏi nghiệp vụ kiểm kê hao hụt phức tạp. Đồ án áp dụng giải pháp tinh gọn khả thi hơn: Quản lý định mức tồn kho theo số lượng ly thành phẩm bán ra trong ngày (`dailyQuota`) của từng món. |
-| **4** | **Hạ tầng SMS Brandname / Gửi mã OTP trả phí** | Đòi hỏi chi phí đăng ký với các nhà mạng viễn thông và duy trì kinh phí duy trì đầu số. Nhóm thay thế hoàn toàn bằng phương thức xác thực JWT qua tài khoản mật khẩu và đối chiếu nhận đơn tại quầy thông qua mã đơn hàng 6 chữ số trực tiếp trên màn hình ứng dụng. |
+| `NFR-01` | Bảo mật | Không tin giá từ client; mật khẩu băm `bcryptjs`; JWT 24 giờ; `JWT_SECRET` không có giá trị mặc định; không lưu số thẻ thô; không commit secret (chỉ có `.env.example`). Kiểm chứng bằng test của FR-04, FR-05, FR-06. |
+| `NFR-02` | Độ tin cậy và sẵn sàng | Không đặt ngưỡng tốc độ vì phụ thuộc hạ tầng và mạng. Thay bằng: (1) production qua HTTPS và `GET /health` trả 200 `{ status: "ok", timestamp }`; (2) kết quả đúng khi gửi trùng hoặc đồng thời (xem FR-08, FR-09); (3) mọi lỗi theo đúng bảng mã lỗi ở mục 1, lỗi 5xx không lộ stack hay chi tiết nội bộ; (4) log không chứa `cardNumber`, mật khẩu hay token; (5) môi trường tái tạo được từ đầu bằng Docker Compose, migration và seed. Lần gọi đầu trên gói miễn phí có thể chậm: làm nóng bằng `/health` trước khi demo. |
+| `NFR-03` | Chất lượng và bảo trì | Mọi PR qua CI (Install, Lint, Test, Build). Có Swagger tại `/docs`. Migration có phiên bản và seed tái tạo được CSDL. Có unit test cho định giá, máy trạng thái, tích điểm và integration test cho `POST /orders`, `POST /payments`. |
+
+`NFR-04` (khả dụng) thuộc phần giao diện, không nằm trong file này.
+
+---
+
+## 5. Gợi ý ca kiểm thử (cho Task 4, Task 5)
+
+1. **Định giá:** món 29.000, size `M`, `tran-chau`, `quantity` 2 cho `total` = 84.000; body có `total` bị 400.
+2. **Thanh toán:** thẻ đuôi `0000` thất bại; ví đơn 500.000đ thành công, 500.001đ thất bại; thanh toán đơn `PAID` trả 409.
+3. **Idempotency:** hai `POST /payments` cùng key cho một `Payment` và điểm cộng một lần.
+4. **Đồng thời:** hai thanh toán song song cùng đơn cho đúng một thành công, một 409.
+5. **Điểm:** 84.000đ cho 84 điểm; 84.999đ cho 84 điểm; 999đ cho 0 điểm.
+6. **Phân quyền dữ liệu:** `GET /orders/me` không trả đơn của người khác; thanh toán đơn của người khác trả 404.
+
+---
+
+## 6. Thay đổi so với `docs/architecture/api-contract.md` hiện tại
+
+`api-contract.md` là hợp đồng chung với Tài nên phải cập nhật và báo Tài trước khi sửa:
+
+1. Định danh bằng **`phone`** (số di động Việt Nam, chuẩn hóa về 10 chữ số, **là khóa chính của bảng `User`, thay cho `id` riêng**) thay cho `email` ở `POST /auth/register`, `POST /auth/login`; thêm `role` vào phản hồi đăng ký và vào JWT. `email` thành tùy chọn, không duy nhất.
+2. `GET /products` thêm `category` (`{ id, name }`) và `isAvailable`; thêm `GET /products/:id`.
+3. `POST /orders` từ chối món `isAvailable: false` bằng 409.
+4. Thêm endpoint mới `GET /loyalty/me`.
+5. JWT hạn 24 giờ (hợp đồng cũ ghi mặc định 1 ngày).

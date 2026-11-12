@@ -1,13 +1,24 @@
 import { Transform } from 'class-transformer';
-import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+
+const normalizePhone = ({ value }: { value: unknown }) => {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  if (trimmed.startsWith('+84')) {
+    return '0' + trimmed.slice(3);
+  }
+  return trimmed;
+};
 
 const normalizeEmail = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim().toLowerCase() : value;
 
 export class LoginDto {
-  @Transform(normalizeEmail)
-  @IsEmail()
-  email!: string;
+  @Transform(normalizePhone)
+  @Matches(/^0[35789]\d{8}$/, {
+    message: 'Số điện thoại không hợp lệ (yêu cầu số di động Việt Nam 10 chữ số)',
+  })
+  phone!: string;
 
   @IsString()
   @MinLength(1)
@@ -15,12 +26,12 @@ export class LoginDto {
   password!: string;
 }
 
-// Không extends LoginDto: class-validator bỏ decorator của lớp cha khi lớp con
-// khai báo lại cùng thuộc tính, nên giới hạn 72 ký tự sẽ mất.
 export class RegisterDto {
-  @Transform(normalizeEmail)
-  @IsEmail()
-  email!: string;
+  @Transform(normalizePhone)
+  @Matches(/^0[35789]\d{8}$/, {
+    message: 'Số điện thoại không hợp lệ (yêu cầu số di động Việt Nam 10 chữ số)',
+  })
+  phone!: string;
 
   // bcrypt chỉ băm 72 byte đầu nên chặn mật khẩu dài hơn
   @IsString()
@@ -32,4 +43,9 @@ export class RegisterDto {
   @IsString()
   @MaxLength(100)
   name?: string;
+
+  @IsOptional()
+  @Transform(normalizeEmail)
+  @IsEmail({}, { message: 'Email không đúng định dạng' })
+  email?: string;
 }

@@ -1,5 +1,11 @@
-import { Controller, Get } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { ProductDto } from './dto/product.dto.js';
 import { ProductsService } from './products.service.js';
 
@@ -13,5 +19,14 @@ export class ProductsController {
   @ApiOkResponse({ type: ProductDto, isArray: true })
   findAll() {
     return this.productsService.findAll();
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Chi tiết một sản phẩm theo id' })
+  @ApiOkResponse({ type: ProductDto })
+  @ApiNotFoundResponse({ description: 'Không tìm thấy sản phẩm' })
+  @ApiBadRequestResponse({ description: 'id không phải số' })
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.productsService.findOne(id);
   }
 }
