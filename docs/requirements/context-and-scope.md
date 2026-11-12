@@ -7,15 +7,15 @@
 > - **Trần Quốc Tài (`TaiTran263`)** — Frontend UI/UX, Quản trị trạng thái Client, QA
 >
 > **Đường dẫn tạo phẩm:** `docs/requirements/context-and-scope.md` (Liên kết: Issue `[D1.1]`, số issue ghi sau khi tạo ở repo Assignment 2)  
-> **Tài liệu đối chiếu:** `Assignment2-BrewLite.pdf` (Task 1.1), `cac-chuc-nang-thong-nhat.md`, `docs/architecture/api-contract.md`, `docs/traceability-matrix.md`
+> **Tài liệu đối chiếu:** `Assignment2-BrewLite.pdf` (Task 1.1), `docs/architecture/api-contract.md`, `docs/traceability-matrix.md`
 
 ## 0. Hướng dẫn đọc
 
 - File này là tạo phẩm **Task 1.1** của đề Assignment 2, đặt tại `docs/requirements/context-and-scope.md`.
-- Chi tiết chức năng (mã `CN-xx`, `UC-xx`, `FR-xx`, `NFR-xx`), bảng chuyển trạng thái đơn và các quyết định nằm ở `cac-chuc-nang-thong-nhat.md`, là **nguồn sự thật chuẩn**. Nếu hai file lệch nhau thì theo file đó và báo lại Long hoặc Tài để sửa.
-- Mã chỉ định nghĩa trong file này: `P1` đến `P4` (vấn đề nghiệp vụ), `G1` đến `G4` (mục tiêu hệ thống), `RSK-01` đến `RSK-08` (rủi ro).
+- File này là **nguồn sự thật chuẩn (Single Source of Truth)** của cả hệ thống. Danh mục mã `CN-xx`, `UC-xx`, `FR-xx`, `NFR-xx` và bảng chuyển trạng thái đơn nằm ở **mục 6**. Các tài liệu khác (SRS, sơ đồ, kiến trúc, ma trận truy vết) phải khớp mục 6; nếu lệch thì theo file này và báo Long hoặc Tài để sửa tài liệu kia.
+- Mã định nghĩa trong file này: `P1` đến `P4` (vấn đề nghiệp vụ), `G1` đến `G4` (mục tiêu hệ thống), `RSK-01` đến `RSK-08` (rủi ro), và toàn bộ `CN`, `UC`, `FR`, `NFR` ở mục 6.
 - Tên trong dấu `backtick` (enum, header, endpoint, cột CSDL) là tên đúng trong mã nguồn; dùng nguyên văn. Không tự thêm chức năng ngoài phạm vi đã ghi; thiếu thông tin thì hỏi lại, không đoán.
-- Bố cục theo yêu cầu Task 1.1 của đề: bối cảnh và vấn đề (mục 1), bảng stakeholder (mục 2), in-scope và phạm vi mở rộng (3.1, 3.2), out-of-scope (3.3), giả định và ràng buộc (mục 4), rủi ro ban đầu (mục 5).
+- Bố cục theo yêu cầu Task 1.1 của đề: bối cảnh và vấn đề (mục 1), bảng stakeholder (mục 2), in-scope và phạm vi mở rộng (3.1, 3.2), out-of-scope (3.3), giả định và ràng buộc (mục 4), rủi ro ban đầu (mục 5), danh mục thống nhất CN/UC/FR/NFR và vòng đời đơn (mục 6).
 - Phần Sprint 3 và 4 (mục 3.2) ở trạng thái **Planned**: chỉ có tài liệu và sơ đồ, không đòi mã nguồn và kiểm thử.
 
 ---
@@ -46,7 +46,7 @@ Tại các cửa hàng cà phê vừa và nhỏ hiện nay, quy trình phục v�
 
 | Mã | Mục tiêu hệ thống | Vấn đề giải quyết |
 |:---:|---|:---:|
-| **G1** | Khách hàng tự gọi món và thanh toán trực tiếp trên điện thoại di động, **loại bỏ hoàn toàn việc xếp hàng tại quầy**; mỗi thao tác của hệ thống (thêm vào giỏ, chuyển trang, xác nhận thanh toán) phản hồi nhanh, không gây chờ đợi do hệ thống (đo cụ thể ở NFR hiệu năng). | P1, P2, P3 |
+| **G1** | Khách hàng tự gọi món và thanh toán trực tiếp trên điện thoại di động, **loại bỏ hoàn toàn việc xếp hàng tại quầy**; mỗi thao tác của hệ thống (thêm vào giỏ, chuyển trang, xác nhận thanh toán) phản hồi nhanh, không gây chờ đợi do hệ thống (đo cụ thể ở `NFR-05`). | P1, P2, P3 |
 | **G2** | Tự động hóa 100% khâu định giá và kiểm tra tính hợp lệ của đơn hàng tại máy chủ (Server-side Pricing), bảo vệ an toàn giao dịch tài chính. | P2, P3 |
 | **G3** | Cung cấp cơ chế theo dõi trạng thái đơn hàng, cập nhật định kỳ khoảng 5 giây (polling), trên giao diện web di động (MVP Sprint 2); mã nhận hàng 6 số thay thế thẻ rung truyền thống khi triển khai hàng đợi pha chế (Sprint 3, Planned). | P1 |
 | **G4** | Không nhận tiền cho đơn không đủ nguyên liệu: kiểm tra tồn kho khi tạo đơn, tự trừ kho khi thanh toán (Sprint 4, Planned; MVP dùng `isAvailable`). | P4 |
@@ -135,7 +135,7 @@ Ngoài các mục dưới đây, API sản phẩm `GET /products` và `GET /prod
 * Đóng gói toàn bộ hệ thống bằng **Docker và Docker Compose** (chạy đồng bộ Web, API và PostgreSQL tại local).
 * **Sprint 1:** pipeline **Continuous Integration (CI GitHub Actions)** kiểm tra tự động 4 bước bắt buộc trên mọi Pull Request: `Install` → `Lint (oxlint)` → `Unit Test (Vitest)` → `TypeScript Build`.
 * **Sprint 2:** pipeline **Continuous Delivery (CD)** tự động đóng gói Docker Image lên GitHub Packages (GHCR).
-* **Sprint 2:** triển khai môi trường **Production thực tế truy cập qua Internet**: Frontend trên Vercel, API trên Render, Database PostgreSQL trên Neon Cloud, có chứng chỉ bảo mật HTTPS và endpoint giám sát sức khỏe `GET /health`.
+* **Sprint 2:** triển khai môi trường **Production thực tế truy cập qua Internet**: Frontend trên Vercel, API trên Render, Database PostgreSQL trên Neon Cloud, có chứng chỉ bảo mật HTTPS và endpoint giám sát sức khỏe `GET /health`. Khi cần demo trực tiếp trên điện thoại, có thể phát API chạy ở máy cá nhân qua Cloudflare Tunnel (`scripts/start-tunnel.sh`) như phương án dự phòng.
 * **Kiểm thử và dữ liệu (theo đề, mục 7.2):** unit test cho nghiệp vụ quan trọng; integration test cho API tạo đơn và thanh toán; ít nhất một end-to-end test từ menu đến xác nhận đơn; migration và seed tái tạo được CSDL.
 * **Phương án dự phòng cho Kho hàng ở MVP:** Sử dụng cờ tình trạng món `isAvailable` (còn bán / hết hàng) để hiển thị nhãn và khóa chọn món, đảm bảo luồng đặt hàng chạy thông suốt.
 
@@ -143,7 +143,7 @@ Ngoài các mục dưới đây, API sản phẩm `GET /products` và `GET /prod
 
 ### 3.2. Phạm vi mở rộng tương lai (Future Scope — Sprint 3 & Sprint 4)
 
-Các tính năng nâng cao đã được quy hoạch trong Product Backlog và sẽ được hiện thực hóa ở các Sprint tiếp theo sau khi hoàn thành nghiệm thu MVP. Trong Assignment 2 chúng ở trạng thái **Planned** (có trong tài liệu và sơ đồ, không đòi mã nguồn và kiểm thử). Danh mục FR/NFR, bảng chuyển trạng thái đơn và các quyết định chi tiết nằm ở `cac-chuc-nang-thong-nhat.md`.
+Các tính năng nâng cao đã được quy hoạch trong Product Backlog và sẽ được hiện thực hóa ở các Sprint tiếp theo sau khi hoàn thành nghiệm thu MVP. Trong Assignment 2 chúng ở trạng thái **Planned** (có trong tài liệu và sơ đồ, không đòi mã nguồn và kiểm thử). Danh mục FR/NFR và bảng chuyển trạng thái đơn nằm ở mục 6.
 
 #### A. Sprint 3 — Vận hành quầy & Tương tác khách hàng
 * **Màn hình Pha chế KDS (Kitchen Display System):** Cho phép Barista tiếp nhận đơn hàng `PAID`, cập nhật tiến độ chuyển trạng thái sang `PREPARING` (Đang pha chế) và `READY` (Món đã sẵn sàng).
@@ -210,3 +210,120 @@ Các tính năng nâng cao đã được quy hoạch trong Product Backlog và s
 | **RSK-06** | **Áp lực tiến độ 2 Sprint:** Khối lượng công việc lớn dẫn đến nguy cơ trễ hạn bàn giao | **Trung bình** | Áp dụng nghiêm ngặt mô hình **MoSCoW**: Hoàn thành 100% các hạng mục Must Have của MVP trước; các tính năng mở rộng được phân kỳ rõ ràng sang Sprint 3 và Sprint 4. |
 | **RSK-07** | **Đăng ký bằng SĐT không có OTP:** Có thể đăng ký bằng số điện thoại của người khác vì hệ thống không xác minh quyền sở hữu số | **Thấp** | Chấp nhận như giới hạn đã biết của đồ án (OTP/SMS thuộc mục Won't Have); ghi rõ trong SRS. Mật khẩu băm và JWT vẫn bảo vệ phiên làm việc. |
 | **RSK-08** | **Khởi động chậm của dịch vụ gói miễn phí:** API trên Render gói miễn phí có thể mất vài chục giây cho lần gọi đầu, ảnh hưởng mục tiêu G1 và buổi demo | **Trung bình** | Gọi `GET /health` làm nóng API trước khi demo hoặc nghiệm thu; độ trễ khởi động lần đầu (cold start) của dịch vụ miễn phí không tính vào NFR hiệu năng phản hồi của G1, chỉ đo sau khi dịch vụ đã khởi động xong. |
+
+---
+
+## 6. Danh Mục Thống Nhất: Chức Năng, Use Case, Yêu Cầu và Vòng Đời Đơn
+
+Đây là phần định nghĩa chuẩn của các mã dùng xuyên suốt tài liệu. Mọi SRS, sơ đồ, issue và `docs/traceability-matrix.md` phải dùng đúng các mã dưới đây. MoSCoW: `Must` và `Should` thuộc MVP, bắt buộc hiện thực; `Could` là **Planned** (chỉ có tài liệu và sơ đồ).
+
+### 6.1. 13 chức năng lớn (CN)
+
+| Mã | Tên chức năng | Sprint | MoSCoW | Phụ trách | FR | UC |
+|:---:|---|:---:|:---:|:---:|---|---|
+| `CN-01` | Nền tảng kỹ thuật và CI/CD tự động | 1 và 2 | Must | Long | (thuộc NFR-02, NFR-03) | — |
+| `CN-02` | Xem menu đồ uống Mobile-first | 1 | Must | Tài | FR-01 | UC-01 |
+| `CN-03` | Modal chi tiết và tùy chọn món | 2 | Must | Tài | FR-02 | UC-02 |
+| `CN-04` | Quản lý giỏ hàng (client store) | 2 | Must | Tài | FR-03 | UC-03 |
+| `CN-05` | Xác thực tài khoản bằng số điện thoại | 2 | Must | Long | FR-04 | UC-04 |
+| `CN-06` | Đặt hàng và thanh toán không tiền mặt | 2 | Must | Long và Tài | FR-05, FR-06, FR-08, FR-09 | UC-05 |
+| `CN-07` | Lịch sử, theo dõi đơn và tích điểm | 2 | Must (FR-07), Should (FR-10) | Long và Tài | FR-07, FR-10 | UC-06, UC-20 |
+| `CN-08` | Màn hình pha chế KDS cho Barista | 3 | Could | Long và Tài | FR-20 | UC-11 |
+| `CN-09` | Giao nhận quầy và mã 6 số | 3 | Could | Long và Tài | FR-21 | UC-07, UC-12 |
+| `CN-10` | Tiện ích khách: voucher, hủy đơn, đánh giá | 3 | Could | Long và Tài | FR-11 (phía khách), FR-12, FR-13 | UC-10, UC-08, UC-13, UC-09 |
+| `CN-11` | Quản lý menu, danh mục, topping (CRUD) | 4 | Could | Long và Tài | FR-18 | UC-15 |
+| `CN-12` | Kho nguyên liệu và công thức pha chế | 4 | Could | Long và Tài | FR-15, FR-16, FR-17 | UC-14, UC-16, UC-17 |
+| `CN-13` | Quản trị nhân sự, voucher và báo cáo | 4 | Could | Long và Tài | FR-11 (phía Manager), FR-14, FR-19 | UC-18, UC-21, UC-19 |
+
+### 6.2. 21 use case (UC)
+
+| Mã | Tên use case | Tác nhân chính | Quan hệ | Sprint | FR |
+|:---:|---|---|---|:---:|---|
+| `UC-01` | Xem menu sản phẩm | Khách hàng | — | 1 | FR-01 |
+| `UC-02` | Xem chi tiết và tùy chọn món | Khách hàng | — | 2 | FR-02 |
+| `UC-03` | Quản lý giỏ hàng | Khách hàng | — | 2 | FR-03 |
+| `UC-04` | Đăng ký / Đăng nhập tài khoản | Khách hàng | — | 2 | FR-04 |
+| `UC-05` | Đặt hàng và thanh toán | Khách hàng, Cổng thanh toán (mô phỏng) | `<<include>>` UC-04; `<<extend>>` UC-10 | 2 | FR-05, FR-06, FR-08, FR-09 |
+| `UC-06` | Xem lịch sử và theo dõi đơn hàng | Khách hàng | — | 2 | FR-07 |
+| `UC-20` | Xem điểm tích lũy và lịch sử thưởng | Khách hàng | — | 2 | FR-10 |
+| `UC-11` | Pha chế và cập nhật tiến độ | Barista | — | 3 | FR-20 |
+| `UC-07` | Nhận đồ uống bằng mã 6 số | Khách hàng | — | 3 | FR-21 |
+| `UC-12` | Xác nhận mã 6 số và giao món | Cashier | — | 3 | FR-21 |
+| `UC-10` | Áp dụng mã khuyến mãi | Khách hàng | `<<extend>>` UC-05 | 3 | FR-11 |
+| `UC-08` | Hủy đơn hàng khi chưa pha | Khách hàng | `<<extend>>` UC-06 | 3 | FR-12 |
+| `UC-13` | Xử lý hủy đơn tại quầy | Cashier | — | 3 | FR-12 |
+| `UC-09` | Đánh giá và gửi phản hồi | Khách hàng | `<<extend>>` UC-06 | 3 | FR-13 |
+| `UC-15` | Quản lý danh mục và món đồ uống | Quản lý | — | 4 | FR-18 |
+| `UC-16` | Quản lý công thức pha chế | Quản lý | — | 4 | FR-16 |
+| `UC-14` | Nhập kho nguyên liệu thực tế | Barista, Manager | — | 4 | FR-15 |
+| `UC-17` | Quản lý tồn kho và cảnh báo nguyên liệu | Quản lý | — | 4 | FR-15, FR-17 |
+| `UC-18` | Quản lý tài khoản nhân viên | Quản lý | — | 4 | FR-19 |
+| `UC-21` | Quản lý mã khuyến mãi (tạo voucher) | Quản lý | — | 4 | FR-11 |
+| `UC-19` | Báo cáo thống kê doanh thu và sản lượng | Quản lý | — | 4 | FR-14 |
+
+### 6.3. 21 yêu cầu chức năng (FR)
+
+| Mã | Yêu cầu | Chức năng | Sprint | MoSCoW |
+|:---:|---|:---:|:---:|:---:|
+| `FR-01` | Xem menu theo danh mục, tìm kiếm/lọc, nhãn Sold out theo `isAvailable` | CN-02 | 1 | Must |
+| `FR-02` | Chọn size, topping, xem giá tạm tính | CN-03 | 2 | Must |
+| `FR-03` | Quản lý giỏ hàng phía client (thêm/sửa/xóa, lưu `localStorage`) | CN-04 | 2 | Must |
+| `FR-04` | Đăng ký, đăng nhập bằng SĐT, cấp và kiểm tra JWT, gán vai trò | CN-05 | 2 | Must |
+| `FR-05` | Tạo đơn, server tự tính tổng tiền từ CSDL (Server-side Pricing) | CN-06 | 2 | Must |
+| `FR-06` | Thanh toán mô phỏng Thẻ/Ví, không lưu số thẻ thô | CN-06 | 2 | Must |
+| `FR-07` | Xem lịch sử đơn của mình và theo dõi trạng thái (polling) | CN-07 | 2 | Must |
+| `FR-08` | Vòng đời đơn theo bảng chuyển trạng thái, khóa lạc quan `version` | CN-06 | 2 | Must |
+| `FR-09` | Chống gửi trùng bằng `Idempotency-Key` (tạo đơn, thanh toán) | CN-06 | 2 | Must |
+| `FR-10` | Tích điểm 1 điểm/1.000đ khi `PAID`, xem số dư và lịch sử điểm | CN-07 | 2 | Should |
+| `FR-11` | Voucher: áp mã khi checkout (khách) và tạo/quản lý mã (Manager) | CN-10, CN-13 | 3, 4 | Could |
+| `FR-12` | Hủy đơn trước khi pha chế, ghi lý do, hoàn tiền/kho/điểm | CN-10 | 3 | Could |
+| `FR-13` | Đánh giá 1–5 sao kèm nhận xét cho đơn `COMPLETED` | CN-10 | 3 | Could |
+| `FR-14` | Báo cáo doanh thu, số đơn, tỷ lệ hủy, Top 5 món | CN-13 | 4 | Could |
+| `FR-15` | Kho nguyên liệu: nhập kho có lưu vết, theo dõi tồn, trừ/hoàn kho tự động | CN-12 | 4 | Could |
+| `FR-16` | Công thức pha chế theo món, size và topping | CN-12 | 4 | Could |
+| `FR-17` | Cảnh báo khi nguyên liệu chạm ngưỡng tối thiểu | CN-12 | 4 | Could |
+| `FR-18` | Quản lý danh mục, món, topping, phụ thu size (CRUD) | CN-11 | 4 | Could |
+| `FR-19` | Quản lý tài khoản nhân viên: tạo, gán vai trò, khóa/mở khóa | CN-13 | 4 | Could |
+| `FR-20` | Màn hình KDS cho Barista: nhận đơn `PAID`, chuyển `PREPARING`, `READY` | CN-08 | 3 | Could |
+| `FR-21` | Sinh `pickupCode` khi `READY`; Cashier đối chiếu mã và hoàn tất `COMPLETED` | CN-09 | 3 | Could |
+
+### 6.4. 5 yêu cầu phi chức năng (NFR)
+
+| Mã | Nhóm | Nội dung |
+|:---:|---|---|
+| `NFR-01` | Bảo mật | Không tin giá từ client; mật khẩu băm `bcryptjs`; JWT 24 giờ, không có giá trị mặc định cho `JWT_SECRET`; không lưu số thẻ thô; không commit secret |
+| `NFR-02` | Độ tin cậy và sẵn sàng | Không đặt ngưỡng tốc độ vì phụ thuộc hạ tầng và mạng. Production qua HTTPS, có `GET /health`; kết quả đúng khi gửi trùng hoặc đồng thời (`Idempotency-Key`, `version`); lỗi trả đúng mã, không lộ chi tiết nội bộ; môi trường tái tạo được bằng Docker Compose, migration và seed (xem RSK-08 về khởi động chậm) |
+| `NFR-03` | Chất lượng và bảo trì | Mọi PR qua CI (Install, Lint, Test, Build); API theo `docs/architecture/api-contract.md`, có Swagger tại `/docs`; migration có phiên bản |
+| `NFR-04` | Khả dụng (usability) | Mobile-first; menu có đủ 3 trạng thái Loading, Empty, Error và Retry |
+| `NFR-05` | Hiệu năng giao diện | Chỉ đo sau khi API đã khởi động xong (không tính cold start, xem RSK-08): FCP không quá 1,5 giây trên 4G, TBT không quá 200 ms, đổi size/topping cập nhật giá trong 50 ms, luồng từ duyệt menu đến thanh toán xong trong 60 giây (mục tiêu G1) |
+
+### 6.5. Vòng đời đơn hàng
+
+Trạng thái: `PENDING`, `PAID`, `PAYMENT_FAILED`, `PREPARING`, `READY`, `COMPLETED`, `CANCELLED`. Mọi lần chuyển đều kiểm tra `version` (khóa lạc quan), sai thì trả 409. **Ở MVP (Sprint 2) chỉ có 3 trạng thái đầu**; 4 trạng thái sau thuộc Sprint 3, Planned.
+
+| Từ | Sang | Ai thực hiện | Sprint | Ghi chú |
+|---|---|---|:---:|---|
+| `PENDING` | `PAID` | Khách (thanh toán) | 2 | Cộng điểm; trừ kho (từ Sprint 4) |
+| `PENDING` | `PAYMENT_FAILED` | Hệ thống | 2 | Thẻ `0000`, ví trên 500.000đ |
+| `PAYMENT_FAILED` | `PAID` | Khách (thanh toán lại) | 2 | |
+| `PENDING`, `PAYMENT_FAILED` | `CANCELLED` | Khách | 3 | Chưa trả tiền nên không hoàn tiền |
+| `PAID` | `PREPARING` | Barista | 3 | |
+| `PAID` | `CANCELLED` | Khách hoặc Cashier | 3 | Hoàn tiền mô phỏng, trừ lại điểm; hoàn kho từ Sprint 4 |
+| `PREPARING` | `READY` | Barista | 3 | Sinh `pickupCode` |
+| `READY` | `COMPLETED` | Cashier | 3 | Nhập đúng `pickupCode` |
+
+Không có đường hủy từ `PREPARING`, `READY`, `COMPLETED`. `PAID` sang `PAID` bị chặn (409). Tình huống Barista bấm `PREPARING` đúng lúc khách bấm hủy được giải quyết bằng `version`: bên đến sau nhận 409.
+
+### 6.6. Các quyết định đã chốt
+
+1. **Kho (Sprint 4):** kiểm tra đủ nguyên liệu (cả topping) khi tạo đơn, từ chối nếu thiếu; trừ kho có điều kiện (`tồn >= cần`) trong cùng transaction với việc chuyển `PAID`; hủy đơn đã `PAID` thì hoàn kho. Trước đó dùng cờ `isAvailable`.
+2. **Theo dõi đơn:** polling khoảng 5 giây cho cả app khách và KDS, không dùng WebSocket.
+3. **Tài khoản nhân viên và voucher ở Sprint 3:** seed sẵn trong CSDL, kèm phân quyền theo vai trò; giao diện quản lý làm ở Sprint 4.
+4. **Hủy đơn:** theo bảng 6.5. Hoàn tiền mô phỏng chỉ ghi nhận thời điểm hoàn và lý do hủy, không thêm trạng thái mới.
+5. **Voucher:** một mã mỗi đơn; điều kiện gồm hạn dùng, đơn tối thiểu, tổng lượt dùng tối đa; server tính giảm giá. Điểm thưởng tính trên số tiền thực trả (sau giảm).
+6. **Điểm thưởng:** chỉ tích, chưa đổi. Lịch sử điểm suy ra từ các lần thanh toán thành công, không cần sổ điểm riêng. Hủy đơn đã `PAID` thì trừ lại điểm.
+7. **Định nghĩa báo cáo:** doanh thu thực thu là tổng tiền các đơn `PAID`, `PREPARING`, `READY`, `COMPLETED`; đơn hoàn tất là `COMPLETED`; tỷ lệ hủy là số `CANCELLED` chia tổng đơn tạo trong kỳ.
+8. **Mã nhận hàng:** `pickupCode` duy nhất trong số đơn đang `READY`, dùng để đối chiếu, không phải bí mật bảo mật.
+9. **Topping và phụ thu size:** Sprint 2 dùng bảng giá cố định (Size S +0đ, M +5.000đ, L +10.000đ; Trân châu đen 8.000đ, Kem cheese 10.000đ, Thạch cà phê 6.000đ). Sprint 4 chuyển sang CSDL; đơn lưu giá tại thời điểm đặt nên đổi giá không ảnh hưởng lịch sử.
+10. **QR tại bàn:** QR chỉ mở đường dẫn web, không gắn với bàn.
+11. **Giới hạn đã biết:** xác thực bằng SĐT và mật khẩu, không có OTP (xem RSK-07).
