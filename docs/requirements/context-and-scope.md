@@ -125,7 +125,7 @@ Ngoài các mục dưới đây, API sản phẩm `GET /products` và `GET /prod
    - Kiểm soát nghiêm ngặt bước chuyển: `PENDING` → `PAID` hoặc `PAYMENT_FAILED`; `PAYMENT_FAILED` → `PAID` (cho phép thanh toán lại).
    - Chặn đứng mọi nỗ lực thanh toán lại đơn hàng đã ở trạng thái `PAID` (báo lỗi `409 Conflict`).
 4. **Chống gửi trùng yêu cầu giao dịch (Idempotency Control)** (CN-06, Sprint 2):
-   - Áp dụng header `Idempotency-Key` (UUID) cho API tạo đơn và thanh toán, ngăn chặn trừ tiền 2 lần khi khách bấm nút liên tục hoặc lỗi mạng gửi lại request.
+   - Áp dụng header `Idempotency-Key` (chuỗi duy nhất) cho API tạo đơn và thanh toán, ngăn chặn trừ tiền 2 lần khi khách bấm nút liên tục hoặc lỗi mạng gửi lại request.
 5. **Khóa lạc quan chống xung đột đồng thời (Optimistic Locking)** (CN-06, Sprint 2):
    - Quản lý qua cột `version: Int @default(0)` trong bảng `Order`, đảm bảo an toàn dữ liệu khi có nhiều tiến trình cập nhật đơn hàng cùng lúc.
 6. **Tích lũy điểm thưởng thành viên (Loyalty Points)** (CN-07, Sprint 2):
@@ -203,7 +203,7 @@ Các tính năng nâng cao đã được quy hoạch trong Product Backlog và s
 | Mã | Mô tả rủi ro kỹ thuật | Mức độ | Biện pháp phòng ngừa và xử lý kỹ thuật |
 |:---:|---|:---:|---|
 | **RSK-01** | **Gian lận sửa giá từ phía Client:** Người dùng can thiệp dữ liệu giỏ hàng trên trình duyệt để gửi tổng tiền sai lệch về máy chủ | **Cao** | Backend **tuyệt đối không tin tưởng giá từ client**; Server tự động đọc giá gốc trong DB và tính lại toàn bộ đơn giá, phụ thu size, topping trước khi tạo đơn (`Server-side Pricing`). |
-| **RSK-02** | **Trừ tiền lặp lại do lỗi mạng hoặc bấm liên tục:** Khách bấm nút thanh toán nhiều lần khi mạng chậm | **Cao** | Client sinh UUID đính kèm header **`Idempotency-Key`**; Backend kiểm tra ràng buộc duy nhất trong CSDL để đảm bảo chỉ xử lý nghiệp vụ tài chính đúng 1 lần duy nhất. |
+| **RSK-02** | **Trừ tiền lặp lại do lỗi mạng hoặc bấm liên tục:** Khách bấm nút thanh toán nhiều lần khi mạng chậm | **Cao** | Client sinh key duy nhất đính kèm header **`Idempotency-Key`**; Backend kiểm tra ràng buộc duy nhất trong CSDL để đảm bảo chỉ xử lý nghiệp vụ tài chính đúng 1 lần duy nhất. |
 | **RSK-03** | **Xung đột trạng thái đơn hàng đồng thời:** Hai request cùng lúc thay đổi trạng thái của một đơn hàng | **Cao** | Áp dụng cơ chế **Khóa lạc quan (Optimistic Locking)** qua trường `version` trong bảng `Order`; câu lệnh UPDATE kiểm tra đúng version, nếu sai lập tức chặn lại và trả mã lỗi `409 Conflict`. |
 | **RSK-04** | **Lộ lọt thông tin xác thực và mật khẩu:** Mật khẩu bị lộ trong log hoặc cơ sở dữ liệu | **Cao** | 100% mật khẩu được băm một chiều bằng thuật toán `bcryptjs` với salt round = 10; JWT có thời hạn 24 giờ; không đặt giá trị fallback cho `JWT_SECRET`; không commit file `.env` chứa secret vào Git. |
 | **RSK-05** | **Lệch pha giữa Frontend và Backend:** Hai thành viên làm việc độc lập dẫn đến không khớp dữ liệu gọi API | **Trung bình** | Thống nhất và tuân thủ hợp đồng API tại `docs/architecture/api-contract.md`; tích hợp Swagger UI tự động tại `/docs`; mọi thay đổi hợp đồng phải được trao đổi và duyệt trước. |
