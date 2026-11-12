@@ -3,7 +3,7 @@
 > **Dự án:** Ứng dụng đặt cà phê không tiền mặt BrewLite  
 > **Môn học:** Công nghệ phần mềm — Học kỳ 1, Năm học 2026–2027  
 > **Phiên bản phát hành:** `v1.0.0` (Mốc nghiệm thu Assignment 2 — Core MVP)  
-> **Ngày phát hành:** 10/11/2026  
+> **Ngày phát hành:** 10/11/2026 (cập nhật 12/11/2026 sau khi gộp PR #114 và #115: đồng bộ CSDL theo số điện thoại)  
 > **Nhóm thực hiện:**
 > - **Nguyễn Thành Long (`Longcodepro`)** — Backend, Scrum Master, DevOps, Kiến trúc
 > - **Trần Quốc Tài (`TaiTran263`)** — Frontend UI/UX, Quản trị trạng thái Client, QA
@@ -31,7 +31,7 @@ Toàn bộ dịch vụ đã được triển khai trực tiếp trên nền tả
 | **Frontend Web App** | **Vercel Edge Network** | [`https://brewlite-web.vercel.app`](https://brewlite-web.vercel.app) | HTTPS | Ứng dụng Next.js 16 Mobile-first, CDN toàn cầu |
 | **Backend API Service** | **Render Cloud Services** | [`https://brewlite-api.onrender.com`](https://brewlite-api.onrender.com) | HTTPS | Container NestJS triển khai tự động từ GHCR |
 | **Endpoint Health Check** | **Render Cloud** | [`https://brewlite-api.onrender.com/health`](https://brewlite-api.onrender.com/health) | HTTPS | Trả về HTTP 200 `{ "status": "ok" }` |
-| **Tài liệu API (Swagger)** | **Render Cloud** | [`https://brewlite-api.onrender.com/api/docs`](https://brewlite-api.onrender.com/api/docs) | HTTPS | Giao diện thử nghiệm API OpenAPI 3.0 |
+| **Tài liệu API (Swagger)** | **Render Cloud** | [`https://brewlite-api.onrender.com/docs`](https://brewlite-api.onrender.com/docs) | HTTPS | Giao diện thử nghiệm API OpenAPI 3.0 |
 | **Cơ sở dữ liệu** | **Neon Serverless PostgreSQL** | `ep-dry-pond-xxx.ap-southeast-1.aws.neon.tech` | TLS 5432 | Đặt tại Singapore (`ap-southeast-1`), SSL Mode |
 | **Demo Tunnel (Dự phòng)** | **Cloudflare Zero Trust** | [`https://demo.brewlite.online`](https://demo.brewlite.online) | HTTPS | Phát trực tiếp từ môi trường Local chấm bài |
 
@@ -42,13 +42,13 @@ Toàn bộ dịch vụ đã được triển khai trực tiếp trên nền tả
 Giảng viên và người nghiệm thu có thể sử dụng các tài khoản và thông tin thẻ mô phỏng đã được seed sẵn trong hệ thống:
 
 ### 3.1. Tài khoản khách hàng thử nghiệm
-- **Khách hàng mẫu 1:** Số điện thoại `0901234567` | Mật khẩu: `password123`
-- **Khách hàng mẫu 2:** Số điện thoại `0988888888` | Mật khẩu: `password123`
-- *Khách vãng lai:* Có thể bấm **Đăng ký** trực tiếp trên web bằng bất kỳ SĐT Việt Nam 10 chữ số nào (ví dụ: `0912345678`).
+- **Không có tài khoản được seed sẵn:** `prisma/seed.ts` chỉ tạo danh mục và món, không tạo người dùng.
+- Cách đăng nhập: bấm **Đăng ký** trên web với SĐT di động Việt Nam 10 chữ số (đầu số `03`, `05`, `07`, `08`, `09`, ví dụ `0912345678`) và mật khẩu 6 đến 72 ký tự.
+- Nút **"Tài khoản mẫu (Demo)"** ở form đăng nhập chỉ điền sẵn `0912345678` / `matkhau123` vào ô nhập. Tài khoản này chỉ đăng nhập được nếu đã được đăng ký trước đó với đúng cặp này.
 
 ### 3.2. Kịch bản thanh toán thẻ & ví mô phỏng (Mock Payment Gate)
 - **Thanh toán bằng Thẻ (`CARD`):**
-  - **Thành công:** Nhập bất kỳ dãy 16 số nào có 4 số cuối **khác `0000`** (Ví dụ: `4111 2222 3333 4444`).
+  - **Thành công:** Nhập số thẻ 13 đến 19 chữ số (ví dụ 16 số) có 4 số cuối **khác `0000`** (Ví dụ: `4111 2222 3333 4444`).
   - **Thất bại (Test nhánh Alt lỗi thẻ):** Nhập số thẻ có 4 số cuối là **`0000`** (Ví dụ: `4111 2222 3333 0000`).
 - **Thanh toán bằng Ví điện tử (`WALLET`):**
   - **Thành công:** Áp dụng cho các đơn hàng có tổng giá trị <= 500.000đ.
@@ -62,7 +62,7 @@ Giảng viên và người nghiệm thu có thể sử dụng các tài khoản 
 * **Xem Menu Mobile-First (`FR-01`):** Phân chia tab danh mục (Cà phê phin, Espresso, Cold Brew), hiển thị ảnh đại diện, giá niêm yết, tự động gắn nhãn "Hết hàng" (Sold out) theo cờ `isAvailable`. Hỗ trợ 3 trạng thái giao diện: Skeleton Loading, Empty State, Error & Retry.
 * **Modal tùy biến đồ uống (`FR-02`):** Cho phép chọn duy nhất 1 Size (S +0đ, M +5.000đ, L +10.000đ) và tick chọn nhiều Topping (Trân châu đen +8.000đ, Kem cheese +10.000đ, Thạch cà phê +6.000đ). Giá tạm tính tự động nhảy số theo thời gian thực.
 * **Giỏ hàng Client Store (`FR-03`):** Quản lý bằng Zustand, tự động lưu bền vững vào `localStorage`. Cho phép tăng/giảm số lượng, xóa từng món, tự xóa giỏ khi thanh toán xong; hiển thị badge đếm số ly trên thanh điều hướng.
-* **Modal Xác thực SĐT (`FR-04`):** Giao diện đăng ký/đăng nhập chuẩn di động, validate regex SĐT 10 số Việt Nam (`^0[0-9]{9}$`), lưu token JWT vào Axios headers.
+* **Modal Xác thực SĐT (`FR-04`):** Giao diện đăng ký/đăng nhập chuẩn di động, validate regex SĐT 10 số Việt Nam (`^(?:03|05|07|08|09)\d{8}$`), lưu token JWT vào Axios headers.
 * **Màn hình Thanh toán Checkout (`FR-05`, `FR-06`):** Tóm tắt đơn hàng, lựa chọn phương thức Thẻ/Ví, sinh mã UUID `Idempotency-Key` bảo vệ giao dịch.
 * **Lịch sử & Theo dõi đơn hàng (`FR-07`, `FR-10`):** Màn hình `/orders` hiển thị danh sách đơn cá nhân, cơ chế Polling tự động làm mới trạng thái mỗi 5 giây, hiển thị số dư điểm tích lũy và lịch sử cộng điểm.
 
@@ -76,7 +76,7 @@ Giảng viên và người nghiệm thu có thể sử dụng các tài khoản 
 
 ### 4.3. Hạ Tầng DevOps & Chất Lượng (CI/CD)
 * **Pipeline CI (GitHub Actions):** Tự động kích hoạt khi mở PR, vượt qua 4 chốt chặn bắt buộc: `Install -> Lint (oxlint) -> Unit Test (Vitest) -> Build`.
-* **Pipeline CD (GitHub Actions):** Đóng gói Docker Image đa nền tảng lên GitHub Container Registry (`ghcr.io`), kích hoạt Render Webhook triển khai tự động, chạy tiền kiểm migration CSDL và smoke test `/health`.
+* **Pipeline CD (GitHub Actions):** Đóng gói Docker Image lên GitHub Container Registry (`ghcr.io`), kích hoạt Render Webhook triển khai (khi đã cấu hình secret) và smoke test `/health` (khi đã cấu hình URL Production). Migration CSDL và seed chạy ở lệnh khởi động của container.
 * **Container hóa:** Tệp `docker-compose.yml` cho phép chạy trọn gói cả 3 dịch vụ (Web:4004, API:4003, DB:4005) ở máy cục bộ chỉ bằng một câu lệnh `docker compose up`.
 
 ---
@@ -97,7 +97,7 @@ Giảng viên và người nghiệm thu có thể sử dụng các tài khoản 
 | | Các bản quyết định kiến trúc (ADR) | [`docs/architecture/adr/`](./architecture/adr/) (ADR 001 đến ADR 005) |
 | | Sơ đồ UML Deployment hạ tầng | [`docs/diagrams/deployment.puml`](./diagrams/deployment.puml) (ảnh: `.svg`) |
 | | Kế hoạch triển khai & Rollback | [`docs/deployment.md`](./deployment.md) |
-| **Truy vết (Task 8)** | Ma trận truy vết yêu cầu (21 FR + 4 NFR) | [`docs/traceability-matrix.md`](./traceability-matrix.md) |
+| **Truy vết (Task 8)** | Ma trận truy vết yêu cầu (21 FR + 5 NFR) | [`docs/traceability-matrix.md`](./traceability-matrix.md) |
 
 ---
 
@@ -105,6 +105,7 @@ Giảng viên và người nghiệm thu có thể sử dụng các tài khoản 
 
 ### 6.1. Giới hạn kỹ thuật chấp nhận ở phiên bản v1.0.0
 - Xác thực tài khoản khách hàng thực hiện qua Số điện thoại + Mật khẩu (chưa tích hợp tổng đài gửi mã OTP SMS trả phí do chi phí hạ tầng).
+- Chưa có kiểm thử end-to-end tự động (Playwright hoặc Cypress). Hiện có unit test và integration test của API (Vitest) cùng kịch bản Postman.
 - Cơ chế theo dõi trạng thái đơn hàng sử dụng kỹ thuật Polling (thăm dò chu kỳ 5 giây) thay cho WebSocket để tối ưu tài nguyên máy chủ miễn phí.
 
 ### 6.2. Lộ trình phát triển mở rộng (Sprint 3 & Sprint 4 — Planned)
