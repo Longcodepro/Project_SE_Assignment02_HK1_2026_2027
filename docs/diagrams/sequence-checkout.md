@@ -32,7 +32,7 @@ Sơ đồ đáp ứng **100% tất cả tiêu chí bắt buộc trong đề bài
 | STT | Tên Lifeline | Kiểu đối tượng | Vai trò trong luồng tuần tự |
 |:---:|---|:---:|---|
 | **1** | **`Customer`** | Actor | Khách hàng thực hiện thao tác bấm nút đặt món, chọn phương thức thanh toán và theo dõi trạng thái đơn. |
-| **2** | **`Next.js Web (UI Client)`** | Participant (Giao diện) | Ứng dụng Frontend client-side, quản lý Zustand Cart Store, sinh mã UUID `Idempotency-Key`, điều hướng màn hình và kích hoạt Polling 5s. |
+| **2** | **`Next.js Web (UI Client)`** | Participant (Giao diện) | Ứng dụng Frontend client-side, quản lý Zustand Cart Store, sinh mã duy nhất `Idempotency-Key`, điều hướng màn hình và kích hoạt Polling 5s. |
 | **3** | **`NestJS API (Backend)`** | Participant (Máy chủ) | Máy chủ backend xử lý nghiệp vụ, kiểm tra JWT Guard, tính Server-side Pricing, điều phối Transaction và liên lạc cổng thanh toán. |
 | **4** | **`PostgreSQL (Prisma DB)`** | Database | Cơ sở dữ liệu lưu trữ các bảng `Product`, `Order`, `OrderItem`, `Payment`, `User` (kèm cột `loyaltyPoints`). |
 | **5** | **`Payment Gateway (Mô phỏng)`** | Participant (Hệ thống ngoài) | Dịch vụ trung gian mô phỏng thẩm định thông tin thẻ/ví và trả về kết quả phê duyệt hoặc từ chối giao dịch. |
@@ -43,7 +43,7 @@ Sơ đồ đáp ứng **100% tất cả tiêu chí bắt buộc trong đề bài
 
 ### Giai đoạn 1: Tạo đơn hàng `POST /orders` (Server-side Pricing)
 - Khách hàng bấm **"Tiến hành Đặt hàng"** ở `/cart` để sang `/checkout`, chọn Thẻ hoặc Ví rồi bấm **"Xác nhận Đặt hàng & Thanh toán"**.
-- Next.js Client tự động sinh UUID phiên bản 4 gán vào header `Idempotency-Key` và vô hiệu hóa nút bấm chống click đúp.
+- Next.js Client tự động sinh key duy nhất (dạng `ord_<thời gian>_<ngẫu nhiên>`) gán vào header `Idempotency-Key` và vô hiệu hóa nút bấm chống click đúp.
 - Gửi HTTP `POST /orders` mang theo danh sách món (`productId`, `size`, `toppings`, `quantity`). **Tuyệt đối không gửi giá tiền**.
 - NestJS API xác thực danh tính qua JWT Token, kiểm tra xem `Idempotency-Key` đã từng xử lý chưa.
 - API truy vấn thông tin sản phẩm từ bảng `Product` trong CSDL:
@@ -54,7 +54,7 @@ Sơ đồ đáp ứng **100% tất cả tiêu chí bắt buộc trong đề bài
 
 ### Giai đoạn 2: Xử lý thanh toán không tiền mặt `POST /payments`
 - Phương thức (`CARD` hoặc `WALLET`) là lựa chọn khách đã đặt ở `/checkout` trước khi bấm xác nhận.
-- Client sinh UUID mới cho giao dịch thanh toán và gọi `POST /payments` gửi kèm `orderId`, `method`, `cardNumber` (bắt buộc khi `CARD`, không được lưu lại) và header `Idempotency-Key`.
+- Client sinh key mới (dạng `pay_<thời gian>_<ngẫu nhiên>`) cho giao dịch thanh toán và gọi `POST /payments` gửi kèm `orderId`, `method`, `cardNumber` (bắt buộc khi `CARD`, không được lưu lại) và header `Idempotency-Key`.
 - Backend xác thực JWT, tra cứu đơn hàng trong CSDL (đơn phải thuộc người dùng và có `status` là `PENDING` hoặc `PAYMENT_FAILED`; đơn đã `PAID` trả 409).
 - Backend áp quy tắc của Cổng thanh toán mô phỏng (logic nội bộ của `PaymentsService`, không có endpoint riêng).
 - Cổng thanh toán thẩm định theo quy tắc mô phỏng:
