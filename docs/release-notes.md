@@ -28,7 +28,7 @@ Toàn bộ dịch vụ đã được triển khai trực tiếp trên nền tả
 
 | Thành phần | Nền tảng hạ tầng | Địa chỉ truy cập Production | Giao thức | Ghi chú nghiệm thu |
 |---|---|---|:---:|---|
-| **Frontend Web App** | **Vercel Edge Network** | [`https://brewlite-web.vercel.app`](https://brewlite-web.vercel.app) | HTTPS | Ứng dụng Next.js 16 Mobile-first, CDN toàn cầu |
+| **Frontend Web App** | **Vercel Edge Network** | [`https://se-as2-brewlite.vercel.app`](https://se-as2-brewlite.vercel.app) | HTTPS | Ứng dụng Next.js 16 Mobile-first, CDN toàn cầu |
 | **Backend API Service** | **Render Cloud Services** | [`https://brewlite-api.onrender.com`](https://brewlite-api.onrender.com) | HTTPS | NestJS build từ `apps/api/Dockerfile`, Render tự deploy theo kết nối Git |
 | **Endpoint Health Check** | **Render Cloud** | [`https://brewlite-api.onrender.com/health`](https://brewlite-api.onrender.com/health) | HTTPS | Trả về HTTP 200 `{ "status": "ok" }` |
 | **Tài liệu API (Swagger)** | **Render Cloud** | [`https://brewlite-api.onrender.com/docs`](https://brewlite-api.onrender.com/docs) | HTTPS | Giao diện thử nghiệm API OpenAPI 3.0 |

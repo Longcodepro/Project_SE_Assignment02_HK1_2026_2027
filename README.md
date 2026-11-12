@@ -18,7 +18,7 @@ Hệ thống đã được đóng gói container tự động và triển khai c
 
 | Thành phần | Nền tảng hạ tầng | Địa chỉ truy cập Production | Ghi chú nghiệm thu |
 |---|---|---|---|
-| **Frontend Web App** | **Vercel Edge Network** | [https://brewlite-web.vercel.app](https://brewlite-web.vercel.app) | Giao diện Next.js 16 Mobile-first |
+| **Frontend Web App** | **Vercel Edge Network** | [https://se-as2-brewlite.vercel.app](https://se-as2-brewlite.vercel.app) | Giao diện Next.js 16 Mobile-first |
 | **Backend API Service** | **Render Cloud Services** | [https://brewlite-api.onrender.com](https://brewlite-api.onrender.com) | NestJS build từ `apps/api/Dockerfile`, Render tự deploy theo kết nối Git |
 | **Health Check Endpoint** | **Render Cloud** | [https://brewlite-api.onrender.com/health](https://brewlite-api.onrender.com/health) | Trả về HTTP 200 `{ "status": "ok" }` |
 | **Tài liệu API (Swagger)** | **Render Cloud** | [https://brewlite-api.onrender.com/docs](https://brewlite-api.onrender.com/docs) | Giao diện tương tác OpenAPI 3.0 |
@@ -131,7 +131,7 @@ npm run build                 # Kiểm tra build tĩnh và tối ưu giao diện
 Khi phiên bản mới trên Production phát sinh lỗi nghiêm trọng, nhóm thực hiện quy trình Rollback theo 3 cấp độ (chi tiết tại [`docs/deployment.md`](./docs/deployment.md)):
 
 * **Cấp 1 — Rollback Frontend trên Vercel (Dưới 10 giây):**  
-  Vào Vercel Dashboard → Chọn dự án `brewlite-web` → Tab **Deployments** → Chọn bản deploy ổn định gần nhất → Bấm **Instant Rollback**.
+  Vào Vercel Dashboard → Chọn dự án frontend (tên miền `se-as2-brewlite.vercel.app`) → Tab **Deployments** → Chọn bản deploy ổn định gần nhất → Bấm **Instant Rollback**.
 * **Cấp 2 — Rollback Backend trên Render (Dưới 2 phút):**  
   Vào Render Dashboard → Chọn `brewlite-api` → Tab **Events / Deploy History** → Chọn commit SHA an toàn trước đó → Bấm **Rollback to this deploy**.
 * **Cấp 3 — Rollback Cơ sở dữ liệu:**  
