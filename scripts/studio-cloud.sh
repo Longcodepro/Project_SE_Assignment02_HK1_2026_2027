@@ -5,7 +5,11 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/../apps/api"
 
-export DATABASE_URL="postgresql://neondb_owner:npg_EuIOJaD5g6sx@ep-crimson-scene-b3h22agi-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+if [ -z "${DATABASE_URL:-}" ] && [ -f "$SCRIPT_DIR/../.env" ]; then
+  DATABASE_URL="$(grep -E '^DATABASE_URL=' "$SCRIPT_DIR/../.env" | head -1 | cut -d= -f2- | tr -d '"')"
+fi
+: "${DATABASE_URL:?Chưa có DATABASE_URL: đặt chuỗi kết nối Neon trong môi trường hoặc trong file .env ở thư mục gốc (không commit)}"
+export DATABASE_URL
 
 echo "🚀 Đang khởi động Prisma Studio kết nối tới Neon Cloud..."
 echo "🌐 Sau khi hiện link, mở trình duyệt vào: http://localhost:5555"
