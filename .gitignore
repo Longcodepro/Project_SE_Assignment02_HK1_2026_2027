@@ -171,3 +171,12 @@ MyDocs/
 
 # Prisma client sinh ra bởi prisma generate
 /apps/api/src/generated
+
+# Archify artifacts and tooling (không commit lên GitHub)
+/archify/
+.agents/
+.archify/
+skills-lock.json
+architecture.html
+architecture.*.json
+
