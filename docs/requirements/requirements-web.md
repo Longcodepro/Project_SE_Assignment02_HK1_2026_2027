@@ -3,7 +3,7 @@
 > **Mã tài liệu:** `REQ-WEB` · **Phụ trách:** Trần Quốc Tài (`TaiTran263`)  
 > **Phạm vi mã nguồn:** `apps/web` (Next.js 16, TypeScript, Tailwind CSS, Zustand, Mobile-first/PWA)  
 > **Đường dẫn đích:** `docs/requirements/requirements-web.md`  
-> **Tham chiếu:** `cac-chuc-nang-thong-nhat.md` (nguồn sự thật chuẩn), `docs/requirements/context-and-scope.md` (Task 1.1), `docs/requirements/requirements-api.md` (Task 1.2 backend), `docs/architecture/api-contract.md`
+> **Tham chiếu:** `docs/requirements/context-and-scope.md` mục 6 (nguồn sự thật chuẩn, Task 1.1), `docs/requirements/requirements-api.md` (Task 1.2 backend), `docs/architecture/api-contract.md`
 
 **Hướng dẫn đọc:** mã `CN-xx`, `UC-xx`, `FR-xx`, `NFR-xx` là mã thống nhất của toàn bộ hệ thống BrewLite. Tài liệu này đặc tả chi tiết **phần Giao diện Web khách hàng (Frontend — `apps/web`)**; phần API và CSDL do Long phụ trách tại `docs/requirements/requirements-api.md`. Tên định danh, enum, endpoint và header đặt trong dấu `backtick` là tên đúng trong mã nguồn. Mọi quy chuẩn tiền tệ hiển thị bằng số nguyên VND có phân cách hàng nghìn (ví dụ: `29.000 đ`).
 
@@ -119,15 +119,15 @@
 
 - **Giao diện xác thực:** Cửa sổ Modal `AuthModal` gồm 2 tab chuyển đổi: "Đăng nhập" và "Đăng ký".
 - **Form Đăng ký:**
-  - Số điện thoại (`phone`): Trường bắt buộc. Validate theo chuẩn số di động Việt Nam gồm **10 chữ số** bắt đầu bằng số `0` (`/^0\d{9}$/`). Nếu nhập sai định dạng, hiển thị thông báo lỗi màu đỏ ngay dưới ô nhập.
+  - Số điện thoại (`phone`): Trường bắt buộc. Validate theo chuẩn số di động Việt Nam gồm **10 chữ số** bắt đầu bằng `03`, `05`, `07`, `08` hoặc `09` (`/^(?:03|05|07|08|09)\d{8}$/`, bỏ khoảng trắng trước khi kiểm tra). API còn chấp nhận đầu số `+84` và chuẩn hóa về 10 số, nhưng giao diện chỉ nhận dạng 10 số. Nếu nhập sai định dạng, hiển thị thông báo lỗi màu đỏ ngay dưới ô nhập.
   - Mật khẩu (`password`): Trường bắt buộc, giới hạn từ 6 đến 72 ký tự. Có nút icon con mắt ẩn/hiện mật khẩu.
   - Họ và tên (`name`): Trường tùy chọn (optional).
   - Email (`email`): Trường tùy chọn (optional), nếu nhập thì phải đúng định dạng email.
 - **Form Đăng nhập:**
   - Ô nhập Số điện thoại (`phone`) và Mật khẩu (`password`).
-  - Nút tiện ích **"Tài khoản mẫu (Demo)"**: Click 1 chạm tự động điền SĐT mẫu (`0901234567`) và mật khẩu mẫu (`matkhau123`) phục vụ chấm điểm và kiểm thử nhanh.
+  - Nút tiện ích **"Tài khoản mẫu (Demo)"**: Click 1 chạm tự động điền SĐT mẫu (`0912345678`) và mật khẩu mẫu (`matkhau123`) vào form. Nút chỉ điền sẵn giúp nhập nhanh; tài khoản này **chưa có sẵn trong CSDL** (seed chỉ tạo danh mục và món), nên lần đầu phải bấm "Đăng ký" với đúng SĐT và mật khẩu đó rồi mới đăng nhập được.
 - **Quản lý Token phía Client:**
-  - Khi đăng nhập thành công: Lưu `accessToken` vào `useAuthStore` (đồng bộ `localStorage`), tự động giải mã JWT để lấy thông tin `userId` và `role` (`CUSTOMER`).
+  - Khi đăng nhập thành công: Lưu `accessToken` vào `useAuthStore` (đồng bộ `localStorage`), tự động giải mã JWT để lấy thông tin `phone` (khóa chính của tài khoản) và `role` (`CUSTOMER`).
   - Gắn header `Authorization: Bearer <accessToken>` vào tất cả các request API yêu cầu xác thực (`POST /orders`, `POST /payments`, `GET /orders/me`, `GET /loyalty/me`).
 - **Xử lý đăng xuất:** Xóa sạch token khỏi store, đưa người dùng về trạng thái khách vãng lai, nhưng giữ nguyên các món đang có trong giỏ hàng.
 
@@ -169,7 +169,7 @@
   - **Ví điện tử (`WALLET`):** Mô phỏng thanh toán ví.
     - *Kịch bản lỗi kiểm thử:* Nếu tổng tiền đơn $> 500.000\text{ đ}$, hệ thống mô phỏng báo lỗi vượt hạn mức ví.
 - **Gửi yêu cầu thanh toán:**
-  - Gọi API `POST /payments` với body: `{ orderId, method }` và header `Idempotency-Key`.
+  - Gọi API `POST /payments` với body: `{ orderId, method }` (thêm `cardNumber` 13 đến 19 chữ số khi `method` là `CARD`; thiếu thì API trả 400) và header `Idempotency-Key`.
 - **Xử lý kết quả giao dịch:**
   - **Thành công (`status: "PAID"`):** Xóa sạch giỏ hàng trong Zustand store, chuyển hướng khách sang màn hình `/order-success?orderId=...`, kích hoạt thông báo thành công.
   - **Thất bại (`status: "PAYMENT_FAILED"`):** Giữ nguyên đơn hàng trên giao diện, hiển thị thông báo lỗi rõ ràng giải thích nguyên nhân (thẻ bị từ chối hoặc ví vượt hạn mức), hiển thị nút *"Thanh toán lại"* hoặc cho phép đổi phương thức khác.
@@ -193,7 +193,7 @@
   - Vẫn giữ nút bấm thủ công *"Làm mới"* (có cooldown 3 giây chống spam) cho người dùng chủ động.
 - **Hệ thống Badge màu trạng thái trực quan:**
   - `PENDING`: Màu vàng cam — Chờ thanh toán.
-  - `PAID`: Màu xanh dương — Đã thanh toán, chuyển pha chế.
+  - `PAID`: Màu xanh lá — Đã thanh toán, chuyển pha chế.
   - `PAYMENT_FAILED`: Màu đỏ — Thanh toán thất bại (kèm nút Thanh toán lại).
   - `PREPARING`: Màu cam đậm — Đang pha chế (Sprint 3).
   - `READY`: Màu tím — Món đã sẵn sàng nhận (Sprint 3).
@@ -249,9 +249,9 @@ Các chức năng thuộc Giai đoạn 2 và 3 chỉ phục vụ thiết kế ki
 | Mã | Phân nhóm | Tiêu chuẩn kỹ thuật | Ngưỡng kiểm chứng đo lường cụ thể |
 |:---:|---|---|---|
 | `NFR-01` | **Bảo mật Client**<br>*(Security)* | Đảm bảo an toàn dữ liệu, chống gian lận giá và bảo vệ phiên làm việc của khách hàng. | 1. **Zero Client Trust:** Không gửi bất kỳ trường giá tiền nào lên API tạo đơn; cấm người dùng sửa đổi giá ở DevTools.<br>2. **Không lưu số thẻ:** Tuyệt đối không lưu số thẻ tín dụng/ngân hàng thô vào `localStorage` hay Redux/Zustand store.<br>3. **Bảo vệ Token:** Token JWT chỉ lưu trong store client có mã hóa phiên, gắn tự động qua `Authorization` header.<br>4. **Không lộ Secret:** Không cấu hình bất kỳ secret backend hay API key nhạy cảm nào trong mã nguồn web (`NEXT_PUBLIC_*`). |
-| `NFR-02` | **Hiệu năng Giao diện**<br>*(Performance)* | Tối ưu thời gian tải trang và tốc độ phản hồi thao tác mượt mà trên môi trường di động. | 1. **First Contentful Paint (FCP):** $\le 1.5\text{ giây}$ trên đường truyền mạng di động 4G chuẩn.<br>2. **Total Blocking Time (TBT):** $\le 200\text{ ms}$ đảm bảo trang không bị đơ giật.<br>3. **Phản hồi tương tác:** Thao tác đổi size/topping trên Modal cập nhật giá tức thì $\le 50\text{ ms}$.<br>4. **Thời gian hoàn tất luồng:** Khách thao tác từ duyệt menu đến đặt và thanh toán xong trong vòng $\le 60\text{ giây}$ khi API đã sẵn sàng (Mục tiêu `G1`). |
 | `NFR-03` | **Chất lượng Mã nguồn**<br>*(Maintainability)* | Tuân thủ tiêu chuẩn kỹ thuật phần mềm, sẵn sàng cho CI/CD tự động. | 1. **TypeScript Strict:** Kiểm tra toàn bộ codebase không có lỗi biên dịch TypeScript (`tsc --noEmit`).<br>2. **Linting sạch:** Vượt qua bộ kiểm tra cú pháp và quy chuẩn `oxlint` / `eslint` không có lỗi nghiêm trọng.<br>3. **CI Pipeline:** Mọi Pull Request vào nhánh `main` phải vượt qua các bước kiểm tra tự động trước khi được phép merge. |
 | `NFR-04` | **Khả dụng & Mobile-First**<br>*(Usability & Accessibility)* | Thiết kế tối ưu hàng đầu cho màn hình điện thoại thông minh và hỗ trợ đa trạng thái. | 1. **Độ phân giải di động:** Giao diện hiển thị hoàn hảo trên kích thước màn hình từ $360\text{px}$ đến $430\text{px}$ (iPhone SE đến iPhone Pro Max), không phát sinh thanh cuộn ngang (*Horizontal Scroll*).<br>2. **Chuẩn 3 trạng thái giao diện:** Mọi màn hình đọc dữ liệu từ server (Menu, Đơn hàng) đều phải cài đặt đủ: *Skeleton Loading*, *Empty State*, và *Error & Retry*.<br>3. **Kích thước vùng bấm (Touch Target):** Các nút bấm chính, radio, checkbox có diện tích tiếp xúc tối thiểu $44 \times 44\text{ px}$ theo khuyến nghị Apple HIG / Android Material.<br>4. **Tương phản màu sắc:** Tỷ lệ tương phản chữ và nền đạt chuẩn tối thiểu WCAG 2.1 AA ($\ge 4.5:1$). |
+| `NFR-05` | **Hiệu năng Giao diện**<br>*(Performance)* | Tối ưu thời gian tải trang và tốc độ phản hồi thao tác mượt mà trên môi trường di động. | 1. **First Contentful Paint (FCP):** $\le 1.5\text{ giây}$ trên đường truyền mạng di động 4G chuẩn.<br>2. **Total Blocking Time (TBT):** $\le 200\text{ ms}$ đảm bảo trang không bị đơ giật.<br>3. **Phản hồi tương tác:** Thao tác đổi size/topping trên Modal cập nhật giá tức thì $\le 50\text{ ms}$.<br>4. **Thời gian hoàn tất luồng:** Khách thao tác từ duyệt menu đến đặt và thanh toán xong trong vòng $\le 60\text{ giây}$ khi API đã sẵn sàng (Mục tiêu `G1`); không tính thời gian khởi động chậm của gói miễn phí (xem `RSK-08`). |
 
 ---
 
