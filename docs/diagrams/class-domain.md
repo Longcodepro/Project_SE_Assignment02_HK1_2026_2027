@@ -40,7 +40,7 @@ Sơ đồ lớp miền (**Domain Class Diagram**) thể hiện cấu trúc tĩnh
 4. **`Order` (Đơn hàng tổng thể):**
    - Quản lý toàn bộ vòng đời của một đơn hàng đặt qua ứng dụng.
    - Hỗ trợ cơ chế **Khóa lạc quan (`version: Int = 0`)** để ngăn chặn xung đột dữ liệu đồng thời (Optimistic Concurrency Control).
-   - Lưu trữ khóa chống trùng lặp **`idempotencyKey: String?`** (UUID v4 do Client gửi lên theo `FR-09`).
+   - Lưu trữ khóa chống trùng lặp **`idempotencyKey: String?`** (chuỗi 1–128 ký tự do Client gửi lên theo `FR-09`).
    - **`pickupCode: String?`** *(Sprint 3, Planned)*: Mã nhận đồ uống 6 chữ số ngẫu nhiên duy nhất (ví dụ `839201`), cấp phát khi đơn chuyển trạng thái `READY` (sau khi pha chế xong) để khách nhận đồ tại quầy (`UC-07` / `UC-12`). Không áp dụng ở MVP Sprint 1-2.
    - **`total: Int`**: Tổng tiền thực trả do máy chủ tính toán độc quyền (**Server-side Pricing** theo `FR-05`).
 
