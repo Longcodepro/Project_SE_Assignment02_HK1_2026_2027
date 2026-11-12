@@ -255,7 +255,7 @@ Task 1: Yêu cầu  ──>  Task 2: Sơ đồ  ──>  Task 3: Kiến trúc  �
 - **Phân loại:** **SHOULD HAVE** | **Sprint:** 2 | **Phụ trách:** Long & Tài
 - **Mô tả:** Tránh việc khách hàng bị trừ tiền 2 lần do mạng lag hoặc bấm nút thanh toán liên tục.
 - **Tiêu chí chấp nhận:**
-  - [x] Client sinh UUID đính kèm vào header `Idempotency-Key`.
+  - [x] Client sinh key duy nhất (`ord_…`/`pay_…`) đính kèm vào header `Idempotency-Key`.
   - [x] Backend ghi nhận key; nếu gặp lại cùng key sẽ trả kết quả cũ mà không tạo thêm giao dịch mới.
 
 ---
