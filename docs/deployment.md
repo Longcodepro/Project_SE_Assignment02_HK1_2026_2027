@@ -16,8 +16,8 @@ Hệ thống BrewLite được triển khai trên nền tảng điện toán đ�
 
 | Thành phần hệ thống | Nền tảng hạ tầng thực tế | URL Truy cập Production (HTTPS) | Giao thức & Cổng | Ghi chú vận hành |
 |---|---|---|:---:|---|
-| **Frontend Web App** | **Vercel Global Edge Network** | `https://brewlite-web.vercel.app` | HTTPS (443) | Phục vụ giao diện Next.js 16 Mobile-first qua mạng lưới CDN toàn cầu. |
-| **Backend API Service** | **Render Cloud Services** | `https://brewlite-api.onrender.com` | HTTPS (443) | Chạy Container NestJS tự động triển khai từ Docker Image trên GHCR. |
+| **Frontend Web App** | **Vercel Global Edge Network** | `https://se-as2-brewlite.vercel.app` | HTTPS (443) | Phục vụ giao diện Next.js 16 Mobile-first qua mạng lưới CDN toàn cầu. |
+| **Backend API Service** | **Render Cloud Services** | `https://brewlite-api.onrender.com` | HTTPS (443) | Chạy NestJS bằng `apps/api/Dockerfile`; Render kết nối GitHub và tự build, triển khai khi `main` có commit mới (cấu hình trên Render Dashboard). |
 | **Health Check Endpoint** | **Render Web Service** | `https://brewlite-api.onrender.com/health` | HTTPS (443) | Endpoint giám sát trạng thái sức khỏe máy chủ (trả về HTTP 200 `{ status: "ok" }`). |
 | **Tài liệu API (Swagger)** | **Render Web Service** | `https://brewlite-api.onrender.com/docs` | HTTPS (443) | Giao diện tài liệu tương tác chuẩn OpenAPI 3.0. |
 | **Database PostgreSQL** | **Neon Serverless Cloud** | `ep-dry-pond-xxx.ap-southeast-1.aws.neon.tech` | TLS / SSL (5432) | CSDL PostgreSQL 16 đặt tại Singapore (`ap-southeast-1`), lưu trữ NVMe bền vững. |
@@ -60,7 +60,7 @@ Biến môi trường trên Production (khai báo trong trang quản trị, khô
    - Quản lý tập trung tại `Settings -> Secrets and variables -> Actions`:
      - Đẩy image lên GHCR dùng `GITHUB_TOKEN` do GitHub Actions cấp sẵn (`cd.yml` khai báo quyền `packages: write`), không cần Personal Access Token.
      - `PRODUCTION_BACKEND_URL`: URL gốc của API Production, dùng cho bước smoke test `/health`. Chưa đặt thì bước này được bỏ qua.
-     - `RENDER_DEPLOY_HOOK_URL`: Webhook URL bí mật dùng để kích hoạt Render tự động deploy bản mới. Chưa đặt thì bước webhook được bỏ qua.
+     - `RENDER_DEPLOY_HOOK_URL`: Webhook URL tùy chọn để CD chủ động kích hoạt deploy trên Render. Hiện chưa đặt nên bước này bị bỏ qua; Render vẫn tự deploy theo kết nối Git.
 2. **Môi trường Backend (Render Environment):**
    - Khai báo an toàn trên trang quản trị Render: `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`.
    - Các giá trị này được Render mã hóa lưu trữ và chỉ nạp vào biến môi trường (`process.env`) khi container khởi động.
@@ -81,7 +81,7 @@ Mở Pull Request vào main                      Merge vào main (push)
  | CI  (ci.yml)         |                      | CD  (cd.yml)         |
  | Install -> Lint ->   |                      | Docker Build ->      |
  | Test -> Build        |                      | Push GHCR ->         |
- | (apps/api, apps/web) |                      | Webhook Render ->    |
+ | (apps/api, apps/web) |                      | Webhook (nếu có) ->  |
  | + docker compose     |                      | Smoke test /health   |
  +----------------------+                      +----------------------+
    Lỗi thì chặn merge
@@ -91,7 +91,7 @@ Mở Pull Request vào main                      Merge vào main (push)
 1. **CI (`ci.yml`, chạy khi mở Pull Request vào `main`):** kiểm tra riêng `apps/api` (Install, Lint, Build, Test) và `apps/web` (Install, Lint, Build), kèm một job chạy thử `docker compose up -d --build`. Job nào đỏ thì Pull Request không được merge.
 2. **Đóng gói Docker (`cd.yml`, chạy khi có commit vào `main` hoặc chạy tay `workflow_dispatch`):** build image từ `apps/api/Dockerfile` bằng Docker Buildx (Linux amd64, mặc định của runner), gắn hai tag `latest` và commit SHA ngắn. CD không chạy lại các bước kiểm tra vì Pull Request đã qua CI trước khi merge.
 3. **Phát hành lên Container Registry:** đẩy image lên `ghcr.io/<chủ-repo>/<tên-repo>/backend` (ví dụ `ghcr.io/longcodepro/project_se_assignment02_hk1_2026_2027/backend:latest`) bằng `GITHUB_TOKEN`.
-4. **Cập nhật Render:** nếu có secret `RENDER_DEPLOY_HOOK_URL`, pipeline gọi webhook để Render kéo image mới, nạp biến môi trường đã cấu hình và khởi động container.
+4. **Cập nhật Render:** Render kết nối trực tiếp với GitHub, tự build lại từ `apps/api/Dockerfile` khi `main` đổi, nạp biến môi trường đã cấu hình trên Dashboard và khởi động container (Render không kéo image từ GHCR). Nếu có secret `RENDER_DEPLOY_HOOK_URL`, pipeline còn gọi webhook để kích hoạt deploy chủ động.
 5. **Migration CSDL:** lệnh khởi động của container (`CMD` trong `apps/api/Dockerfile`) chạy lần lượt:
    ```bash
    npx prisma migrate deploy && npx prisma db seed && node dist/main
@@ -126,7 +126,7 @@ Mở Pull Request vào main                      Merge vào main (push)
 Khi phiên bản mới phát sinh lỗi nghiêm trọng trên Production (Zero-Day bug, lỗi logic thanh toán, CSDL xung đột), nhóm thực hiện quy trình Rollback theo 3 cấp độ:
 
 ### Cấp độ 1: Rollback Frontend trên Vercel (Thao tác trong 10 giây)
-1. Truy cập Vercel Dashboard $\rightarrow$ Chọn dự án `brewlite-web`.
+1. Truy cập Vercel Dashboard $\rightarrow$ Chọn dự án frontend (tên miền `se-as2-brewlite.vercel.app`).
 2. Chuyển đến tab **Deployments**.
 3. Tìm bản deployment ổn định gần nhất trước đó (có nhãn màu xanh lá).
 4. Bấm vào dấu ba chấm `(...)` $\rightarrow$ Chọn **Instant Rollback**.
@@ -137,7 +137,7 @@ Khi phiên bản mới phát sinh lỗi nghiêm trọng trên Production (Zero-D
 2. Vào mục **Events / Deploy History**.
 3. Chọn bản deploy ổn định trước đó (dựa theo commit SHA đã được kiểm thử).
 4. Bấm **Rollback to this deploy**.
-5. Render sẽ kích hoạt lại Docker Image của commit SHA cũ trên GHCR và chuyển lưu lượng mạng về phiên bản an toàn.
+5. Render triển khai lại bản build của commit cũ đó và chuyển lưu lượng mạng về phiên bản an toàn.
 
 ### Cấp độ 3: Rollback Cơ sở dữ liệu (Database Rollback)
 - **Nếu lỗi do Migration mới:**
