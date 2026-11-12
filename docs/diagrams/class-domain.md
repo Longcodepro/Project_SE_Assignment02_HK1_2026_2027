@@ -53,7 +53,7 @@ Sơ đồ lớp miền (**Domain Class Diagram**) thể hiện cấu trúc tĩnh
    - Ghi nhận chi tiết kết quả thẩm định và thanh toán mô phỏng.
    - Phương thức thanh toán: `method: PaymentMethod` (`CARD`, `WALLET`).
    - Trạng thái thanh toán: `status: PaymentStatus` (`SUCCESS`, `FAILED`).
-   - Lưu trữ mã tham chiếu cổng thanh toán (`transactionId: String?`), nguyên nhân từ chối (`failureReason: String?`) và số điểm thưởng được cấp phát (`pointsEarned: Int`).
+   - Lưu nguyên nhân từ chối (`failureReason: String?`), khóa chống gửi trùng (`idempotencyKey: String?`) và số điểm thưởng được cấp phát (`pointsEarned: Int`).
 
 ---
 
@@ -65,9 +65,9 @@ Sơ đồ lớp miền (**Domain Class Diagram**) thể hiện cấu trúc tĩnh
    - Ràng buộc: giá trị đơn hàng tối thiểu (`minOrderAmount: Int`), trạng thái kích hoạt (`isActive: Boolean`) và thời hạn sử dụng (`expiryDate`).
 
 8. **`LoyaltyTransaction` (Nhật ký giao dịch điểm thưởng):**
-   - Quản lý lịch sử chi tiết mọi biến động điểm thưởng của người dùng (`EARN` - cộng điểm sau khi đơn `PAID`, `REDEEM` - đổi điểm lấy voucher hoặc giảm trừ, Sprint 3 Planned).
+   - Quản lý lịch sử chi tiết mọi biến động điểm thưởng của người dùng (`EARN` - cộng điểm sau khi đơn `PAID`; đổi điểm lấy quà hoặc giảm giá thuộc Won't Have 7 nên không có loại `REDEEM`; hủy đơn đã `PAID` ở Sprint 3 sẽ trừ lại điểm).
    - Ghi nhận số dư sau giao dịch (`balanceAfter: Int`) và liên kết chặt chẽ với mã đơn hàng (`orderId`).
-   - **Lưu ý triển khai MVP:** theo quyết định đã chốt (`cac-chuc-nang-thong-nhat.md` mục 6), ở Sprint 2 lịch sử điểm được **suy ra trực tiếp từ các lần thanh toán thành công trong bảng `Payment`**, không cần bảng sổ điểm riêng. Lớp `LoyaltyTransaction` được biểu diễn ở mức domain để đáp ứng yêu cầu tối thiểu của đề bài (Task 2.3), chưa chắc là một bảng vật lý riêng trong Sprint 2.
+   - **Lưu ý triển khai MVP:** theo quyết định đã chốt (`context-and-scope.md` mục 6.6), ở Sprint 2 lịch sử điểm được **suy ra trực tiếp từ các lần thanh toán thành công trong bảng `Payment`**, không cần bảng sổ điểm riêng. Lớp `LoyaltyTransaction` được biểu diễn ở mức domain để đáp ứng yêu cầu tối thiểu của đề bài (Task 2.3), chưa chắc là một bảng vật lý riêng trong Sprint 2.
 
 ---
 
@@ -76,7 +76,7 @@ Sơ đồ lớp miền (**Domain Class Diagram**) thể hiện cấu trúc tĩnh
 | Tên Enum | Giá trị liệt kê | Ý nghĩa nghiệp vụ |
 |---|---|---|
 | **`Role`** | `CUSTOMER`, `BARISTA`, `CASHIER`, `MANAGER` | Phân quyền vai trò người dùng trong hệ thống theo RBAC |
-| **`OrderStatus`** | `PENDING`, `PAID`, `PAYMENT_FAILED`, `PREPARING`, `READY`, `COMPLETED`, `CANCELLED` | 7 trạng thái phản ánh đầy đủ vòng đời xử lý đơn hàng từ lúc đặt đến lúc nhận món |
+| **`OrderStatus`** | `PENDING`, `PAID`, `PAYMENT_FAILED` (MVP, Sprint 2); `PREPARING`, `READY`, `COMPLETED`, `CANCELLED` (Sprint 3, Planned) | 7 trạng thái phản ánh đầy đủ vòng đời xử lý đơn hàng; `schema.prisma` hiện chỉ có 3 trạng thái đầu |
 | **`Size`** | `S`, `M`, `L` | Kích cỡ đồ uống (Size S giá gốc, Size M/L có phụ thu) |
 | **`PaymentMethod`** | `CARD`, `WALLET` | Các kênh thanh toán không tiền mặt được hỗ trợ |
 | **`PaymentStatus`** | `SUCCESS`, `FAILED` | Trạng thái phê duyệt của cổng thanh toán mô phỏng |
