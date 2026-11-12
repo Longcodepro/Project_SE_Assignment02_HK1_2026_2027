@@ -29,7 +29,7 @@ Hệ thống phân chia các màn hình tương ứng với từng giai đoạn 
 | **`/cart`** *(Giỏ hàng)* | `src/app/cart/page.tsx` | • Xem danh sách các ly nước đã chọn trong giỏ.<br>• Tăng/giảm số lượng (1–99 ly), xóa từng món hoặc xóa toàn bộ giỏ.<br>• Hiển thị chi tiết đơn giá, phụ thu và tổng tiền thanh toán tạm tính.<br>• Nút "Tiến hành Đặt hàng" kiểm tra JWT Auth trước khi chuyển trang. |
 | **`/checkout`** *(Thanh toán)* | `src/app/checkout/page.tsx` | • Tóm tắt đơn hàng cần thanh toán.<br>• Chọn phương thức không tiền mặt: **Ví điện tử (`WALLET`)** hoặc **Thẻ ngân hàng (`CARD`)**.<br>• Nhập số thẻ ngân hàng (có cơ chế mô phỏng từ chối thẻ đuôi `0000`).<br>• Tự động sinh `Idempotency-Key` (UUID) chống trừ tiền trùng khi bấm liên tục. |
 | **`/order-success`** | `src/app/order-success/page.tsx` | • Màn hình chúc mừng đặt hàng thành công.<br>• Hiển thị mã đơn hàng, tổng tiền và số điểm loyalty được tích lũy (+1 điểm / 1.000đ).<br>• Nút bấm quay lại Menu hoặc chuyển tới trang Lịch sử đơn. |
-| **`/orders`** *(Lịch sử đơn)* | `src/app/orders/page.tsx` | • Danh sách lịch sử các đơn hàng đã đặt của tài khoản đang đăng nhập.<br>• Sắp xếp đơn mới nhất lên đầu; hiển thị chi tiết từng ly kèm size/topping.<br>• Badge màu trạng thái: `PENDING` (Vàng), `PAID` (Xanh lá), `PAYMENT_FAILED` (Đỏ). |
+| **`/orders`** *(Lịch sử đơn)* | `src/app/orders/page.tsx` | • Danh sách lịch sử các đơn hàng đã đặt của tài khoản đang đăng nhập.<br>• Sắp xếp đơn mới nhất lên đầu; hiển thị chi tiết từng ly kèm size/topping.<br>• Badge màu trạng thái: `PENDING` (Vàng), `PAID` (Xanh lá), `PAYMENT_FAILED` (Đỏ).<br>• Hiển thị số dư điểm tích lũy từ `GET /loyalty/me` (`apiService.getLoyalty`); số dư cũng hiện trên Navbar (FR-10). |
 
 ---
 
@@ -66,7 +66,7 @@ Thay vì dùng Redux phức tạp hay React Context dễ gây re-render diện r
 ### 4.3. Axios Interceptors
 * **Request Interceptor:** Tự động kiểm tra và đính kèm Bearer Token:
   `config.headers.Authorization = 'Bearer ' + token`
-* **Response Interceptor:** Bắt mã lỗi `429 Too Many Requests` để thông báo người dùng thao tác chậm lại, và chuyển hướng lỗi mạng thân thiện.
+* **Response Interceptor:** Bắt mã lỗi `429 Too Many Requests` (phòng ngừa; API hiện chưa bật giới hạn tần suất) để báo người dùng thao tác chậm lại. Mã `401` được xử lý ngay trong các hàm tạo đơn và thanh toán: báo phiên hết hạn và yêu cầu đăng nhập lại, giỏ hàng giữ nguyên.
 
 ---
 
