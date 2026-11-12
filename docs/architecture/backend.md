@@ -20,7 +20,7 @@ Phân hệ Backend được xây dựng trên nền tảng **NestJS 12** kết h
 +-----------------------------------------------------------------------------------+
 |                           NestJS Application (apps/api)                           |
 +-----------------------------------------------------------------------------------+
-|  [HTTP Inbound] -> Global ValidationPipe -> JwtAuthGuard -> Logging Interceptor   |
+|  [HTTP Inbound] -> Global ValidationPipe -> JwtAuthGuard (theo từng route)        |
 |                                         |                                         |
 |  +---------------+  +----------------+  +---------------+  +-------------------+  |
 |  |  AuthModule   |  | ProductsModule |  | OrdersModule  |  |  PaymentsModule   |  |
@@ -38,22 +38,23 @@ Phân hệ Backend được xây dựng trên nền tảng **NestJS 12** kết h
 
 ### Triết lý kiến trúc cốt lõi:
 1. **Module-Driven (Module hóa theo Domain nghiệp vụ):** Mỗi nghiệp vụ lớn là một module độc lập, đóng gói controller, service và DTO riêng, không phụ thuộc chéo bừa bãi.
-2. **Server-side Authority (Máy chủ nắm quyền định giá):** Toàn bộ phép tính tổng tiền, phụ thu size/topping và tích điểm đều do Backend tính toán độc quyền (**Server-side Pricing** theo `FR-08`), loại bỏ hoàn toàn nguy cơ gian lận sửa giá từ client.
-3. **Nguyên tử hóa dữ liệu (ACID Transactions):** Các thao tác nhạy cảm (tạo đơn, trừ tồn kho, cập nhật trạng thái thanh toán và cộng điểm thưởng) luôn chạy trong một Database Transaction duy nhất.
+2. **Server-side Authority (Máy chủ nắm quyền định giá):** Toàn bộ phép tính tổng tiền, phụ thu size/topping và tích điểm đều do Backend tính toán độc quyền (**Server-side Pricing** theo `FR-05`), loại bỏ hoàn toàn nguy cơ gian lận sửa giá từ client.
+3. **Nguyên tử hóa dữ liệu (ACID Transactions):** Các thao tác nhạy cảm (tạo đơn, cập nhật trạng thái thanh toán và cộng điểm thưởng; trừ kho nguyên liệu từ Sprint 4) luôn chạy trong một Database Transaction duy nhất.
 4. **Bảo vệ chống gửi trùng (Idempotency Control):** Tích hợp kiểm soát khóa `Idempotency-Key` từ header HTTP để bảo vệ tuyệt đối các giao dịch tài chính (`FR-09`).
 
 ---
 
 ## 2. Cấu Trúc Module Nghiệp Vụ (`apps/api/src/`)
 
-Hệ thống được tổ chức thành 5 module chính xoay quanh các ca sử dụng cốt lõi:
+Hệ thống được tổ chức thành 6 module (5 module nghiệp vụ và `PrismaModule` dùng chung) xoay quanh các ca sử dụng cốt lõi:
 
 | Tên Module | Trách nhiệm nghiệp vụ | Tệp mã nguồn then chốt | Các Endpoint quản lý |
 |---|---|---|---|
-| **`AuthModule`** | Quản lý đăng ký, đăng nhập bằng Số điện thoại 10 số VN (`FR-04`), băm mật khẩu `bcryptjs` và ký cấp JWT token hạn 24h. | `auth.controller.ts`<br>`auth.service.ts`<br>`jwt.strategy.ts` | • `POST /auth/register`<br>• `POST /auth/login`<br>• `GET /auth/profile` |
-| **`ProductsModule`** | Cung cấp danh mục đồ uống, chi tiết món, giá niêm yết Size S, phụ thu size M/L và danh sách topping (`FR-01`, `FR-02`). | `products.controller.ts`<br>`products.service.ts` | • `GET /products`<br>• `GET /products/:id` |
-| **`OrdersModule`** | Tiếp nhận giỏ hàng, thực hiện Server-side Pricing tính tổng tiền, mở transaction lưu Order (`PENDING`) và OrderItem (`FR-05`). | `orders.controller.ts`<br>`orders.service.ts` | • `POST /orders`<br>• `GET /orders/me`<br>• `GET /orders/:id` |
-| **`PaymentsModule`** | Tiếp nhận thanh toán không tiền mặt, gọi Cổng thanh toán mô phỏng (xử lý lỗi thẻ đuôi `0000`, ví `> 500k`), cập nhật đơn `PAID` và tích điểm thưởng (`FR-06`, `FR-10`). | `payments.controller.ts`<br>`payments.service.ts` | • `POST /payments`<br>• `GET /payments/:id` |
+| **`AuthModule`** | Quản lý đăng ký, đăng nhập bằng Số điện thoại 10 số VN (`FR-04`), băm mật khẩu `bcryptjs` và ký cấp JWT token hạn 24h. | `auth.controller.ts`<br>`auth.service.ts`<br>`jwt-auth.guard.ts` | • `POST /auth/register`<br>• `POST /auth/login` |
+| **`ProductsModule`** | Cung cấp danh mục đồ uống và chi tiết món kèm giá niêm yết Size S, `category`, `isAvailable` (`FR-01`). Phụ thu size và giá topping là bảng giá cố định ở `orders/pricing.ts` (chuyển sang CSDL ở Sprint 4). | `products.controller.ts`<br>`products.service.ts` | • `GET /products`<br>• `GET /products/:id` |
+| **`OrdersModule`** | Tiếp nhận giỏ hàng, thực hiện Server-side Pricing tính tổng tiền, mở transaction lưu Order (`PENDING`) và OrderItem (`FR-05`). | `orders.controller.ts`<br>`orders.service.ts`<br>`pricing.ts`<br>`order-status.ts` | • `POST /orders`<br>• `GET /orders/me` |
+| **`PaymentsModule`** | Tiếp nhận thanh toán không tiền mặt, gọi Cổng thanh toán mô phỏng (xử lý lỗi thẻ đuôi `0000`, ví `> 500k`), cập nhật đơn `PAID` và tích điểm thưởng (`FR-06`, `FR-10`). | `payments.controller.ts`<br>`payments.service.ts`<br>`mock-gateway.ts`<br>`loyalty.ts` | • `POST /payments` |
+| **`LoyaltyModule`** | Trả số dư và lịch sử điểm tích lũy của người dùng đang đăng nhập (`FR-10`, `UC-20`); lịch sử suy ra từ các lần thanh toán thành công, không có bảng sổ điểm riêng. | `loyalty.controller.ts`<br>`loyalty.service.ts` | • `GET /loyalty/me` |
 | **`PrismaModule`** | Cung cấp kết nối CSDL PostgreSQL tập trung thông qua `PrismaService`, hỗ trợ pooling kết nối và quản lý vòng đời transaction. | `prisma.service.ts`<br>`prisma.module.ts` | *(Module chia sẻ toàn cục)* |
 
 ---
@@ -63,9 +64,10 @@ Hệ thống được tổ chức thành 5 module chính xoay quanh các ca sử
 ### 3.1. Hệ quản trị CSDL PostgreSQL
 - Lưu trữ dữ liệu quan hệ có cấu trúc: `Product`, `Order`, `OrderItem`, `Payment`, `User`.
 - Sử dụng chỉ mục (**Database Index**) trên các trường tra cứu tần suất cao:
-  - `Order @@unique([userId, idempotencyKey])`: Chặn đứng việc tạo trùng đơn hàng ở tầng CSDL.
-  - `Order @@index([userId])`: Tối ưu hóa tốc độ truy vấn lịch sử đơn hàng của khách hàng (`GET /orders/me`).
-  - `User @unique(phone)`: Đảm bảo tính duy nhất của tài khoản khách hàng.
+  - `Order @@unique([userPhone, idempotencyKey])`: Chặn đứng việc tạo trùng đơn hàng ở tầng CSDL.
+  - `Payment @@unique([orderId, idempotencyKey])`: Chặn tạo trùng giao dịch thanh toán cho cùng một đơn.
+  - `Order @@index([userPhone])`: Tối ưu hóa tốc độ truy vấn lịch sử đơn hàng của khách hàng (`GET /orders/me`).
+  - `User.phone` là khóa chính (`@id`): Đảm bảo tính duy nhất của tài khoản khách hàng.
 
 ### 3.2. Cơ chế Migration an toàn với Prisma
 - Mọi thay đổi cấu trúc bảng đều được quản lý bằng **Prisma Migrate**:
@@ -73,7 +75,8 @@ Hệ thống được tổ chức thành 5 module chính xoay quanh các ca sử
   npx prisma migrate dev --name <ten_migration>
   ```
 - Lịch sử thay đổi được lưu vết bằng mã SQL thuần trong thư mục `prisma/migrations/`, giúp nhóm kiểm soát phiên bản schema trên GitHub tương tự như source code.
-- Khi triển khai môi trường Production (Render/Docker), lệnh `npx prisma migrate deploy` được tự động chạy trong pipeline CI/CD trước khi khởi động ứng dụng nhằm đảm bảo tính đồng bộ dữ liệu.
+- Trong terminal không có TTY, `migrate dev` đòi tương tác nên không chạy được. Khi đó sinh SQL bằng `npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script`, đặt vào `prisma/migrations/<timestamp>_<tên>/migration.sql` rồi chạy `npx prisma migrate deploy`.
+- Khi triển khai (Docker/Render), lệnh khởi động của container (`CMD` trong `apps/api/Dockerfile`) chạy lần lượt `npx prisma migrate deploy`, `npx prisma db seed` và `node dist/main`, nên schema luôn được nâng cấp trước khi API nhận request.
 
 ---
 
@@ -83,16 +86,16 @@ Hệ thống được tổ chức thành 5 module chính xoay quanh các ca sử
 Để phục vụ kiểm thử luồng End-to-End mà không phụ thuộc vào cổng thanh toán thật (Momo/VNPAY), hệ thống xây dựng cơ chế mô phỏng theo 2 quy tắc cứng:
 1. **Từ chối thẻ (CARD):** Bất kỳ giao dịch nào dùng số thẻ có **4 chữ số cuối là `0000`** sẽ bị từ chối với lý do `Card Declined`.
 2. **Từ chối ví (WALLET):** Mọi giao dịch qua ví có tổng tiền **vượt quá 500.000 VNĐ** sẽ bị từ chối do vượt hạn mức một lần giao dịch.
-3. **Thành công:** Các trường hợp còn lại đều được chấp thuận, sinh mã giao dịch `transactionId` ngẫu nhiên và cấp mã nhận đồ 6 số `pickupCode`.
+3. **Thành công:** Các trường hợp còn lại đều được chấp thuận; đơn chuyển `PAID` và cộng điểm thưởng. Mã nhận hàng 6 số `pickupCode` thuộc Sprint 3 (Planned), chỉ sinh khi đơn sang `READY`.
 
 ### 4.2. Khóa chống gửi trùng lặp (Idempotency-Key)
-- Mọi request nhạy cảm (`POST /orders`, `POST /payments`) bắt buộc phải có header `Idempotency-Key: <UUID>`.
-- Cơ sở dữ liệu ràng buộc tính duy nhất qua `@@unique([userId, idempotencyKey])`. Nếu client gửi lại do mạng chập chờn, server tra cứu và trả về ngay kết quả lưu trước đó mà không tạo đơn mới hay trừ tiền lặp lại.
+- Các request nhạy cảm (`POST /orders`, `POST /payments`) nhận header `Idempotency-Key` **tùy chọn** (1 đến 128 ký tự gồm chữ, số, `_`, `-`; sai định dạng trả 400). Frontend luôn gửi key; không gửi key thì xử lý như bình thường, không có bảo vệ chống gửi trùng.
+- Cơ sở dữ liệu ràng buộc tính duy nhất qua `Order @@unique([userPhone, idempotencyKey])` và `Payment @@unique([orderId, idempotencyKey])`. Nếu client gửi lại do mạng chập chờn, server tra cứu và trả về ngay kết quả lưu trước đó mà không tạo đơn mới hay trừ tiền lặp lại.
 
 ### 4.3. Giám sát & Quản trị hệ thống
 - **Health Check Endpoint:** `GET /health` trả về `{ status: "ok", timestamp }` phục vụ dịch vụ giám sát tự động (Uptime Robot, Render Health Check).
-- **Quản lý cấu hình tập trung:** Sử dụng biến môi trường qua `.env` và `ConfigModule`, tuyệt đối không hardcode chuỗi kết nối CSDL hoặc secret key JWT.
-- **Tài liệu API tự động (Swagger):** Tích hợp `@nestjs/swagger` tại đường dẫn `/api/docs`, tự động sinh tài liệu chuẩn OpenAPI 3.0.
+- **Quản lý cấu hình tập trung:** Đọc biến môi trường qua `process.env` (nạp từ `.env` khi chạy local), tuyệt đối không hardcode chuỗi kết nối CSDL hoặc secret key JWT.
+- **Tài liệu API tự động (Swagger):** Tích hợp `@nestjs/swagger` tại đường dẫn `/docs`, tự động sinh tài liệu chuẩn OpenAPI 3.0.
 
 ---
 
