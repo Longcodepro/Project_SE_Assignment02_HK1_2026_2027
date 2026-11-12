@@ -64,7 +64,7 @@ note right of UC05
     tuyệt đối không cho client gửi tổng tiền.
   • <b>Thanh toán mô phỏng:</b> Thẻ ngân hàng (CARD) hoặc
     Ví điện tử (WALLET), 2 phương thức duy nhất.
-  • <b>Idempotency-Key (FR-09):</b> Header UUID chống trừ tiền
+  • <b>Idempotency-Key (FR-09):</b> Header key duy nhất chống trừ tiền
     và chống tạo đơn trùng khi mạng bị trễ.
   • <b>Khóa lạc quan (version):</b> Kiểm soát xung đột trạng thái
     đồng thời (Optimistic Concurrency Control).

@@ -107,7 +107,7 @@ Sơ đồ PlantUML chi tiết thể hiện đầy đủ các quan hệ phụ thu
 | **2** | *(Người dùng đã đăng nhập từ trước, đã có JWT token hợp lệ trong Store).* | Hệ thống chuyển hướng khách hàng sang màn hình Thanh toán (`/checkout`). |
 | **3** | Khách hàng xem lại tóm tắt giỏ hàng tại màn hình Checkout. | Hệ thống hiển thị danh mục phương thức thanh toán không tiền mặt. |
 | **4** | Khách hàng lựa chọn phương thức thanh toán không tiền mặt: **Thẻ ngân hàng** (`CARD`) hoặc **Ví điện tử** (`WALLET`). | Hệ thống hiển thị các trường nhập thông tin tương ứng của phương thức đã chọn. |
-| **5** | Khách hàng kiểm tra tóm tắt đơn hàng lần cuối và bấm nút **"Xác nhận Thanh toán"**. | Giao diện Next.js sinh mã UUID làm giá trị cho header `Idempotency-Key`, vô hiệu hóa nút bấm để chống gửi trùng lặp; gửi request `POST /orders` kèm payload danh sách món (chỉ gửi `productId`, `size`, `toppings`, `quantity`; **tuyệt đối không gửi giá tiền**). |
+| **5** | Khách hàng kiểm tra tóm tắt đơn hàng lần cuối và bấm nút **"Xác nhận Thanh toán"**. | Giao diện Next.js sinh mã duy nhất làm giá trị cho header `Idempotency-Key`, vô hiệu hóa nút bấm để chống gửi trùng lặp; gửi request `POST /orders` kèm payload danh sách món (chỉ gửi `productId`, `size`, `toppings`, `quantity`; **tuyệt đối không gửi giá tiền**). |
 | **6** | — | **NestJS API** xác thực JWT qua `JwtAuthGuard`, kiểm tra `Idempotency-Key`. Thực hiện **Server-side Pricing**: truy vấn bảng giá gốc từ DB để tính tổng tiền chính xác. Tạo bản ghi `Order` với trạng thái `PENDING`, `version = 0`. Trả về `id` và `total` (HTTP 201 Created). |
 | **7** | — | Giao diện Next.js tự động gửi tiếp request `POST /payments` chứa `orderId`, `method`, `cardNumber` (bắt buộc khi `CARD`, không được lưu lại) và header `Idempotency-Key`. |
 | **8** | — | NestJS API tiếp nhận yêu cầu, gửi dữ liệu sang Cổng thanh toán mô phỏng. Cổng thanh toán kiểm tra quy tắc hợp lệ, thực hiện trừ tiền và trả về thông báo `PAYMENT_SUCCESS`. |
@@ -171,7 +171,7 @@ Sơ đồ PlantUML chi tiết thể hiện đầy đủ các quan hệ phụ thu
 ### E4: Client gửi trùng lặp yêu cầu do độ trễ mạng (Xử lý Idempotency-Key)
 - **Hoàn cảnh:** Mạng chập chờn, khách hàng nhấn nút "Xác nhận Thanh toán" nhiều lần liên tiếp hoặc trình duyệt tự động retry request.
 - **Xử lý hệ thống:**
-  1. Client luôn gửi kèm header `Idempotency-Key: <UUID>` cho request tạo đơn và thanh toán. Header này **tùy chọn ở phía API** (1 đến 128 ký tự gồm chữ, số, `_`, `-`; sai định dạng trả 400; không gửi thì xử lý như bình thường). Phạm vi key: theo người dùng với `POST /orders`, theo đơn với `POST /payments`.
+  1. Client luôn gửi kèm header `Idempotency-Key: <key duy nhất>` cho request tạo đơn và thanh toán. Header này **tùy chọn ở phía API** (1 đến 128 ký tự gồm chữ, số, `_`, `-`; sai định dạng trả 400; không gửi thì xử lý như bình thường). Phạm vi key: theo người dùng với `POST /orders`, theo đơn với `POST /payments`.
   2. Tại NestJS API, hệ thống tra cứu `Idempotency-Key` trong cơ sở dữ liệu (ràng buộc duy nhất):
      - Gửi lại cùng key (kể cả khi hai request đến cùng lúc): API luôn trả `201` với kết quả của lần đầu, **không thực hiện lại giao dịch trừ tiền hay tạo đơn thứ hai**. Không có lỗi 409 cho trường hợp này.
   3. Đảm bảo tính nhất quán tuyệt đối: Mỗi cú click chuột của khách chỉ sinh đúng duy nhất 1 đơn hàng và 1 giao dịch tài chính.
