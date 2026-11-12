@@ -23,7 +23,7 @@ Các phương án cơ sở dữ liệu và thư viện ORM được đem ra so s
 ## 2. Quyết Định (Decision)
 Nhóm quyết định lựa chọn **PostgreSQL** làm hệ quản trị cơ sở dữ liệu chính và **Prisma ORM** làm công cụ tương tác dữ liệu:
 - Định nghĩa toàn bộ schema tại một tệp duy nhất: `apps/api/prisma/schema.prisma`.
-- Quản lý tiến trình thay đổi cấu trúc bảng bằng **Prisma Migrate** (`prisma migrate dev` và `prisma migrate deploy`).
+- Quản lý tiến trình thay đổi cấu trúc bảng bằng **Prisma Migrate** (`prisma migrate dev` trên máy có TTY; khi không có TTY dùng `prisma migrate diff` để sinh SQL rồi `prisma migrate deploy`; môi trường thật chỉ chạy `prisma migrate deploy`).
 - Sử dụng **Prisma Client** tự động sinh mã (Code Generation) để tương tác CSDL với độ an toàn kiểu dữ liệu tuyệt đối (Type-Safe Database Access).
 
 ---

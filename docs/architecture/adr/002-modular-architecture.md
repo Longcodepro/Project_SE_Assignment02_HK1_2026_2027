@@ -12,7 +12,7 @@ Khi xây dựng hệ thống đặt đồ uống trực tuyến BrewLite, nhóm 
 1. **Traditional Monolith (Monolith truyền thống):** Toàn bộ code gộp chung vào một khối, không phân chia ranh giới module rõ ràng, dễ biến thành mã nguồn spaghetti khó bảo trì.
 2. **Microservices Architecture (Kiến trúc vi dịch vụ):** Tách riêng từng phân hệ (Auth, Products, Orders, Payments) thành các service độc lập chạy trên nhiều container và giao tiếp qua mạng (HTTP/gRPC/Kafka).
 3. **Clean Architecture (Hexagonal/Ports & Adapters):** Phân chia nghiêm ngặt theo các tầng trừu tượng (Entities, Use Cases, Interface Adapters).
-4. **Modular Monolith (Monolith theo khối module):** Đóng gói toàn bộ hệ thống vào một ứng dụng duy nhất nhưng được chia tách rõ ràng thành các module độc lập theo nghiệp vụ (Domain-driven Modules: `AuthModule`, `ProductsModule`, `OrdersModule`, `PaymentsModule`).
+4. **Modular Monolith (Monolith theo khối module):** Đóng gói toàn bộ hệ thống vào một ứng dụng duy nhất nhưng được chia tách rõ ràng thành các module độc lập theo nghiệp vụ (Domain-driven Modules: `AuthModule`, `ProductsModule`, `OrdersModule`, `PaymentsModule`, `LoyaltyModule`).
 
 Yêu cầu thực tế: Nhóm gồm 2 thành viên, thời gian triển khai gói gọn trong 2 Sprint, hạ tầng triển khai trên nền tảng đám mây miễn phí/giá rẻ (Render, Neon PostgreSQL).
 
@@ -29,7 +29,7 @@ Nhóm quyết định lựa chọn mô hình **Modular Monolith** kết hợp ki
 ## 3. Hệ Quả (Consequences)
 
 ### Tích cực (Ưu điểm):
-* **Toàn vẹn dữ liệu tối đa:** Dễ dàng thực thi các giao dịch cơ sở dữ liệu **ACID Transactions** (ví dụ: tạo đơn hàng, trừ tồn kho và ghi nhận thanh toán trong cùng 1 transaction mà không cần các cơ chế phân tán phức tạp như Saga Pattern).
+* **Toàn vẹn dữ liệu tối đa:** Dễ dàng thực thi các giao dịch cơ sở dữ liệu **ACID Transactions** (ví dụ: chuyển đơn sang `PAID`, ghi nhận thanh toán và cộng điểm thưởng trong cùng 1 transaction; từ Sprint 4 có thêm trừ kho nguyên liệu, mà không cần các cơ chế phân tán phức tạp như Saga Pattern).
 * **Chi phí vận hành & hạ tầng tối thiểu:** Chỉ cần 1 dịch vụ web trên Render/VPS kết nối với 1 CSDL PostgreSQL duy nhất; cấu hình triển khai đơn giản, không tốn tài nguyên cho service discovery hay message broker.
 * **Tốc độ phát triển nhanh:** Dễ debug, dễ chạy local bằng Docker Compose, không gặp độ trễ mạng giữa các dịch vụ nội bộ.
 * **Khả năng tiến hóa cao:** Các ranh giới module được phân định nghiêm ngặt; trong tương lai nếu một module (như Payments hoặc Products) có tải cao đột biến, nhóm hoàn toàn có thể trích xuất module đó thành một Microservice độc lập mà không phải đập đi xây lại.

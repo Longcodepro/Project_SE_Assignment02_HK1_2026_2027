@@ -31,10 +31,16 @@ Nhóm quyết định áp dụng chuẩn **Idempotency-Key** (theo đặc tả k
     model Order {
       ...
       idempotencyKey String?
-      @@unique([userId, idempotencyKey])
+      @@unique([userPhone, idempotencyKey])
+    }
+
+    model Payment {
+      ...
+      idempotencyKey String?
+      @@unique([orderId, idempotencyKey])
     }
     ```
-  - Nếu phát hiện cặp `(userId, idempotencyKey)` đã tồn tại trong CSDL: Backend lập tức trả về kết quả đơn hàng đã tạo trước đó mà **không thực hiện lại logic trừ tiền hay tạo đơn mới**.
+  - Nếu phát hiện cặp `(userPhone, idempotencyKey)` (với đơn) hoặc `(orderId, idempotencyKey)` (với thanh toán) đã tồn tại trong CSDL: Backend lập tức trả về kết quả đơn hàng đã tạo trước đó mà **không thực hiện lại logic trừ tiền hay tạo đơn mới**.
 
 ---
 
@@ -46,5 +52,5 @@ Nhóm quyết định áp dụng chuẩn **Idempotency-Key** (theo đặc tả k
 * **Trải nghiệm người dùng mượt mà:** Khách hàng gặp mạng lag bấm lại nút vẫn nhận được kết quả đơn hàng chính xác mà không gặp lỗi xung đột khó hiểu.
 
 ### Tiêu cực (Hạn chế & Đánh đổi):
-* **Ràng buộc phối hợp Client - Server:** Phía Frontend bắt buộc phải sinh UUID và truyền đúng header; nếu client quên truyền key, hệ thống phải từ chối hoặc xử lý fallback.
-* **Chi phí lưu trữ chỉ mục (Index Overhead):** CSDL cần duy trì một chỉ mục Unique kép `[userId, idempotencyKey]` trên bảng `Order`, tốn thêm một phần dung lượng lưu trữ nhỏ không đáng kể.
+* **Ràng buộc phối hợp Client - Server:** Phía Frontend bắt buộc phải sinh UUID và truyền đúng header; header là tùy chọn ở phía API: nếu client không truyền key, hệ thống xử lý như bình thường và không có bảo vệ chống gửi trùng, nên Frontend phải luôn gửi key.
+* **Chi phí lưu trữ chỉ mục (Index Overhead):** CSDL cần duy trì chỉ mục Unique kép `[userPhone, idempotencyKey]` trên bảng `Order` và `[orderId, idempotencyKey]` trên bảng `Payment`, tốn thêm một phần dung lượng lưu trữ nhỏ không đáng kể.
