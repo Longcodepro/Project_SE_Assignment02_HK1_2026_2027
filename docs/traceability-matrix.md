@@ -7,9 +7,9 @@
 > - **Trần Quốc Tài (`TaiTran263`)** — Frontend UI/UX, Quản trị trạng thái Client, QA
 >
 > **Mã tạo phẩm:** `DOC-TRM-01` | **Đường dẫn:** `docs/traceability-matrix.md`  
-> **Căn cứ chuẩn (SSOT):**  `docs/requirements/context-and-scope.md`, `docs/BACKLOG.md`  
+> **Căn cứ chuẩn (SSOT):**  `docs/requirements/context-and-scope.md` (mục 6: danh mục CN/UC/FR/NFR), `docs/BACKLOG.md`  
 > **Quy ước trạng thái:**  
-> - **Hoàn thành (MVP - Sprint 1 & 2):** Truy vết xuyên suốt từ Yêu cầu $\rightarrow$ Use-case/Story $\rightarrow$ Sơ đồ thiết kế $\rightarrow$ Mã nguồn/API $\rightarrow$ Kiểm thử tự động.  
+> - **Hoàn thành (MVP - Sprint 1 & 2):** Truy vết từ Yêu cầu $\rightarrow$ Use-case/Story $\rightarrow$ Sơ đồ thiết kế $\rightarrow$ Mã nguồn/API $\rightarrow$ Kiểm thử. Phần API có kiểm thử tự động (Vitest, Postman); phần giao diện web chưa có kiểm thử tự động và chưa có E2E.  
 > - **Lên kế hoạch (Planned - Sprint 3 & 4):** Đã mô hình hóa đầy đủ ở cấp độ Use Case và Domain Class Model; mã nguồn và kiểm thử ghi nhận `Planned` theo đúng quy chuẩn SSOT.
 
 ---
@@ -19,7 +19,7 @@
 1. **Tuân thủ mẫu đề bài (Mục 8.1):** Cấu trúc 5 cột bắt buộc: `Mã yêu cầu` | `Use-case / User Story` | `Thiết kế / Sơ đồ` | `Code / API` | `Test`.
 2. **Khép kín vòng đời phát triển phần mềm (Bi-directional Traceability):** Mỗi yêu cầu nghiệp vụ bắt buộc phải xác định được Use-case sở hữu, sơ đồ UML trực quan thể hiện luồng, tệp mã nguồn xử lý và bài kiểm thử tương ứng để chứng minh tính đúng đắn.
 3. **Phân định rõ ranh giới MVP và Planned:** 
-   - `FR-01` đến `FR-10` thuộc Core MVP (Sprint 1 & Sprint 2): Đã có mã nguồn hoạt động và bộ kiểm thử tự động (Unit Test, Integration Test, E2E, Postman).
+   - `FR-01` đến `FR-10` thuộc Core MVP (Sprint 1 & Sprint 2): Đã có mã nguồn hoạt động; kiểm thử tự động ở `apps/api` (Vitest, Postman). Giao diện web: chỉ lint và build trong CI, chưa có test tự động. Chưa có E2E.
    - `FR-11` đến `FR-21` thuộc Planned (Sprint 3 & Sprint 4): Đã mô hình hóa trên Use Case Diagram và Class Diagram; cột Code và Test ghi rõ `Planned` theo mục 0 quy tắc SSOT.
 
 ---
@@ -28,18 +28,18 @@
 
 | Mã yêu cầu | Use-case / User Story | Thiết kế / Sơ đồ | Code / API | Test |
 |:---:|---|---|---|---|
-| **`FR-01`** | **US-01:** Duyệt xem menu đồ uống<br>**UC-01:** Xem menu sản phẩm | `Activity-01` (Phase 1: Xem menu)<br>`Class-01` (Lớp `Product`, `Category`) | **API:** `GET /products`, `GET /products/:id`<br>**Web UI:** `apps/web/src/components/ProductCard.tsx` | `products.controller.spec.ts` (`UNIT-PROD-01`)<br>`Postman:` Test suite Products |
-| **`FR-02`** | **US-02:** Tùy biến size & topping<br>**UC-02:** Xem chi tiết & tùy chọn món | `Activity-01` (Phase 2: Chọn món & Size)<br>`Class-01` (Lớp `Product`, `OrderItem`, Topping) | **Web UI:** `apps/web/src/components/ProductDetailModal.tsx`<br>**Tùy chọn:** Bảng giá niêm yết Size/Topping | `Vitest:` Component Option Selector<br>`Lint & Build:` TypeScript Gate |
-| **`FR-03`** | **US-03:** Quản lý giỏ hàng phía Client<br>**UC-03:** Quản lý giỏ hàng | `Activity-01` (Phase 3: Giỏ hàng)<br>`ADR-004:` Quản lý State bằng Zustand | **UI Trang web:** `apps/web/src/app/cart/page.tsx`<br>**Client Store:** `apps/web/src/store/useCartStore.ts` (Zustand + `localStorage`) | `State Persistence:` Lưu/phục hồi `localStorage`<br>`Manual QA:` Thêm/sửa/xóa dòng giỏ |
-| **`FR-04`** | **US-04:** Đăng ký & Đăng nhập bằng SĐT<br>**UC-04:** Đăng ký / Đăng nhập tài khoản | `Activity-01` (Phase 4: Xác thực tài khoản)<br>`Sequence-01:` Kiểm tra JWT & Auth Header<br>`Class-01:` Lớp `User`, Enum `Role` | **API:** `POST /auth/register`, `POST /auth/login`<br>**Guard:** `JwtAuthGuard`, `bcryptjs`<br>**Web UI:** `apps/web/src/components/AuthModal.tsx` | `auth.controller.spec.ts` (`UNIT-AUTH-01`)<br>`Postman:` Test suite Auth (Register/Login) |
-| **`FR-05`** | **US-05:** Tạo đơn & Server-side Pricing<br>**UC-05:** Đặt hàng & thanh toán | `Sequence-01:` Nhận DTO, tính giá CSDL, tạo Order<br>`Class-01:` Lớp `Order`, `OrderItem`, Enum `OrderStatus` | **API:** `POST /orders`<br>**Service:** `OrdersService.create`<br>**Pricing:** `Server-side Pricing Logic` | `orders.controller.spec.ts` (`INT-ORD-01`)<br>`E2E:` `apps/api/test/app.e2e-spec.ts` |
-| **`FR-06`** | **US-06:** Thanh toán mô phỏng Thẻ/Ví<br>**UC-05:** Đặt hàng & thanh toán | `Sequence-01:` Gọi Payment Gateway, nhánh Alt<br>`Class-01:` Lớp `Payment`, Enum `PaymentMethod` | **API:** `POST /payments`<br>**Service:** `PaymentsService.processPayment`<br>**Mock:** Validate Card `0000`, Wallet > 500k | `payments.controller.spec.ts` (`INT-PAY-01`)<br>`Postman:` Test suite Payment Success/Fail |
-| **`FR-07`** | **US-07:** Lịch sử đơn & Polling theo dõi<br>**UC-06:** Xem lịch sử & theo dõi đơn hàng | `Activity-01` (Phase 6: Theo dõi đơn hàng)<br>`Class-01:` Lớp `Order`, Lớp `User` | **API:** `GET /orders/me`, `GET /orders/:id`<br>**Web UI:** `apps/web/src/app/orders/page.tsx` (Polling 5s) | `orders.controller.spec.ts` (`UNIT-ORD-02`)<br>`Postman:` Test suite Order History |
-| **`FR-08`** | **US-08:** Máy trạng thái & Khóa lạc quan<br>**UC-05:** Đặt hàng & thanh toán | `Sequence-01:` DB Transaction & Verify `version`<br>`Class-01:` Cột `version`, Enum `OrderStatus` | **Service:** `OrdersService.updateStatus`<br>**Prisma:** Prisma Transaction (`prisma.$transaction`) | `order-status.spec.ts` (`UNIT-STAT-01`)<br>`Concurrency Test:` Xung đột phiên bản 409 |
-| **`FR-09`** | **US-09:** Chống gửi trùng thanh toán<br>**UC-05:** Đặt hàng & thanh toán | `Sequence-01:` Nhánh Idempotency check<br>`ADR-005:` Cơ chế Idempotency Key | **API:** Header `Idempotency-Key`<br>**Service:** `PaymentsService.checkIdempotency` | `payments.controller.spec.ts` (`UNIT-IDEM-01`)<br>`Postman:` Gửi 2 request cùng key |
-| **`FR-10`** | **US-10:** Tích điểm thành viên tự động<br>**UC-20:** Xem điểm tích lũy & lịch sử | `Sequence-01:` Cộng điểm thưởng sau khi `PAID`<br>`Class-01:` Lớp `LoyaltyTransaction`, `loyaltyPoints` | **API:** `POST /payments` (trigger tích điểm)<br>**Service:** `LoyaltyService.awardPoints` (1đ/1.000đ) | `loyalty.spec.ts` (`UNIT-LOYAL-01`)<br>`Verification:` Kiểm tra số dư điểm `User` |
+| **`FR-01`** | **US-01:** Duyệt xem menu đồ uống<br>**UC-01:** Xem menu sản phẩm | `Activity-01` (Giai đoạn 1: Xem menu)<br>`Class-01` (Lớp `Product`, `Category`) | **API:** `GET /products`, `GET /products/:id`<br>**Web UI:** `apps/web/src/app/page.tsx`, `apps/web/src/components/ProductCard.tsx` | **API:** `products.controller.spec.ts` (4 test), `swagger.spec.ts`<br>**Postman:** nhóm Products<br>**Web:** chưa có test tự động; CI chạy lint và build |
+| **`FR-02`** | **US-02:** Tùy biến size & topping<br>**UC-02:** Xem chi tiết & tùy chọn món | `Activity-01` (Giai đoạn 2: Chọn món & Size)<br>`Class-01` (Lớp `Product`, `OrderItem`, enum `Size`) | **Web UI:** `apps/web/src/components/ProductDetailModal.tsx`<br>**Bảng giá niêm yết:** phía server ở `apps/api/src/orders/pricing.ts` | **Server:** `orders.controller.spec.ts` (tính tổng theo size, topping)<br>**Web:** chưa có test tự động; CI chạy lint và build |
+| **`FR-03`** | **US-03:** Quản lý giỏ hàng phía Client<br>**UC-03:** Quản lý giỏ hàng | `Activity-01` (Giai đoạn 3: Giỏ hàng)<br>`ADR-004:` Quản lý State bằng Zustand | **UI:** `apps/web/src/app/cart/page.tsx`<br>**Store:** `apps/web/src/store/useCartStore.ts` (Zustand + `localStorage`) | **Web:** chưa có test tự động (kế hoạch ở `requirements-web.md` mục 5); CI chạy lint và build<br>Kiểm tra thủ công: thêm, sửa, xóa dòng giỏ |
+| **`FR-04`** | **US-04:** Đăng ký & Đăng nhập bằng SĐT<br>**UC-04:** Đăng ký / Đăng nhập tài khoản | `Activity-01` (Giai đoạn 4: Xác thực)<br>`Sequence-01:` JWT và Auth Header<br>`Class-01:` Lớp `User`, enum `Role` | **API:** `POST /auth/register`, `POST /auth/login`<br>**Guard:** `apps/api/src/auth/jwt-auth.guard.ts`, `bcryptjs`<br>**Web UI:** `apps/web/src/components/AuthModal.tsx` | `auth.controller.spec.ts` (7 test: băm mật khẩu, chuẩn hóa SĐT, 409 trùng, 401 chung, guard)<br>**Postman:** nhóm Auth |
+| **`FR-05`** | **US-05:** Tạo đơn & Server-side Pricing<br>**UC-05:** Đặt hàng & thanh toán | `Sequence-01:` Nhận DTO, tính giá CSDL, tạo Order<br>`Class-01:` Lớp `Order`, `OrderItem`, enum `OrderStatus` | **API:** `POST /orders`<br>**Service:** `OrdersService.create`<br>**Pricing:** `apps/api/src/orders/pricing.ts` | `orders.controller.spec.ts` (nhóm `POST /orders`: tổng do server tính, 400, 409 hết hàng)<br>**Postman:** nhóm Orders<br>*Chưa có E2E tự động* |
+| **`FR-06`** | **US-06:** Thanh toán mô phỏng Thẻ/Ví<br>**UC-05:** Đặt hàng & thanh toán | `Sequence-01:` Cổng thanh toán mô phỏng, nhánh `alt`<br>`Class-01:` Lớp `Payment`, enum `PaymentMethod`, `PaymentStatus` | **API:** `POST /payments`<br>**Service:** `PaymentsService.pay`<br>**Mô phỏng:** `apps/api/src/payments/mock-gateway.ts` (thẻ `0000`, ví trên 500.000đ) | `payments.controller.spec.ts` (nhóm `POST /payments`: thành công, từ chối thẻ và ví, thanh toán lại, 404, 409)<br>**Postman:** nhóm Payments |
+| **`FR-07`** | **US-07:** Lịch sử đơn & Polling theo dõi<br>**UC-06:** Xem lịch sử & theo dõi đơn hàng | `Activity-01` (Giai đoạn 6: Theo dõi đơn hàng)<br>`Class-01:` Lớp `Order`, `User` | **API:** `GET /orders/me`<br>**Service:** `OrdersService.findMine`<br>**Web UI:** `apps/web/src/app/orders/page.tsx` (polling 5 giây) | **API:** `orders.controller.spec.ts` (nhóm `GET /orders/me`)<br>**Postman:** nhóm Orders<br>**Web:** chưa có test tự động |
+| **`FR-08`** | **US-08:** Máy trạng thái & Khóa lạc quan<br>**UC-05:** Đặt hàng & thanh toán | `Sequence-01:` Transaction và kiểm tra `version`<br>`Class-01:` Cột `version`, enum `OrderStatus` | **Máy trạng thái:** `apps/api/src/orders/order-status.ts`<br>**Khóa lạc quan:** `PaymentsService.pay` (`$transaction`, cập nhật theo `version`) | `order-status.spec.ts` (3 test)<br>`payments.controller.spec.ts` (409 khi đơn đã `PAID`, 409 khi `version` đã đổi) |
+| **`FR-09`** | **US-09:** Chống gửi trùng thanh toán<br>**UC-05:** Đặt hàng & thanh toán | `Sequence-01:` Nhánh `opt` Idempotency<br>`ADR-005:` Cơ chế Idempotency Key | **Header:** `Idempotency-Key`<br>**Code:** `apps/api/src/common/idempotency.ts`, `OrdersService.create`, `PaymentsService.pay` | `orders.controller.spec.ts` và `payments.controller.spec.ts` (nhóm `với Idempotency-Key`: gửi lại, đồng thời, sai định dạng)<br>**Postman:** gửi 2 request cùng key |
+| **`FR-10`** | **US-10:** Tích điểm thành viên tự động<br>**UC-20:** Xem điểm tích lũy & lịch sử | `Sequence-01:` Cộng điểm sau khi `PAID`<br>`Class-01:` `User.loyaltyPoints`; lớp `LoyaltyTransaction` mức domain (chưa là bảng ở MVP) | **API:** `POST /payments` (cộng điểm), `GET /loyalty/me`<br>**Code:** `apps/api/src/payments/loyalty.ts` (`pointsFor`, 1 điểm/1.000đ), `LoyaltyService.getMyLoyalty`<br>**Web UI:** `Navbar.tsx`, `orders/page.tsx` | `payments/loyalty.spec.ts` (`pointsFor`)<br>`loyalty.controller.spec.ts` (3 test)<br>`payments.controller.spec.ts` (tích điểm, thất bại không tích, gửi lại không cộng lần 2) |
 | **`FR-11`** | **US-11:** Áp dụng Voucher & Quản lý mã<br>**UC-10:** Áp mã KM; **UC-21:** Tạo mã | `Use-Case Overview:` UC-10, UC-21<br>`Class-01:` Lớp `Promotion`, Enum `DiscountType` | *Planned (Sprint 3 & 4)* | *Planned* |
-| **`FR-12`** | **US-12:** Hủy đơn trước khi pha chế<br>**UC-08:** Khách hủy; **UC-13:** Quầy hủy | `Use-Case Overview:` UC-08, UC-13<br>`Class-01:` Thuộc tính `cancelReason`, `cancelledBy` | *Planned (Sprint 3)* | *Planned* |
+| **`FR-12`** | **US-12:** Hủy đơn trước khi pha chế<br>**UC-08:** Khách hủy; **UC-13:** Quầy hủy | `Use-Case Overview:` UC-08, UC-13<br>`Class-01:` enum `OrderStatus` (`CANCELLED`); trường lý do hủy sẽ mô hình hóa khi vào Sprint 3 | *Planned (Sprint 3)* | *Planned* |
 | **`FR-13`** | **US-13:** Đánh giá & gửi phản hồi dịch vụ<br>**UC-09:** Đánh giá & gửi phản hồi | `Use-Case Overview:` UC-09 | *Planned (Sprint 3)* | *Planned* |
 | **`FR-14`** | **US-14:** Báo cáo doanh thu & sản lượng<br>**UC-19:** Báo cáo thống kê | `Use-Case Overview:` UC-19 | *Planned (Sprint 4)* | *Planned* |
 | **`FR-15`** | **UC-14:** Nhập kho; **UC-17:** Tồn kho | `Use-Case Overview:` UC-14, UC-17 | *Planned (Sprint 4)* | *Planned* |
@@ -56,29 +56,24 @@
 
 | Mã NFR | Nhóm chất lượng | Nội dung đặc tả kỹ thuật | Thiết kế & Kiến trúc | Cấu hình & Hiện thực | Kiểm chứng & Đo lường |
 |:---:|---|---|---|---|---|
-| **`NFR-01`** | **Bảo mật (Security)** | Không tin giá từ Client; mật khẩu băm `bcryptjs` (salt 10); JWT 24h không secret mặc định; không lưu số thẻ thô; không lộ secret vào git. | `Sequence-01:` JWT Guard & Hash<br>`docs/deployment.md` (Mục 2: Quản lý Secrets) | `.env.example`, `.gitignore`<br>`apps/api/src/auth/jwt.strategy.ts` | `auth.controller.spec.ts`<br>`Git leak check:` Scan commit history |
-| **`NFR-02`** | **Hiệu năng & Sẵn sàng (Performance)** | Đặt & thanh toán dưới 60s; Production HTTPS qua CDN; giám sát sức khỏe container qua endpoint `/health` (< 50ms). | `Deployment-01:` Vercel Edge + Render<br>`docs/architecture/backend.md` | `GET /health` (`AppController`)<br>Render Health Check Probe (15s) | `app.controller.spec.ts`<br>Smoke test HTTP 200 trong pipeline CD |
-| **`NFR-03`** | **Chất lượng & Bảo trì (Maintainability)** | Mọi PR bắt buộc qua Quality Gate CI (Lint $\rightarrow$ Test $\rightarrow$ Build); API chuẩn OpenAPI/Swagger; Migration CSDL có phiên bản. | `Deployment-01:` GitHub Actions CI<br>`ADR-001:` Monorepo pnpm<br>`ADR-002:` Modular Monolith | `.github/workflows/ci.yml`<br>`apps/api/prisma/migrations/`<br>Swagger UI tại `/docs` | CI Quality Gate tự động chặn merge nếu lỗi lint/test/build.<br>`swagger.spec.ts` |
-| **`NFR-04`** | **Khả dụng (Usability)** | Giao diện chuẩn Mobile-first/PWA; hiển thị đủ 3 trạng thái giao diện: Skeleton Loading, Empty State, Error & Retry. | `Activity-01:` Phase 1 Menu<br>`docs/architecture/frontend.md` | Tailwind CSS responsive mobile<br>`apps/web/src/components/ProductCard.tsx` | Lighthouse Usability Audit (> 90 điểm Mobile)<br>Kiểm thử thủ công trên thiết bị di động thật |
+| **`NFR-01`** | **Bảo mật (Security)** | Không tin giá từ Client; mật khẩu băm `bcryptjs` (salt 10); JWT 24h không secret mặc định; không lưu số thẻ thô; không commit secret. | `Sequence-01:` JWT Guard<br>`docs/deployment.md` (mục 2: quản lý secrets) | `.env.example`, `.gitignore`<br>`apps/api/src/auth/jwt-auth.guard.ts` | `auth.controller.spec.ts`, `orders.controller.spec.ts` (từ chối trường giá), `payments.controller.spec.ts`<br>Rà soát secret trong lịch sử Git: làm thủ công trước khi nộp |
+| **`NFR-02`** | **Độ tin cậy & Sẵn sàng (Reliability)** | Production qua HTTPS, có `GET /health`; kết quả đúng khi gửi trùng hoặc đồng thời; lỗi trả đúng mã, không lộ chi tiết nội bộ; môi trường tái tạo được bằng Docker Compose, migration và seed. Không đặt ngưỡng tốc độ. | `Deployment-01`<br>`docs/architecture/backend.md`<br>`docs/deployment.md` | `GET /health` (`AppController`)<br>`Idempotency-Key`, cột `version`<br>`docker-compose.yml`, `apps/api/Dockerfile` | `app.controller.spec.ts`, `payments.controller.spec.ts` (gửi trùng, đồng thời)<br>Smoke test `/health` trong `cd.yml` (khi đã đặt `PRODUCTION_BACKEND_URL`) |
+| **`NFR-03`** | **Chất lượng & Bảo trì (Maintainability)** | Mọi PR qua CI (Install, Lint, Test, Build); API có Swagger; migration có phiên bản. | `Deployment-01`<br>`ADR-001:` Monorepo (npm, mỗi app có `package.json` riêng)<br>`ADR-002:` Modular Monolith | `.github/workflows/ci.yml`<br>`apps/api/prisma/migrations/`<br>Swagger UI tại `/docs` | CI chặn merge khi lint, test hoặc build lỗi<br>`swagger.spec.ts`<br>73 test của `apps/api` (`npx vitest run`) |
+| **`NFR-04`** | **Khả dụng (Usability)** | Giao diện Mobile-first; menu có đủ 3 trạng thái: Skeleton Loading, Empty State, Error & Retry. | `Activity-01` (Giai đoạn 1)<br>`docs/architecture/frontend.md` | Tailwind CSS responsive<br>`apps/web/src/app/page.tsx`, `ProductCard.tsx` | Kiểm tra thủ công trên thiết bị di động; chưa có test tự động; Lighthouse chưa chạy |
+| **`NFR-05`** | **Hiệu năng giao diện (Performance)** | FCP không quá 1,5 giây trên 4G, TBT không quá 200 ms, đổi size/topping cập nhật giá trong 50 ms, luồng menu đến thanh toán trong 60 giây (đo sau khi API đã khởi động, xem `RSK-08`). | `docs/requirements/requirements-web.md` (NFR-05)<br>`docs/architecture/frontend.md` | Next.js 16 (App Router), build tối ưu mặc định | *Chưa đo*: dự kiến Lighthouse và đo thủ công (Planned) |
 
 ---
 
 ## 4. Bảng Tổng Hợp Độ Phủ Truy Vết (Coverage & Compliance Summary)
 
-```
-+-----------------------------------------------------------------------------------+
-|                        TỔNG KẾT ĐỘ PHỦ TRUY VẾT DỰ ÁN BREWLITE                    |
-+--------------------------+-----------------------+--------------------------------+
-| Hạng mục truy vết        | Số lượng thực tế      | Tỷ lệ độ phủ thiết kế / mã     |
-+--------------------------+-----------------------+--------------------------------+
-| Yêu cầu chức năng (FR)   | 21 / 21 FR            | 100% có Use-case & Sơ đồ UML   |
-| Yêu cầu cốt lõi (MVP)    | 10 / 10 FR (FR-01-10) | 100% có Code, API và Test tự động |
-| Yêu cầu mở rộng (Plan)   | 11 / 11 FR (FR-11-21) | 100% có Use-case & Class Model |
-| Yêu cầu phi CN (NFR)     | 04 / 04 NFR           | 100% có giải pháp kỹ thuật & đo |
-| Sơ đồ UML đối chiếu      | 05 loại sơ đồ         | Use Case, Activity, Sequence,  |
-|                          |                       | Class Diagram, Deployment      |
-+--------------------------+-----------------------+--------------------------------+
-```
+| Hạng mục truy vết | Số lượng thực tế | Mức độ phủ |
+|---|---|---|
+| Yêu cầu chức năng (FR) | 21 / 21 | 21 có Use-case và sơ đồ UML |
+| Yêu cầu cốt lõi MVP (FR-01 đến FR-10) | 10 / 10 | 10 có mã nguồn; 8 có kiểm thử tự động (FR-02 và FR-03 chỉ kiểm tra thủ công, CI chạy lint và build) |
+| Yêu cầu mở rộng (FR-11 đến FR-21) | 11 | Planned: có Use-case và mô hình lớp, chưa có mã nguồn và kiểm thử |
+| Yêu cầu phi chức năng (NFR) | 5 / 5 | 5 có giải pháp kỹ thuật; đã kiểm chứng bằng test: NFR-01, NFR-02, NFR-03; NFR-04 và NFR-05 chưa đo |
+| Kiểm thử tự động hiện có | 73 test API (9 file) | Vitest cho `apps/api`; kịch bản Postman; chưa có test cho `apps/web`, chưa có E2E |
+| Sơ đồ UML đối chiếu | 6 sơ đồ | Use Case tổng quát, Use Case Checkout, Activity, Sequence, Class, Deployment |
 
 > [!NOTE]
-> Ma trận truy vết này đáp ứng đầy đủ tiêu chí nghiệm thu **Mục 8.1 & 8.2 của đề bài Assignment 2**. Mọi thành viên nhóm và Giảng viên nghiệm thu có thể click trực tiếp vào từng mã yêu cầu để đối soát chéo từ khâu phân tích bài toán tới tệp kiểm thử tự động.
+> Ma trận theo mẫu **Mục 8.1 của đề bài Assignment 2**. Các ô Test ghi đúng trạng thái thực tế: chưa có kiểm thử tự động cho giao diện web và chưa có E2E (sẽ bổ sung ở nhánh riêng); mọi tên file và tên test trong bảng có thể đối chiếu trực tiếp trong repo.
