@@ -10,12 +10,12 @@
 
 ### 1.1. Môi trường Production Cloud (Vận hành thực tế):
 * **Frontend (Vercel):** Phục vụ ứng dụng Next.js Mobile-first qua mạng lưới máy chủ biên Edge CDN với chứng chỉ bảo mật HTTPS (Port 443).
-* **Backend API (Render Cloud):** Container NestJS vận hành từ Docker Image trên GHCR, tự động cấu hình biến môi trường bí mật (`DATABASE_URL`, `JWT_SECRET`), có endpoint `GET /health` và theo dõi log luồng thời gian thực.
+* **Backend API (Render Cloud):** Container NestJS build từ `apps/api/Dockerfile`, Render kết nối GitHub và tự deploy khi `main` có commit mới, tự động cấu hình biến môi trường bí mật (`DATABASE_URL`, `JWT_SECRET`), có endpoint `GET /health` và theo dõi log luồng thời gian thực.
 * **Database (Neon Serverless PostgreSQL):** Đặt tại khu vực Singapore (`ap-southeast-1`), lưu trữ dữ liệu vĩnh viễn trên ổ cứng NVMe chuyên dụng, giao tiếp bảo mật qua đường truyền TLS mã hóa (Port 5432).
 
 ### 1.2. Môi trường Tự động hóa CI/CD (GitHub Actions):
 * **CI Quality Gate:** Kiểm tra toàn diện linting, unit test và build độc lập cho cả `apps/web` và `apps/api`.
-* **CD Pipeline:** Tự động build Docker Image và đẩy lên GitHub Container Registry (`ghcr.io`), sau đó kích hoạt Webhook triển khai Render và chạy Smoke Test.
+* **CD Pipeline:** Tự động build Docker Image và đẩy lên GitHub Container Registry (`ghcr.io`), Webhook triển khai Render và Smoke Test chỉ chạy khi đã cấu hình secret (hiện chưa đặt nên được bỏ qua).
 
 ### 1.3. Môi trường Local & Demo (Docker Compose & Tunnel):
 * Chạy trọn vẹn 3 service (`web:4004`, `api:4003`, `db:4005`) qua một lệnh `docker compose up`.
