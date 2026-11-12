@@ -71,7 +71,7 @@ Dự án BrewLite được tổ chức thực hiện nghiêm ngặt theo khung l
     - Máy trạng thái đơn hàng (`OrderStateMachine`) kết hợp **Khóa lạc quan (cột `version`)** chống ghi đè đồng thời (409 Conflict).
     - Tích lũy điểm thưởng thành viên tự động (1 điểm / 1.000đ thực trả).
   - **DevOps, Triển khai & Truy vết (Cả hai phụ trách):**
-    - Pipeline CD đóng gói image lên `ghcr.io` và tự động kích hoạt Render Deploy Hook.
+    - Pipeline CD đóng gói image lên `ghcr.io`; webhook Render và smoke test `/health` chỉ chạy khi đã cấu hình secret (hiện chưa đặt nên các bước này được bỏ qua).
     - Triển khai Production thành công: Frontend trên Vercel, Backend trên Render, CSDL trên Neon Singapore.
     - Hoàn thiện Ma trận truy vết `docs/traceability-matrix.md` cho 21 FR và 5 NFR (FR-11 đến FR-21 là Planned, chưa có mã nguồn và kiểm thử).
     - Soạn thảo Release Notes `docs/release-notes.md` và Kế hoạch vận hành/Rollback `docs/deployment.md`.

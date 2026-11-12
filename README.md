@@ -19,7 +19,7 @@ Hệ thống đã được đóng gói container tự động và triển khai c
 | Thành phần | Nền tảng hạ tầng | Địa chỉ truy cập Production | Ghi chú nghiệm thu |
 |---|---|---|---|
 | **Frontend Web App** | **Vercel Edge Network** | [https://brewlite-web.vercel.app](https://brewlite-web.vercel.app) | Giao diện Next.js 16 Mobile-first |
-| **Backend API Service** | **Render Cloud Services** | [https://brewlite-api.onrender.com](https://brewlite-api.onrender.com) | Container NestJS triển khai tự động từ GHCR |
+| **Backend API Service** | **Render Cloud Services** | [https://brewlite-api.onrender.com](https://brewlite-api.onrender.com) | NestJS build từ `apps/api/Dockerfile`, Render tự deploy theo kết nối Git |
 | **Health Check Endpoint** | **Render Cloud** | [https://brewlite-api.onrender.com/health](https://brewlite-api.onrender.com/health) | Trả về HTTP 200 `{ "status": "ok" }` |
 | **Tài liệu API (Swagger)** | **Render Cloud** | [https://brewlite-api.onrender.com/docs](https://brewlite-api.onrender.com/docs) | Giao diện tương tác OpenAPI 3.0 |
 | **Cơ sở dữ liệu** | **Neon Serverless PostgreSQL** | `ep-dry-pond-xxx.ap-southeast-1.aws.neon.tech` | Đặt tại Singapore (`ap-southeast-1`), SSL Mode |
