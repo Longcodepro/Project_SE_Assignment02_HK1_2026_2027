@@ -32,7 +32,7 @@ Dự án BrewLite được tổ chức thực hiện nghiêm ngặt theo khung l
 
 ### 2.1. Sprint 1 Review (Nghiệm thu kết quả)
 * **Những gì đã hoàn thành (Done):**
-  - Khởi tạo Monorepo pnpm gồm `apps/web` (Next.js 16) và `apps/api` (NestJS 12).
+  - Khởi tạo Monorepo (npm, mỗi app có `package.json` riêng) gồm `apps/web` (Next.js 16) và `apps/api` (NestJS 12).
   - Hoàn thiện tài liệu Task 1: Bối cảnh & Stakeholder (`context-and-scope.md`), SRS Giao diện & API, Danh sách User Story (`user-stories.md`), Đặc tả use-case checkout (`use-case-checkout.md`).
   - Hoàn thiện tài liệu Task 2: Activity Diagram End-to-End, Sequence Diagram, Class Diagram Domain.
   - Hoàn thiện tài liệu Task 3: Kiến trúc Frontend/Backend, các bản ADR 001–005, Deployment Diagram.
@@ -73,17 +73,17 @@ Dự án BrewLite được tổ chức thực hiện nghiêm ngặt theo khung l
   - **DevOps, Triển khai & Truy vết (Cả hai phụ trách):**
     - Pipeline CD đóng gói image lên `ghcr.io` và tự động kích hoạt Render Deploy Hook.
     - Triển khai Production thành công: Frontend trên Vercel, Backend trên Render, CSDL trên Neon Singapore.
-    - Hoàn thiện toàn diện Ma trận truy vết `docs/traceability-matrix.md` đạt độ phủ 100% cho 21 FR và 4 NFR.
+    - Hoàn thiện Ma trận truy vết `docs/traceability-matrix.md` cho 21 FR và 5 NFR (FR-11 đến FR-21 là Planned, chưa có mã nguồn và kiểm thử).
     - Soạn thảo Release Notes `docs/release-notes.md` và Kế hoạch vận hành/Rollback `docs/deployment.md`.
-* **Mức độ hoàn thành Backlog:** Đạt **100%** các hạng mục **Must Have** và **Should Have** cam kết cho mốc nghiệm thu Assignment 2.
+* **Mức độ hoàn thành Backlog:** hoàn thành các hạng mục **Must Have** và **Should Have** cam kết cho mốc nghiệm thu Assignment 2, ngoại trừ kiểm thử end-to-end tự động (mục #16 của `docs/BACKLOG.md`) chưa thực hiện.
 
 ### 3.2. Sprint 2 Retrospective (Rút kinh nghiệm)
 
 | Khía cạnh | Nội dung đánh giá thực tế của nhóm |
 |---|---|
-| **Làm tốt (What went well)** | • Luồng End-to-End hoạt động mượt mà, người dùng thực tế có thể mở điện thoại đặt món và thanh toán thành công.<br>• Các cơ chế bảo mật và toàn vẹn dữ liệu (Server-side Pricing, Khóa lạc quan, Idempotency) chạy đúng thiết kế lý thuyết.<br>• Pipeline CI/CD tự động hóa giúp việc triển khai lên Production diễn ra trong vòng chưa đầy 3 phút mà không cần can thiệp thủ công. |
+| **Làm tốt (What went well)** | • Luồng End-to-End hoạt động mượt mà, người dùng thực tế có thể mở điện thoại đặt món và thanh toán thành công.<br>• Các cơ chế bảo mật và toàn vẹn dữ liệu (Server-side Pricing, Khóa lạc quan, Idempotency) chạy đúng thiết kế lý thuyết.<br>• Pipeline CI/CD tự động hóa giúp việc triển khai lên Production diễn ra tự động, không cần can thiệp thủ công. |
 | **Chưa tốt / Khó khăn (What didn't go well)** | • Nền tảng Render gói miễn phí gặp hiện tượng Cold Start (máy chủ ngủ đông mất khoảng 30–50 giây để khởi động lại ở request đầu tiên).<br>• Phối hợp merge nhiều nhánh Pull Request về `main` đôi khi gặp xung đột file tài liệu markdown. |
-| **Bài học kinh nghiệm (Lessons Learned)** | • Thêm endpoint `GET /health` và thông báo trạng thái "Máy chủ đang khởi động" trên giao diện web để cải thiện trải nghiệm người dùng khi gặp Cold Start.<br>• Chia nhỏ các commit và thường xuyên `git pull rebase origin/main` giúp giảm thiểu 80% xung đột mã nguồn. |
+| **Bài học kinh nghiệm (Lessons Learned)** | • Thêm endpoint `GET /health` và thông báo trạng thái "Máy chủ đang khởi động" trên giao diện web để cải thiện trải nghiệm người dùng khi gặp Cold Start.<br>• Chia nhỏ các commit và thường xuyên `git pull rebase origin/main` giúp giảm xung đột mã nguồn. |
 
 ---
 
