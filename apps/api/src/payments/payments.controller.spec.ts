@@ -32,7 +32,7 @@ async function setup(order: object | null, updatedCount = 1) {
     .overrideGuard(JwtAuthGuard)
     .useValue({
       canActivate: (ctx: any) => {
-        ctx.switchToHttp().getRequest().user = { id: 7, email: 'a@b.c' };
+        ctx.switchToHttp().getRequest().user = { phone: '0912345678', role: 'CUSTOMER' };
         return true;
       },
     })
@@ -43,7 +43,7 @@ async function setup(order: object | null, updatedCount = 1) {
   return { app, orderFindFirst, orderUpdateMany, paymentCreate, paymentFindUnique, userUpdate, http: () => request(app.getHttpServer()) };
 }
 
-const pending = { id: 'ord_1', userId: 7, status: 'PENDING', total: 84000, version: 3 };
+const pending = { id: 'ord_1', userPhone: '0912345678', status: 'PENDING', total: 84000, version: 3 };
 
 describe('POST /payments', () => {
   it('Ví: đơn chuyển PAID và lưu lần thanh toán SUCCESS với số tiền của đơn', async () => {
@@ -52,7 +52,7 @@ describe('POST /payments', () => {
     const res = await http().post('/payments').send({ orderId: 'ord_1', method: 'WALLET' }).expect(201);
 
     expect(res.body).toMatchObject({ orderId: 'ord_1', status: 'PAID', method: 'WALLET', amount: 84000 });
-    expect(orderFindFirst).toHaveBeenCalledWith({ where: { id: 'ord_1', userId: 7 } });
+    expect(orderFindFirst).toHaveBeenCalledWith({ where: { id: 'ord_1', userPhone: '0912345678' } });
     expect(orderUpdateMany.mock.calls[0][0]).toEqual({
       where: { id: 'ord_1', version: 3 },
       data: { status: 'PAID', version: { increment: 1 } },
@@ -117,7 +117,7 @@ describe('POST /payments', () => {
     const { app, http, userUpdate } = await setup({ ...pending, total: 29900 });
     const res = await http().post('/payments').send({ orderId: 'ord_1', method: 'WALLET' }).expect(201);
     expect(res.body.pointsEarned).toBe(29);
-    expect(userUpdate).toHaveBeenCalledWith({ where: { id: 7 }, data: { loyaltyPoints: { increment: 29 } } });
+    expect(userUpdate).toHaveBeenCalledWith({ where: { phone: '0912345678' }, data: { loyaltyPoints: { increment: 29 } } });
     await app.close();
   });
 

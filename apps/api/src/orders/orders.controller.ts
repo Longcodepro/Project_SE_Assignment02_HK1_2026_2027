@@ -15,12 +15,12 @@ export class OrdersController {
     @Body() dto: CreateOrderDto,
     @Headers('idempotency-key') key?: string,
   ) {
-    return this.ordersService.create(user.id, dto, parseIdempotencyKey(key));
+    return this.ordersService.create(user.phone, dto, parseIdempotencyKey(key));
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
   findMine(@CurrentUser() user: AuthUser) {
-    return this.ordersService.findMine(user.id);
+    return this.ordersService.findMine(user.phone);
   }
 }

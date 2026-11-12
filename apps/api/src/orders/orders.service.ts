@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import { isUniqueViolation } from '../common/idempotency.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -11,10 +11,10 @@ const SUMMARY = { id: true, status: true, total: true } as const;
 export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(userId: number, dto: CreateOrderDto, idempotencyKey?: string) {
+  async create(userPhone: string, dto: CreateOrderDto, idempotencyKey?: string) {
     const findExisting = () =>
       this.prisma.order.findUnique({
-        where: { userId_idempotencyKey: { userId, idempotencyKey: idempotencyKey! } },
+        where: { userPhone_idempotencyKey: { userPhone, idempotencyKey: idempotencyKey! } },
         select: SUMMARY,
       });
     if (idempotencyKey) {
@@ -26,11 +26,18 @@ export class OrdersService {
     const products = await this.prisma.product.findMany({
       where: { id: { in: ids } },
     });
-    const priceById = new Map(products.map((p) => [p.id, p.price]));
-    const missing = ids.filter((id) => !priceById.has(id));
+    const productById = new Map(products.map((p) => [p.id, p]));
+    const missing = ids.filter((id) => !productById.has(id));
     if (missing.length) {
       throw new BadRequestException(
         `Sản phẩm không tồn tại: ${missing.join(', ')}`,
+      );
+    }
+
+    const unavailable = products.filter((p) => !p.isAvailable);
+    if (unavailable.length) {
+      throw new ConflictException(
+        `Món trong giỏ đã hết hàng: ${unavailable.map((p) => p.name).join(', ')}`,
       );
     }
 
@@ -39,7 +46,7 @@ export class OrdersService {
       quantity: i.quantity,
       size: i.size,
       toppings: i.toppings ?? [],
-      unitPrice: unitPrice(priceById.get(i.productId)!, i.size, i.toppings ?? []),
+      unitPrice: unitPrice(productById.get(i.productId)!.price, i.size, i.toppings ?? []),
     }));
     const total = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
 
@@ -47,7 +54,7 @@ export class OrdersService {
       return await this.prisma.order.create({
         data: {
           id: `ord_${randomBytes(5).toString('hex')}`,
-          userId,
+          userPhone,
           idempotencyKey,
           total,
           items: { create: items },
@@ -64,9 +71,9 @@ export class OrdersService {
     }
   }
 
-  async findMine(userId: number) {
+  async findMine(userPhone: string) {
     const orders = await this.prisma.order.findMany({
-      where: { userId },
+      where: { userPhone },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,

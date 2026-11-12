@@ -11,11 +11,12 @@ const item = { productId: 1, quantity: 2, size: 'M', toppings: ['tran-chau'] };
 async function setup(
   findManyOrders = vi.fn().mockResolvedValue([]),
   findUnique = vi.fn().mockResolvedValue(null),
+  products = [{ id: 1, price: 29000, isAvailable: true }],
 ) {
   const create = vi.fn().mockImplementation(({ data }) =>
     Promise.resolve({ id: data.id, status: 'PENDING', total: data.total }),
   );
-  const findMany = vi.fn().mockResolvedValue([{ id: 1, price: 29000 }]);
+  const findMany = vi.fn().mockResolvedValue(products);
   const moduleRef = await Test.createTestingModule({
     controllers: [OrdersController],
     providers: [
@@ -30,7 +31,7 @@ async function setup(
     .overrideGuard(JwtAuthGuard)
     .useValue({
       canActivate: (ctx: any) => {
-        ctx.switchToHttp().getRequest().user = { id: 7, email: 'a@b.c' };
+        ctx.switchToHttp().getRequest().user = { phone: '0912345678', role: 'CUSTOMER' };
         return true;
       },
     })
@@ -53,7 +54,7 @@ describe('POST /orders', () => {
     // 2 × (29000 + size M 5000 + trân châu 8000)
     expect(res.body).toMatchObject({ status: 'PENDING', total: 84000 });
     expect(res.body.id).toMatch(/^ord_/);
-    expect(create.mock.calls[0][0].data.userId).toBe(7);
+    expect(create.mock.calls[0][0].data.userPhone).toBe('0912345678');
     expect(create.mock.calls[0][0].data.items.create[0].unitPrice).toBe(42000);
     await app.close();
   });
@@ -89,6 +90,19 @@ describe('POST /orders', () => {
     expect(create).not.toHaveBeenCalled();
     await app.close();
   });
+
+  it('409 khi sản phẩm đã hết hàng (isAvailable = false)', async () => {
+    const { app, create } = await setup(undefined, undefined, [{ id: 1, price: 29000, isAvailable: false }]);
+
+    const res = await request(app.getHttpServer())
+      .post('/orders')
+      .send({ items: [item] })
+      .expect(409);
+
+    expect(res.body.message).toMatch(/hết hàng/);
+    expect(create).not.toHaveBeenCalled();
+    await app.close();
+  });
 });
 
 describe('GET /orders/me', () => {
@@ -117,7 +131,7 @@ describe('GET /orders/me', () => {
     const res = await request(app.getHttpServer()).get('/orders/me').expect(200);
 
     expect(findManyOrders.mock.calls[0][0]).toMatchObject({
-      where: { userId: 7 },
+      where: { userPhone: '0912345678' },
       orderBy: { createdAt: 'desc' },
     });
     expect(res.body).toEqual([
@@ -157,7 +171,7 @@ describe('POST /orders với Idempotency-Key', () => {
     const { app, create, findUnique } = await setup();
     await request(app.getHttpServer()).post('/orders').set('Idempotency-Key', 'k-1').send(body).expect(201);
     expect(findUnique.mock.calls[0][0].where).toEqual({
-      userId_idempotencyKey: { userId: 7, idempotencyKey: 'k-1' },
+      userPhone_idempotencyKey: { userPhone: '0912345678', idempotencyKey: 'k-1' },
     });
     expect(create.mock.calls[0][0].data.idempotencyKey).toBe('k-1');
     await app.close();
