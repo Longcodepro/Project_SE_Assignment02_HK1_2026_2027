@@ -36,7 +36,7 @@ rectangle "Phân hệ Đặt hàng & Thanh toán (BrewLite)" {
   ' Use-case trung tâm trọng điểm
   usecase "<b>UC-05: Đặt hàng & thanh toán\nkhông dùng tiền mặt</b>\n(Mã hệ thống: Checkout)" as UC05 #D4EFDF
 
-  ' Các Use-case bắt buộc đi kèm (Include)
+  ' UC-04 là include (khi chưa đăng nhập); UC-20 và UC-06 chỉ tiếp nối, không phải include
   usecase "UC-04: Đăng ký / Đăng nhập\nbằng SĐT & mật khẩu" as UC04
   usecase "UC-20: Tích điểm thưởng thành viên\n(1 điểm / 1.000đ thực trả)" as UC20
   usecase "UC-06: Chuyển hướng theo dõi đơn\n(Polling trạng thái 5s)" as UC06
