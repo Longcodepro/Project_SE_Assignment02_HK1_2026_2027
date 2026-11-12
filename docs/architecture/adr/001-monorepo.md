@@ -27,7 +27,7 @@ Nhóm quyết định áp dụng mô hình **Monorepo** với cấu trúc thư m
 │   ├── web/            # Next.js 16 (Frontend)
 │   └── api/            # NestJS 12 + Prisma (Backend)
 ├── docs/               # requirements, diagrams, architecture (ADR)
-├── tests/              # kiểm thử end-to-end (Planned)
+├── tests/              # kiểm thử end-to-end (Playwright, `tests/e2e`)
 ├── scripts/            # tiện ích vận hành (tunnel, logs)
 ├── .github/workflows/  # ci.yml, cd.yml
 ├── docker-compose.yml
