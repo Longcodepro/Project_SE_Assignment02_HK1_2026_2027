@@ -159,3 +159,61 @@ jobs:
       - name: Dọn dẹp container và volumes
         if: always() && steps.cloud_check.outputs.has_cloud == 'false'
         run: docker compose down -v
+
+  # KIỂM THỬ E2E LUỒNG ĐẶT HÀNG (Playwright)
+  # Dựng cả hệ thống bằng Docker Compose rồi điều khiển trình duyệt thật:
+  # menu -> giỏ hàng -> đăng ký -> thanh toán -> kiểm tra đơn và điểm ở phía server.
+  e2e:
+    name: "4. Kiểm thử E2E luồng đặt hàng (Playwright)"
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - name: Checkout mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Cài đặt Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Khởi động hệ thống bằng Docker Compose
+        run: |
+          cp .env.example .env
+          docker compose up -d --build
+
+      - name: Chờ API và Web sẵn sàng, làm nóng các trang (web chạy chế độ dev)
+        run: |
+          curl --fail --silent --show-error --retry 60 --retry-delay 2 --retry-all-errors http://localhost:4003/health
+          for p in / /cart /checkout /orders /order-success; do
+            curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors -o /dev/null "http://localhost:4004$p"
+          done
+
+      - name: Cài đặt Playwright và trình duyệt Chromium
+        working-directory: tests/e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Chạy kiểm thử E2E
+        working-directory: tests/e2e
+        run: npm test
+
+      - name: Lưu báo cáo E2E khi có lỗi
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            tests/e2e/playwright-report
+            tests/e2e/test-results
+          retention-days: 7
+
+      - name: In log container khi có lỗi
+        if: failure()
+        run: docker compose logs
+
+      - name: Dọn dẹp container và volumes
+        if: always()
+        run: docker compose down -v
