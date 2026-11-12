@@ -112,7 +112,7 @@ Request
 
 409 khi món trong giỏ có `isAvailable: false`.
 
-Trạng thái đơn: `PENDING` → `PAID` | `PAYMENT_FAILED`. Đơn `PAYMENT_FAILED` được thanh toán lại (→ `PAID`). `PAID` là trạng thái cuối.
+Trạng thái đơn: `PENDING` → `PAID` | `PAYMENT_FAILED`. Đơn `PAYMENT_FAILED` được thanh toán lại (→ `PAID`). `PAID` là trạng thái cuối ở MVP (Sprint 3 mở rộng thêm `PREPARING`, `READY`, `COMPLETED`, `CANCELLED`).
 
 ## POST /payments
 
