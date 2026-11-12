@@ -3,9 +3,9 @@
 > **Mã tài liệu:** `REQ-API` · **Phụ trách:** Nguyễn Thành Long (`Longcodepro`)  
 > **Phạm vi mã nguồn:** `apps/api` (NestJS, Prisma, PostgreSQL)  
 > **Đường dẫn đích:** `docs/requirements/requirements-api.md`  
-> **Tham chiếu:** `cac-chuc-nang-thong-nhat.md` (nguồn sự thật: mã `CN`, `UC`, `FR`, `NFR`, bảng trạng thái đơn), `docs/architecture/api-contract.md`
+> **Tham chiếu:** `docs/requirements/context-and-scope.md` mục 6 (nguồn sự thật: mã `CN`, `UC`, `FR`, `NFR`, bảng trạng thái đơn), `docs/architecture/api-contract.md`
 
-**Hướng dẫn đọc:** mã FR/NFR là mã chung của cả hệ thống. File này chỉ đặc tả **phần API**; phần giao diện của FR-01, FR-07, FR-02, FR-03 và NFR-04 thuộc SRS web (Tài). Tên trong `backtick` là tên đúng trong mã nguồn. Mâu thuẫn thì theo `cac-chuc-nang-thong-nhat.md`. Tiền là số nguyên VND. Lỗi trả dạng `{ "statusCode", "message", "error" }`.
+**Hướng dẫn đọc:** mã FR/NFR là mã chung của cả hệ thống. File này chỉ đặc tả **phần API**; phần giao diện của FR-01, FR-07, FR-02, FR-03, NFR-04 và NFR-05 thuộc SRS web (Tài). Tên trong `backtick` là tên đúng trong mã nguồn. Mâu thuẫn thì theo `context-and-scope.md` mục 6. Tiền là số nguyên VND. Lỗi trả dạng `{ "statusCode", "message", "error" }`.
 
 ---
 
@@ -117,7 +117,7 @@ Thanh toán bị từ chối theo luật mô phỏng (thẻ đuôi `0000`, ví t
 | `PENDING` | `PAYMENT_FAILED` | Thanh toán thất bại |
 | `PAYMENT_FAILED` | `PAID` | Thanh toán lại thành công |
 
-- Mọi chuyển trạng thái khác bị chặn, trả 409. Bảng đầy đủ của Sprint 3 (Planned) ở `cac-chuc-nang-thong-nhat.md` mục 5.
+- Mọi chuyển trạng thái khác bị chặn, trả 409. Bảng đầy đủ của Sprint 3 (Planned) ở `context-and-scope.md` mục 6.5.
 - Cập nhật đơn theo điều kiện `WHERE id = ? AND version = ?` rồi tăng `version` thêm 1. Không cập nhật được dòng nào thì trả 409.
 
 **Tiêu chí chấp nhận:**
@@ -152,7 +152,7 @@ Thanh toán bị từ chối theo luật mô phỏng (thẻ đuôi `0000`, ví t
 
 ## 3. Yêu cầu Planned (Sprint 3 và 4, Could)
 
-Chỉ có tài liệu và sơ đồ, chưa hiện thực. Tiêu chí chấp nhận chi tiết viết khi vào Sprint tương ứng. Quy tắc nghiệp vụ lấy từ `cac-chuc-nang-thong-nhat.md` mục 5 và 6.
+Chỉ có tài liệu và sơ đồ, chưa hiện thực. Tiêu chí chấp nhận chi tiết viết khi vào Sprint tương ứng. Quy tắc nghiệp vụ lấy từ `context-and-scope.md` mục 6.5 và 6.6.
 
 | Mã | Phần API | Sprint |
 |:---:|---|:---:|
@@ -180,7 +180,7 @@ Endpoint dành cho vai trò nhân viên trả 403 khi sai vai trò.
 | `NFR-02` | Độ tin cậy và sẵn sàng | Không đặt ngưỡng tốc độ vì phụ thuộc hạ tầng và mạng. Thay bằng: (1) production qua HTTPS và `GET /health` trả 200 `{ status: "ok", timestamp }`; (2) kết quả đúng khi gửi trùng hoặc đồng thời (xem FR-08, FR-09); (3) mọi lỗi theo đúng bảng mã lỗi ở mục 1, lỗi 5xx không lộ stack hay chi tiết nội bộ; (4) log không chứa `cardNumber`, mật khẩu hay token; (5) môi trường tái tạo được từ đầu bằng Docker Compose, migration và seed. Lần gọi đầu trên gói miễn phí có thể chậm: làm nóng bằng `/health` trước khi demo. |
 | `NFR-03` | Chất lượng và bảo trì | Mọi PR qua CI (Install, Lint, Test, Build). Có Swagger tại `/docs`. Migration có phiên bản và seed tái tạo được CSDL. Có unit test cho định giá, máy trạng thái, tích điểm và integration test cho `POST /orders`, `POST /payments`. |
 
-`NFR-04` (khả dụng) thuộc phần giao diện, không nằm trong file này.
+`NFR-04` (khả dụng) và `NFR-05` (hiệu năng giao diện) thuộc phần giao diện, không nằm trong file này.
 
 ---
 
