@@ -99,7 +99,7 @@
 * **Ánh xạ yêu cầu:** `FR-09` | **Phân loại MoSCoW:** **Must Have**
 * **User Story:** Là **Khách hàng**, tôi muốn **không bị trừ tiền 2 lần khi mạng lag hoặc bấm nút thanh toán liên tục**, để **an tâm về tính chính xác và an toàn của giao dịch tài chính**.
 * **Tiêu chí chấp nhận ngắn:**
-  - Client tự động sinh UUID và gửi kèm trong header `Idempotency-Key`.
+  - Client tự động sinh key duy nhất và gửi kèm trong header `Idempotency-Key`.
   - Nếu gặp lại cùng một key trong cùng một đơn, backend trả về kết quả giao dịch cũ ngay lập tức mà không tạo thêm giao dịch mới.
 
 ---
