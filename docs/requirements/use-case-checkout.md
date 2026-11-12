@@ -7,7 +7,7 @@
 > - **Trần Quốc Tài (`TaiTran263`)** — Frontend UI/UX, Quản trị trạng thái Client, QA  
 >  
 > **Mã tạo phẩm:** `docs/requirements/use-case-checkout.md`  
-> **Issue quản lý:** [D1.3] Đặc tả use-case UC-01 "Đặt và thanh toán đơn hàng" #38  
+> **Issue quản lý:** [D1.3] Đặc tả use-case UC-05 "Đặt hàng và thanh toán" #38  
 > **Sơ đồ liên kết:** [`docs/diagrams/usecase-checkout.puml`](../diagrams/usecase-checkout.puml) (Ảnh vector: [`usecase-checkout.svg`](../diagrams/usecase-checkout.svg))  
 > **Tài liệu đối chiếu:** `docs/requirements/context-and-scope.md`, `docs/requirements/requirements-web.md`, `docs/traceability-matrix.md`
 
@@ -54,13 +54,13 @@
 ### 5.1. Khi giao dịch thành công (Success End Condition)
 - Bản ghi đơn hàng mới được tạo trong bảng `Order` với trạng thái `PAID`, phiên bản `version = 1`.
 - Toàn bộ danh sách ly (kèm size, topping, phụ thu) được lưu vào bảng `OrderItem`.
-- Bản ghi giao dịch trong bảng `Payment` được lưu với trạng thái `SUCCESS` kèm mã giao dịch `transactionId`.
+- Bản ghi giao dịch trong bảng `Payment` được lưu với trạng thái `SUCCESS` kèm số điểm thưởng đã cấp (`pointsEarned`).
 - Khách hàng được tự động **cộng điểm tích lũy thưởng** theo tỷ lệ: **1 điểm / 1.000 VNĐ thực trả** (`UC-20`).
 - Giỏ hàng của khách hàng trên trình duyệt (`Zustand Store` & `localStorage`) được xóa sạch hoàn toàn.
 - Khách hàng được chuyển hướng sang trang xác nhận đơn hàng thành công (`/order-success`), tự động kích hoạt tiến trình Polling 5s/lần để theo dõi trạng thái đơn (`UC-06`).
 
 ### 5.2. Khi giao dịch thất bại (Failure End Condition)
-- Đơn hàng bị chuyển trạng thái `PAYMENT_FAILED` hoặc bị Rollback hoàn toàn trong cơ sở dữ liệu.
+- Đơn hàng được chuyển sang trạng thái `PAYMENT_FAILED` (API trả `201` kèm `status: "PAYMENT_FAILED"`, không phải lỗi HTTP); bản ghi `Payment` trạng thái `FAILED` được lưu. Khách được thanh toán lại cùng đơn (`PAYMENT_FAILED` → `PAID`).
 - Không có bất kỳ khoản tiền nào bị trừ, không có điểm tích lũy nào được cấp phát.
 - **Giữ nguyên 100% giỏ hàng** của khách hàng trên trình duyệt, không làm mất danh sách món và tùy chọn đã cấu hình.
 - Hiển thị thông báo giải thích nguyên nhân lỗi cụ thể và cung cấp tùy chọn cho phép khách hàng đổi phương thức thanh toán hoặc thử lại.
@@ -83,13 +83,18 @@ Sơ đồ PlantUML chi tiết thể hiện đầy đủ các quan hệ phụ thu
                    +-------->| UC-05: Đặt hàng & thanh toán|<---------+
                              +--------------+--------------+
                                             |
-                      +---------------------+---------------------+
-                      | <<include>>         | <<extend>>          | <<include>>
-                      v                     v                     v
-            +-------------------+ +-------------------+ +-------------------+
-            | UC-04: Đăng nhập  | | UC-10: Áp voucher | | UC-20: Tích điểm  |
-            | bằng Số điện thoại| | giảm giá khuyến mãi| | thưởng thành viên |
-            +-------------------+ +-------------------+ +-------------------+
+                 +--------------------------+--------------------------+
+                 | <<include>>                                         | <<extend>>
+                 | (khi chưa đăng nhập)                                | (Sprint 3, Planned)
+                 v                                                     v
+       +-------------------+                                 +--------------------+
+       | UC-04: Đăng nhập  |                                 | UC-10: Áp voucher  |
+       | bằng Số điện thoại|                                 | giảm giá khuyến mãi|
+       +-------------------+                                 +--------------------+
+
+  Tiếp nối sau UC-05 (không phải include):
+    - UC-20: tích điểm khi thanh toán thành công
+    - UC-06: theo dõi đơn bằng polling 5 giây
 ```
 
 ---
@@ -104,7 +109,7 @@ Sơ đồ PlantUML chi tiết thể hiện đầy đủ các quan hệ phụ thu
 | **4** | Khách hàng lựa chọn phương thức thanh toán không tiền mặt: **Thẻ ngân hàng** (`CARD`) hoặc **Ví điện tử** (`WALLET`). | Hệ thống hiển thị các trường nhập thông tin tương ứng của phương thức đã chọn. |
 | **5** | Khách hàng kiểm tra tóm tắt đơn hàng lần cuối và bấm nút **"Xác nhận Thanh toán"**. | Giao diện Next.js sinh mã UUID làm giá trị cho header `Idempotency-Key`, vô hiệu hóa nút bấm để chống gửi trùng lặp; gửi request `POST /orders` kèm payload danh sách món (chỉ gửi `productId`, `size`, `toppings`, `quantity`; **tuyệt đối không gửi giá tiền**). |
 | **6** | — | **NestJS API** xác thực JWT qua `JwtAuthGuard`, kiểm tra `Idempotency-Key`. Thực hiện **Server-side Pricing**: truy vấn bảng giá gốc từ DB để tính tổng tiền chính xác. Tạo bản ghi `Order` với trạng thái `PENDING`, `version = 0`. Trả về `id` và `total` (HTTP 201 Created). |
-| **7** | — | Giao diện Next.js tự động gửi tiếp request `POST /payments` chứa `orderId`, `method`, thông tin thẻ/ví và header `Idempotency-Key`. |
+| **7** | — | Giao diện Next.js tự động gửi tiếp request `POST /payments` chứa `orderId`, `method`, `cardNumber` (bắt buộc khi `CARD`, không được lưu lại) và header `Idempotency-Key`. |
 | **8** | — | NestJS API tiếp nhận yêu cầu, gửi dữ liệu sang Cổng thanh toán mô phỏng. Cổng thanh toán kiểm tra quy tắc hợp lệ, thực hiện trừ tiền và trả về thông báo `PAYMENT_SUCCESS`. |
 | **9** | — | NestJS API kích hoạt Database Transaction: cập nhật `Order` thành `PAID`, lưu bản ghi `Payment` trạng thái `SUCCESS`, cộng điểm thưởng thành viên theo tỷ lệ 1 điểm / 1.000đ (`UC-20`), sau đó COMMIT transaction. API trả về HTTP 201 Created kèm thông tin đơn hàng và điểm thưởng (`pointsEarned`). |
 | **10** | Khách hàng nhìn thấy màn hình Đặt hàng thành công (`/order-success`) và bắt đầu theo dõi trạng thái đơn. | Giao diện xóa sạch giỏ hàng trong Zustand Store; thiết lập cơ chế Polling ngầm định kỳ 5 giây/lần gọi `GET /orders/me` để cập nhật trạng thái đơn hàng thời gian thực (`UC-06`). |
@@ -141,7 +146,7 @@ Sơ đồ PlantUML chi tiết thể hiện đầy đủ các quan hệ phụ thu
 ## 9. Các luồng ngoại lệ (Exception Flows)
 
 ### E1: Món trong giỏ hàng bị hết hàng / hết nguyên liệu (HTTP 409 Conflict)
-- **Hoàn cảnh:** Tại Bước 6, trong lúc khách chuẩn bị thanh toán thì nhân viên quầy vừa đánh dấu món hết hàng (`isAvailable = false`) hoặc tồn kho nguyên liệu không đủ pha chế.
+- **Hoàn cảnh:** Tại Bước 6, trong lúc khách chuẩn bị thanh toán thì nhân viên quầy vừa đánh dấu món hết hàng (`isAvailable = false`) hoặc tồn kho nguyên liệu không đủ pha chế (kiểm tra tồn kho nguyên liệu chỉ có từ Sprint 4; ở MVP chỉ dùng cờ `isAvailable`).
 - **Xử lý hệ thống:**
   1. NestJS API phát hiện sản phẩm không còn khả dụng, từ chối tạo đơn hàng và trả về mã lỗi `HTTP 409 Conflict` kèm thông báo: `Sản phẩm [Tên món] hiện đã hết hàng hoặc không đủ nguyên liệu phục vụ`.
   2. Giao diện Next.js hiển thị hộp thoại cảnh báo màu cam: *"Rất tiếc, một số món trong giỏ hàng vừa hết hàng."*
@@ -152,7 +157,7 @@ Sơ đồ PlantUML chi tiết thể hiện đầy đủ các quan hệ phụ thu
 - **Xử lý hệ thống:**
   1. Cổng thanh toán mô phỏng nhận diện quy tắc đuôi `0000`, trả về kết quả từ chối giao dịch: `DECLINED - Insufficient Funds / Card Locked`.
   2. NestJS API cập nhật trạng thái đơn hàng thành `PAYMENT_FAILED`, lưu bản ghi Payment trạng thái `FAILED`.
-  3. API trả về phản hồi kết thúc thanh toán thất bại.
+  3. API trả về `201 Created` kèm `status: "PAYMENT_FAILED"` và `reason` (không phải lỗi HTTP).
   4. Next.js hiển thị thông báo lỗi màu đỏ nổi bật: *"Giao dịch thanh toán bằng thẻ không thành công. Thẻ của quý khách đã bị từ chối."*
   5. Đơn hàng được giữ ở trạng thái chờ thanh toán lại; hiển thị nút **"Thử lại"** và **"Đổi phương thức thanh toán khác"** để khách hàng thao tác tiếp mà không bị mất đơn.
 
@@ -166,10 +171,9 @@ Sơ đồ PlantUML chi tiết thể hiện đầy đủ các quan hệ phụ thu
 ### E4: Client gửi trùng lặp yêu cầu do độ trễ mạng (Xử lý Idempotency-Key)
 - **Hoàn cảnh:** Mạng chập chờn, khách hàng nhấn nút "Xác nhận Thanh toán" nhiều lần liên tiếp hoặc trình duyệt tự động retry request.
 - **Xử lý hệ thống:**
-  1. Mọi request tạo đơn và thanh toán bắt buộc phải gửi kèm header `Idempotency-Key: <UUID>`.
-  2. Tại NestJS API, hệ thống tra cứu `Idempotency-Key` trong bộ đệm:
-     - Nếu một request với cùng key đang được xử lý: Trả về HTTP 409 Conflict *"Giao dịch đang được xử lý, vui lòng chờ"*.
-     - Nếu request với key này đã hoàn tất thành công: Trả về trực tiếp kết quả đã lưu trong lần xử lý trước đó mà **không thực hiện lại giao dịch trừ tiền hay tạo đơn thứ hai**.
+  1. Client luôn gửi kèm header `Idempotency-Key: <UUID>` cho request tạo đơn và thanh toán. Header này **tùy chọn ở phía API** (1 đến 128 ký tự gồm chữ, số, `_`, `-`; sai định dạng trả 400; không gửi thì xử lý như bình thường). Phạm vi key: theo người dùng với `POST /orders`, theo đơn với `POST /payments`.
+  2. Tại NestJS API, hệ thống tra cứu `Idempotency-Key` trong cơ sở dữ liệu (ràng buộc duy nhất):
+     - Gửi lại cùng key (kể cả khi hai request đến cùng lúc): API luôn trả `201` với kết quả của lần đầu, **không thực hiện lại giao dịch trừ tiền hay tạo đơn thứ hai**. Không có lỗi 409 cho trường hợp này.
   3. Đảm bảo tính nhất quán tuyệt đối: Mỗi cú click chuột của khách chỉ sinh đúng duy nhất 1 đơn hàng và 1 giao dịch tài chính.
 
 ### E5: Xung đột dữ liệu đồng thời (Optimistic Concurrency Control)
@@ -193,7 +197,7 @@ Sơ đồ PlantUML chi tiết thể hiện đầy đủ các quan hệ phụ thu
 | Mã | Tên quy tắc nghiệp vụ | Diễn giải chi tiết kỹ thuật |
 |:---:|---|---|
 | **BR-01** | **Server-side Pricing** *(Định giá độc quyền phía máy chủ)* | Client **tuyệt đối không được gửi giá tiền** lên server. Server đọc `productId`, `size`, `toppingIds` từ database để tự tính toán tổng tiền. Chống hoàn toàn hành vi sửa đổi giá bằng DevTools hoặc Postman. |
-| **BR-02** | **Cơ chế chống gửi trùng Idempotency** | Mọi yêu cầu nhạy cảm (`POST /orders`, `POST /payments`) đều mang header `Idempotency-Key`. Hệ thống lưu vết key để đảm bảo an toàn giao dịch tài chính theo chuẩn RFC 7231. |
+| **BR-02** | **Cơ chế chống gửi trùng Idempotency** | Client gửi header `Idempotency-Key` cho các yêu cầu nhạy cảm (`POST /orders`, `POST /payments`); API chấp nhận header này tùy chọn. Hệ thống lưu vết key trong CSDL (ràng buộc duy nhất) để đảm bảo an toàn giao dịch tài chính theo chuẩn RFC 7231. |
 | **BR-03** | **Mã nhận hàng 6 chữ số (`pickupCode`)** — (Sprint 3, Planned) | Không áp dụng ở MVP Sprint 1–2. Khi vào Sprint 3, mã được sinh lúc đơn chuyển sang `READY` (sau khi pha chế xong, không phải lúc `PAID`), duy nhất trong số các đơn đang `READY`. Khách hàng dùng mã này để đọc cho nhân viên quầy nhận đồ. |
 | **BR-04** | **Quy tắc tích điểm thành viên** | Điểm tích lũy được tính theo công thức: `Points = Floor(Thực trả / 1.000)`. Điểm được ghi nhận tự động vào bảng `User` ngay khi đơn chuyển trạng thái `PAID`. |
 | **BR-05** | **Bảo mật xác thực JWT & SĐT** | Định danh duy nhất của tài khoản là **Số điện thoại Việt Nam di động hợp lệ** (Regex: `/^(0|\+84)(3|5|7|8|9)\d{8}$/`; server chuẩn hóa về 10 chữ số bắt đầu bằng `0`). Mật khẩu được mã hóa an toàn bằng thuật toán `bcryptjs` với salt rounds = 10. |
@@ -222,11 +226,11 @@ Bảng đối chiếu chứng minh tính toàn vẹn và mức độ bao phủ y
 Các kịch bản kiểm thử theo chuẩn **Given - When - Then** để phục vụ viết Unit Test, Integration Test và E2E Test cho Task 4 và Task 5:
 
 ### Kịch bản 1: Thanh toán thẻ thành công (Happy Path)
-- **Given:** Khách hàng đã đăng nhập, giỏ hàng có 1 ly "Cà phê sữa đá" Size M (giá 30.000đ) và 1 Topping "Trân châu trắng" (5.000đ).
+- **Given:** Khách hàng đã đăng nhập, giỏ hàng có 1 ly "Cà phê sữa" giá gốc 29.000đ, Size M (+5.000đ) và topping "Trân châu đen" `tran-chau` (+8.000đ).
 - **When:** Khách hàng chọn phương thức "Thẻ ngân hàng", nhập số thẻ hợp lệ (đuôi `1234`) và bấm "Xác nhận Thanh toán".
 - **Then:**
-  - Hệ thống tạo đơn hàng mới trạng thái `PAID`, tổng tiền chính xác 35.000 VNĐ.
-  - Tài khoản khách hàng được cộng thêm đúng 35 điểm tích lũy.
+  - Hệ thống tạo đơn hàng mới trạng thái `PAID`, tổng tiền chính xác 42.000 VNĐ (29.000 + 5.000 + 8.000).
+  - Tài khoản khách hàng được cộng thêm đúng 42 điểm tích lũy.
   - Giỏ hàng client bị xóa rỗng; màn hình điều hướng tới `/order-success`.
 
 ### Kịch bản 2: Thanh toán thẻ thất bại do số thẻ đuôi `0000` (Negative Path)
