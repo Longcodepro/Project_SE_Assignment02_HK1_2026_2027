@@ -16,7 +16,7 @@ Hệ thống BrewLite được triển khai trên nền tảng điện toán đ�
 
 | Thành phần hệ thống | Nền tảng hạ tầng thực tế | URL Truy cập Production (HTTPS) | Giao thức & Cổng | Ghi chú vận hành |
 |---|---|---|:---:|---|
-| **Frontend Web App** | **Vercel Global Edge Network** | `https://brewlite-web.vercel.app` | HTTPS (443) | Phục vụ giao diện Next.js 16 Mobile-first qua mạng lưới CDN toàn cầu. |
+| **Frontend Web App** | **Vercel Global Edge Network** | `https://se-as2-brewlite.vercel.app` | HTTPS (443) | Phục vụ giao diện Next.js 16 Mobile-first qua mạng lưới CDN toàn cầu. |
 | **Backend API Service** | **Render Cloud Services** | `https://brewlite-api.onrender.com` | HTTPS (443) | Chạy NestJS bằng `apps/api/Dockerfile`; Render kết nối GitHub và tự build, triển khai khi `main` có commit mới (cấu hình trên Render Dashboard). |
 | **Health Check Endpoint** | **Render Web Service** | `https://brewlite-api.onrender.com/health` | HTTPS (443) | Endpoint giám sát trạng thái sức khỏe máy chủ (trả về HTTP 200 `{ status: "ok" }`). |
 | **Tài liệu API (Swagger)** | **Render Web Service** | `https://brewlite-api.onrender.com/docs` | HTTPS (443) | Giao diện tài liệu tương tác chuẩn OpenAPI 3.0. |
@@ -126,7 +126,7 @@ Mở Pull Request vào main                      Merge vào main (push)
 Khi phiên bản mới phát sinh lỗi nghiêm trọng trên Production (Zero-Day bug, lỗi logic thanh toán, CSDL xung đột), nhóm thực hiện quy trình Rollback theo 3 cấp độ:
 
 ### Cấp độ 1: Rollback Frontend trên Vercel (Thao tác trong 10 giây)
-1. Truy cập Vercel Dashboard $\rightarrow$ Chọn dự án `brewlite-web`.
+1. Truy cập Vercel Dashboard $\rightarrow$ Chọn dự án frontend (tên miền `se-as2-brewlite.vercel.app`).
 2. Chuyển đến tab **Deployments**.
 3. Tìm bản deployment ổn định gần nhất trước đó (có nhãn màu xanh lá).
 4. Bấm vào dấu ba chấm `(...)` $\rightarrow$ Chọn **Instant Rollback**.
