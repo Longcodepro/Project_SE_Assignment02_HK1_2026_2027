@@ -21,15 +21,15 @@ Hệ thống đã được đóng gói container tự động và triển khai c
 | **Frontend Web App** | **Vercel Edge Network** | [https://brewlite-web.vercel.app](https://brewlite-web.vercel.app) | Giao diện Next.js 16 Mobile-first |
 | **Backend API Service** | **Render Cloud Services** | [https://brewlite-api.onrender.com](https://brewlite-api.onrender.com) | Container NestJS triển khai tự động từ GHCR |
 | **Health Check Endpoint** | **Render Cloud** | [https://brewlite-api.onrender.com/health](https://brewlite-api.onrender.com/health) | Trả về HTTP 200 `{ "status": "ok" }` |
-| **Tài liệu API (Swagger)** | **Render Cloud** | [https://brewlite-api.onrender.com/api/docs](https://brewlite-api.onrender.com/api/docs) | Giao diện tương tác OpenAPI 3.0 |
+| **Tài liệu API (Swagger)** | **Render Cloud** | [https://brewlite-api.onrender.com/docs](https://brewlite-api.onrender.com/docs) | Giao diện tương tác OpenAPI 3.0 |
 | **Cơ sở dữ liệu** | **Neon Serverless PostgreSQL** | `ep-dry-pond-xxx.ap-southeast-1.aws.neon.tech` | Đặt tại Singapore (`ap-southeast-1`), SSL Mode |
 | **Demo Tunnel (Dự phòng)** | **Cloudflare Zero Trust** | [https://demo.brewlite.online](https://demo.brewlite.online) | Đường dẫn HTTPS phát trực tiếp từ máy local |
 
 ### Dữ liệu tài khoản kiểm thử nhanh (Demo Credentials):
-* **Tài khoản khách hàng có sẵn:** Số điện thoại `0901234567` | Mật khẩu: `password123`
-* **Khách hàng mới:** Có thể tự đăng ký trực tiếp trên web bằng bất kỳ SĐT Việt Nam 10 chữ số nào (ví dụ: `0988888888`).
+* **Không có tài khoản được seed sẵn** (seed chỉ tạo danh mục và món). Hãy bấm **Đăng ký** trên web với SĐT di động Việt Nam 10 chữ số (đầu số `03`, `05`, `07`, `08`, `09`, ví dụ `0912345678`) và mật khẩu 6 đến 72 ký tự.
+* Nút **"Tài khoản mẫu (Demo)"** ở form đăng nhập chỉ điền sẵn `0912345678` / `matkhau123`; đăng nhập được khi tài khoản này đã được đăng ký trước đó.
 * **Kịch bản thanh toán thẻ mô phỏng:**
-  * **Thành công:** Nhập bất kỳ dãy 16 số nào có 4 số cuối **khác `0000`** (ví dụ: `4111 2222 3333 4444`).
+  * **Thành công:** Nhập số thẻ 13 đến 19 chữ số (ví dụ 16 số) có 4 số cuối **khác `0000`** (ví dụ: `4111 2222 3333 4444`).
   * **Thất bại:** Nhập số thẻ có 4 số cuối là **`0000`** (ví dụ: `4111 2222 3333 0000`).
 
 ---
@@ -40,17 +40,17 @@ Hệ thống đã được đóng gói container tự động và triển khai c
 brewlite/
 |-- apps/
 |   |-- web/                   # Frontend Next.js 16, Tailwind CSS, Zustand, Mobile-first/PWA
-|   `-- api/                   # Backend NestJS 12, Prisma 7, PostgreSQL, Swagger, Unit/E2E test
+|   `-- api/                   # Backend NestJS 12, Prisma 7, PostgreSQL, Swagger, Unit/Integration test
 |-- docs/
 |   |-- requirements/          # Task 1: Bối cảnh, SRS rút gọn, User Stories, Đặc tả Use-case
 |   |-- diagrams/              # Task 2: Activity, Sequence, Class Domain (.puml và .svg)
 |   |-- architecture/          # Task 3: Kiến trúc Frontend/Backend, các bản ADR 001-005
 |   |-- deployment.md          # Task 3.2: Kế hoạch triển khai Production, secrets & rollback
-|   |-- traceability-matrix.md # Task 8: Ma trận truy vết yêu cầu 21 FR + 4 NFR (Độ phủ 100%)
+|   |-- traceability-matrix.md # Task 8: Ma trận truy vết yêu cầu 21 FR + 5 NFR
 |   |-- release-notes.md       # Task 5.4: Bản ghi chú phát hành phiên bản v1.0.0
 |   `-- sprint-retrospective.md# Task 5.4: Báo cáo Sprint Review & Sprint Retrospective
 |-- scripts/                   # Tiện ích: logs.sh, start-tunnel.sh, studio-cloud.sh
-|-- tests/                     # Thư mục kiểm thử tích hợp / E2E
+|-- tests/                     # Dành cho kiểm thử E2E (chưa có nội dung)
 |-- .github/workflows/         # Pipeline tự động hóa: ci.yml (Quality Gate) và cd.yml (Deploy)
 |-- docker-compose.yml         # Chạy trọn gói 3 dịch vụ Web, API và DB bằng 1 câu lệnh
 |-- .env.example               # Mẫu cấu hình biến môi trường chuẩn Twelve-Factor
@@ -91,7 +91,7 @@ Yêu cầu: Node.js phiên bản 22+ và một cơ sở dữ liệu PostgreSQL �
 # 1. Khởi chạy Backend API
 cd apps/api
 npm ci
-npx prisma migrate dev
+npx prisma migrate deploy
 npx prisma db seed
 PORT=4003 npm run start:dev
 
@@ -105,15 +105,15 @@ NEXT_PUBLIC_API_URL=http://localhost:4003 npm run dev
 
 ## 4. Hướng Dẫn Kiểm Thử Tự Động (Testing)
 
-Dự án trang bị bộ kiểm thử toàn diện từ Unit Test, Integration Test đến Postman Collection:
+Dự án có Unit/Integration test cho API (Vitest), Postman Collection; giao diện web hiện chỉ kiểm tra lint và build, chưa có test tự động:
 
 ```bash
-# 1. Kiểm thử Backend (Lint, Build, Unit test & E2E)
+# 1. Kiểm thử Backend (Lint, Build, Unit/Integration test)
 cd apps/api
 npm run lint                  # Kiểm tra quy chuẩn mã nguồn (oxlint)
 npm run build                 # Biên dịch mã nguồn TypeScript
 npm test                      # Chạy toàn bộ Unit test với Vitest
-npm run test:e2e              # Chạy kiểm thử End-to-End luồng API
+npm run test:e2e              # E2E mức tối thiểu của API (hiện chỉ kiểm tra GET /); chưa có E2E luồng đặt hàng
 
 # 2. Kiểm thử kịch bản Postman tự động (Yêu cầu API đang chạy)
 npm run postman
