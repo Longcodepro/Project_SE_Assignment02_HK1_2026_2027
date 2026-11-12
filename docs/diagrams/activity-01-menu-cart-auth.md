@@ -27,9 +27,11 @@ Sơ đồ **`Activity-01`** mô hình hóa luồng nghiệp vụ **End-to-End MV
    - Server-side Pricing độc quyền tại backend (chống gian lận giá client — `FR-05`).
    - Thanh toán mô phỏng qua 2 kênh: Thẻ ngân hàng (`CARD`), Ví điện tử (`WALLET`).
    - Xử lý hai nhánh:
-     - **Thanh toán thất bại** (thẻ 4 số cuối `0000`, hoặc ví với đơn trên 500.000đ): đơn chuyển `PAYMENT_FAILED`, trả `HTTP 201` kèm `status: "PAYMENT_FAILED"`, giữ nguyên giỏ hàng để khách thử lại.
+     - **Thanh toán thất bại** (thẻ 4 số cuối `0000`, hoặc ví với đơn trên 500.000đ): đơn chuyển `PAYMENT_FAILED`, trả `HTTP 201` kèm `status: "PAYMENT_FAILED"`, giữ nguyên giỏ hàng; khách thanh toán lại chính đơn đó từ "Lịch sử đơn" (`PAYMENT_FAILED → PAID`).
      - **Thanh toán thành công**: đơn chuyển `PAID`, cộng điểm thưởng (`FR-10`), xóa giỏ hàng.
 6. **Tiếp nối `UC-06`**: Chuyển sang màn hình theo dõi trạng thái đơn hàng bằng polling 5 giây/lần (`GET /orders/me`).
+
+> **Ghi chú gộp sơ đồ:** Issue `[D2.1b] #41` (Activity-02: đặt đơn, thanh toán, thử lại) không vẽ file riêng; nửa sau của luồng, gồm nhánh thanh toán thất bại và thanh toán lại đơn `PAYMENT_FAILED`, đã được vẽ ngay trong sơ đồ `Activity-01` này để chỉ có một sơ đồ activity cho toàn luồng MVP.
 
 > **Ghi chú phạm vi:** Mã nhận hàng 6 số (`pickupCode`, `UC-07`) và màn hình pha chế KDS thuộc **Sprint 3 (Planned)**, chỉ sinh khi đơn chuyển `READY` — không nằm trong luồng MVP Sprint 1-2 này.
 
@@ -96,8 +98,11 @@ Sơ đồ **`Activity-01`** mô hình hóa luồng nghiệp vụ **End-to-End MV
     - **Nhánh Thanh toán Thất bại** *(thẻ có 4 số cuối là `0000`, hoặc ví với đơn trên 500.000đ)*:
       - Cổng thanh toán trả về `PAYMENT_FAILED`.
       - `NestJS API` cập nhật `Order` sang trạng thái `PAYMENT_FAILED`, lưu bản ghi `Payment` trạng thái `FAILED`; trả về `HTTP 201 Created` kèm `status: "PAYMENT_FAILED"` (không phải lỗi HTTP, vì hệ thống đã ghi nhận một lần thanh toán).
-      - `Next.js Web` hiển thị cảnh báo lỗi thanh toán màu đỏ; **giữ nguyên toàn bộ giỏ hàng và đơn hàng**.
-      - Khách hàng đổi phương thức thanh toán khác hoặc bấm thanh toán lại (dùng `Idempotency-Key` mới).
+      - `Next.js Web` hiển thị cảnh báo lỗi thanh toán màu đỏ kèm mã đơn; **giữ nguyên giỏ hàng**. Đơn đã tạo vẫn nằm trong "Lịch sử đơn" với trạng thái `PAYMENT_FAILED`.
+      - **Thanh toán lại đơn `PAYMENT_FAILED`** (`FR-06`, `FR-08`, `FR-09`): khách mở "Lịch sử đơn" (`/orders`), bấm **"Thanh toán lại"** trên đơn đó và chọn phương thức (có thể đổi Thẻ sang Ví hoặc ngược lại). `Next.js Web` gửi `POST /payments` cho **chính đơn đó** kèm `Idempotency-Key` mới. *(Bấm lại nút xác nhận ở `/checkout` thì web tạo một đơn mới qua `POST /orders`, đơn cũ vẫn giữ `PAYMENT_FAILED`.)*
+      - `NestJS API` kiểm tra đơn thuộc về người dùng và cho phép chuyển `PAYMENT_FAILED → PAID`, rồi gọi lại Cổng thanh toán mô phỏng:
+        - **Thử lại thành công**: mở Database Transaction, khóa lạc quan (`version` tăng 1, `FR-08`), đơn chuyển `PAID`, lưu `Payment` `SUCCESS`, cộng điểm (`FR-10`), `COMMIT`; trả `HTTP 201` kèm `status: "PAID"`. `Next.js Web` báo thành công và tải lại lịch sử đơn.
+        - **Thử lại vẫn thất bại**: ghi thêm một `Payment` `FAILED`, `version` tăng 1, đơn **giữ nguyên `PAYMENT_FAILED`**, không cộng điểm; trả `HTTP 201` kèm `status: "PAYMENT_FAILED"`. Khách có thể thử lại tiếp với `Idempotency-Key` mới.
     - **Nhánh Thanh toán Thành công** *(thẻ hợp lệ, hoặc ví với đơn không quá 500.000đ)*:
       - Cổng thanh toán trả về `PAYMENT_SUCCESS`.
       - `NestJS API` mở Database Transaction: cập nhật `Order` sang `PAID` (khóa lạc quan, `version` tăng thêm 1 — `FR-08`), lưu bản ghi `Payment` trạng thái `SUCCESS`, cộng điểm thưởng 1 điểm/1.000đ thực trả vào `User` (`FR-10`), rồi `COMMIT`.
@@ -117,8 +122,10 @@ Sơ đồ **`Activity-01`** mô hình hóa luồng nghiệp vụ **End-to-End MV
 | | | `isAvailable == true` | **Còn hàng** | Cho phép bấm chọn, mở Modal tùy biến size và topping (`UC-02`). |
 | **2** | **Trạng thái phiên xác thực**<br>*(Tại UC-04 Auth)* | Chưa có JWT hợp lệ | **Chưa đăng nhập** | Mở Modal Auth, yêu cầu nhập SĐT + Mật khẩu, xác thực bcrypt, cấp JWT mới được đặt hàng. |
 | | | Đã có JWT hợp lệ | **Đã đăng nhập** | Bỏ qua bước xác thực, chuyển thẳng sang màn hình Thanh toán (`UC-05`). |
-| **3** | **Kết quả thanh toán mô phỏng**<br>*(Tại UC-05 Payment)* | Thẻ đuôi `0000`, hoặc ví với đơn trên 500.000đ | **Thanh toán thất bại** | Đơn chuyển `PAYMENT_FAILED`, **không cộng điểm**, giữ nguyên giỏ hàng và đơn để khách đổi phương thức/thử lại. |
+| **3** | **Kết quả thanh toán mô phỏng**<br>*(Tại UC-05 Payment)* | Thẻ đuôi `0000`, hoặc ví với đơn trên 500.000đ | **Thanh toán thất bại** | Đơn chuyển `PAYMENT_FAILED`, **không cộng điểm**, giữ nguyên giỏ hàng; khách thanh toán lại đơn đó từ "Lịch sử đơn". |
 | | | Thẻ hợp lệ, hoặc ví với đơn không quá 500.000đ | **Thanh toán thành công** | Đơn chuyển `PAID`, cộng điểm thưởng, xóa giỏ hàng, chuyển màn hình thành công. |
+| **4** | **Kết quả thanh toán lại**<br>*(Đơn `PAYMENT_FAILED`, từ "Lịch sử đơn")* | Thẻ đuôi `0000`, hoặc ví với đơn trên 500.000đ | **Thất bại lần nữa** | Đơn giữ `PAYMENT_FAILED`, ghi thêm `Payment` `FAILED`, `version` tăng 1, không cộng điểm; khách thử lại tiếp được. |
+| | | Thẻ hợp lệ, hoặc ví với đơn không quá 500.000đ | **Thành công** | Đơn chuyển `PAYMENT_FAILED → PAID`, `version` tăng 1, cộng điểm, tải lại lịch sử đơn. |
 
 ---
 

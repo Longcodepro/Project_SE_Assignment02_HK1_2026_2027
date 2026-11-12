@@ -3,7 +3,7 @@
 ' Diagram: Sơ đồ Activity — Luồng End-to-End Đặt Món & Thanh Toán Không Tiền Mặt
 ' Code: Activity-01 | Issue: [D2.1a] Task 2.1
 ' References: UseCase-01 (UC-01, UC-02, UC-03, UC-04, UC-05, UC-06, UC-20, UC-07)
-' Yêu cầu chức năng: FR-01, FR-02, FR-03, FR-04, FR-05, FR-06, FR-07, FR-10
+' Yêu cầu chức năng: FR-01, FR-02, FR-03, FR-04, FR-05, FR-06, FR-07, FR-08, FR-09, FR-10
 ' Tài liệu đối chiếu: docs/requirements/context-and-scope.md (mục 6), docs/requirements/requirements-web.md
 ' ==============================================================================
 
@@ -173,11 +173,38 @@ else (Còn hàng)
     :Cập nhật trạng thái Order: PAYMENT_FAILED;\nTrả về HTTP 201 kèm status: "PAYMENT_FAILED";
 
     |Next.js Web\n(Client)|
-    :Hiển thị thông báo lỗi thanh toán màu đỏ;\nGiữ nguyên đơn hàng và hiển thị nút "Thanh toán lại";
+    :Hiển thị thông báo lỗi màu đỏ kèm mã đơn;\nGiữ nguyên giỏ hàng; đơn nằm trong "Lịch sử đơn" với trạng thái PAYMENT_FAILED;
 
+    ' --------------------------------------------------------------------------
+    ' THANH TOÁN LẠI ĐƠN PAYMENT_FAILED (FR-06, FR-08, FR-09)
+    ' --------------------------------------------------------------------------
     |Khách hàng\n(Customer)|
-    :Đổi phương thức thanh toán khác hoặc bấm thanh toán lại;
-    stop
+    :Mở "Lịch sử đơn" (/orders), bấm "Thanh toán lại" trên đơn PAYMENT_FAILED;\nChọn phương thức (có thể đổi sang Ví hoặc thẻ khác);
+
+    |Next.js Web\n(Client)|
+    :Gửi POST /payments cho CHÍNH đơn đó\nkèm orderId, method và Idempotency-Key MỚI;
+
+    |NestJS API\n(Server)|
+    :Kiểm tra đơn thuộc về người dùng và canTransition(PAYMENT_FAILED -> PAID);\nGọi cổng thanh toán mô phỏng;
+
+    |Cổng thanh toán\n(Payment Gateway)|
+    if (Lần thử lại hợp lệ?\n(thẻ không đuôi '0000', ví không quá 500.000đ)) then (Thành công)
+      -[#green,bold]->
+      |NestJS API\n(Server)|
+      :Transaction + khóa lạc quan (FR-08):\nPAYMENT_FAILED -> PAID, version + 1;\nLưu Payment SUCCESS, tích điểm 1 điểm / 1.000đ (FR-10), COMMIT;\nTrả HTTP 201 kèm status: "PAID";
+
+      |Next.js Web\n(Client)|
+      :Báo "Thanh toán thành công", tải lại lịch sử đơn;\nĐơn hiển thị trạng thái đã thanh toán;
+      stop
+    else (Thất bại lần nữa)
+      -[#red,bold]->
+      |NestJS API\n(Server)|
+      :Ghi thêm một Payment FAILED, version + 1;\nĐơn GIỮ NGUYÊN PAYMENT_FAILED, không tích điểm;\nTrả HTTP 201 kèm status: "PAYMENT_FAILED";
+
+      |Next.js Web\n(Client)|
+      :Hiển thị lý do thất bại trong hộp thoại;\nKhách có thể thử lại với Idempotency-Key mới;
+      stop
+    endif
   else (Thanh toán thành công)
     -[#green,bold]->
     :Xác nhận giao dịch thành công (PAYMENT_SUCCESS);
