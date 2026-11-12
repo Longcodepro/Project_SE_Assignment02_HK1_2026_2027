@@ -146,7 +146,7 @@
   - Giao diện **chỉ gửi cấu trúc món** lên API `POST /orders`, gồm danh sách `items`: `[{ productId, quantity, size, toppings }]`.
   - **Tuyệt đối không gửi trường `total`, `price` hay `unitPrice` lên server.** Tổng tiền thanh toán do server tự đọc CSDL và tính toán.
 - **Chống gửi trùng (`Idempotency-Key`):**
-  - Khi người dùng vào trang Checkout, client tự động sinh một mã `Idempotency-Key` duy nhất dạng UUIDv4.
+  - Khi người dùng vào trang Checkout, client tự động sinh một mã `Idempotency-Key` duy nhất (1–128 ký tự `A-Za-z0-9_-`, ví dụ `ord_<thời gian>_<ngẫu nhiên>`; không bắt buộc UUID).
   - Truyền mã này vào header `Idempotency-Key` khi gọi `POST /orders`.
   - Trong lúc API đang xử lý: Vô hiệu hóa nút *"Đặt hàng"*, hiển thị vòng xoay Loading để ngăn chặn người dùng bấm liên tiếp.
 - **Xử lý phản hồi:**
@@ -154,7 +154,7 @@
   - Nếu API trả lỗi 409 (do có món bị hết hàng giữa chừng `isAvailable: false`): Hiển thị cảnh báo *"Có món trong giỏ vừa hết hàng, vui lòng cập nhật lại giỏ!"*.
 
 **Tiêu chí chấp nhận:**
-1. Payload gửi lên `POST /orders` chỉ chứa `items` (không chứa trường giá tiền). Request header có `Idempotency-Key` chuẩn UUID.
+1. Payload gửi lên `POST /orders` chỉ chứa `items` (không chứa trường giá tiền). Request header có `Idempotency-Key` hợp lệ (1–128 ký tự `A-Za-z0-9_-`).
 2. Nhấn nút "Đặt hàng" 1 lần $\rightarrow$ Nút bị vô hiệu hóa ngay, không thể click lần 2.
 3. Nhận mã đơn hàng từ server và hiển thị đúng số tiền do server tính.
 
