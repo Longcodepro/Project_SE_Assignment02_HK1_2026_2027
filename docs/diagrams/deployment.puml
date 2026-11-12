@@ -77,6 +77,8 @@ package "MÔI TRƯỜNG CI/CD (GitHub Automation)" as CIBoundary #F5EEF8 {
     component "CD Publish Pipeline\n(Docker Buildx)" as CDJob
   }
   
+  node "GitHub Repository\n(nhánh main)" as GitRepo <<Source Control>>
+
   cloud "GitHub Container Registry (GHCR)\n(ghcr.io)" as GHCR {
     artifact "Docker Image\nbackend:latest & sha" as BackendImage <<Container Image>> #F3E5F5
   }
@@ -116,8 +118,8 @@ NeonDB *-- NeonStorage : Persistent Read/Write
 
 ' Luồng CI/CD
 CIRunner --> GHCR : Push Docker Image\n(Token Authenticated)
-RenderPlatform ..> GHCR : Pull Image tự động khi Deploy
-CIRunner ..> RenderPlatform : Kích hoạt Webhook Deploy\n(RENDER_DEPLOY_HOOK_URL)
+RenderPlatform ..> GitRepo : Tự build từ apps/api/Dockerfile\nkhi main có commit mới
+CIRunner ..> RenderPlatform : Webhook Deploy (tùy chọn)\n(RENDER_DEPLOY_HOOK_URL, hiện chưa đặt)
 CIRunner ..> ProdAPI : Smoke Test sau Deploy\n(curl /health)
 
 @enduml
