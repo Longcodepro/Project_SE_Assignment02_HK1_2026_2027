@@ -5,6 +5,7 @@ export const swaggerConfig = new DocumentBuilder()
   .setTitle('BrewLite API')
   .setDescription('API đặt cà phê không dùng tiền mặt. Hợp đồng chi tiết: docs/API-CONTRACT.md')
   .setVersion('1.0')
+  .addBearerAuth()
   .build();
 
 // UI ở /docs, JSON (import được vào Postman) ở /docs-json
