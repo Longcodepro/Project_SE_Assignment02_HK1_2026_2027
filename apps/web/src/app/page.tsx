@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Product } from '@/types';
 import { apiService } from '@/services/api';
-import { Loader2, AlertCircle, Coffee, Sparkles, ShieldCheck, Zap, Radio } from 'lucide-react';
+import { Loader2, AlertCircle, Coffee, Sparkles, ShieldCheck, Zap, Radio, RotateCcw } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import ProductCard from '@/components/ProductCard';
 import ProductDetailModel from '@/components/ProductDetailModal';
@@ -93,25 +93,24 @@ export default function MenuPage() {
   const [isServerModalOpen, setIsServerModalOpen] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const addToCart = useCartStore((state)=>state.addToCart);
+  const fetchMenu = async() => {
+    try {
+      setLoading(true);
+      setError(null);
+      setIsOfflineMode(false);
 
-  useEffect(() => {
-    async function fetchMenu() {
-      try {
-        setLoading(true);
-        setError(null);
-        setIsOfflineMode(false);
-
-        // Gọi API backend thật
-        const data = await apiService.getProducts();
-        setProducts(data);
-      } catch (err) {
-        console.warn('Backend chưa bật hoặc gặp lỗi, sử dụng dữ liệu mẫu', err);
-        setProducts(MOCK_PRODUCTS);
-        setIsOfflineMode(true);
-      } finally {
-        setLoading(false);
-      }
+      // Gọi API backend thật
+      const data = await apiService.getProducts();
+      setProducts(data);
+    }catch(err) {
+      console.warn('Backend chưa bật hoặc gặp lỗi', err);
+      setError('Không thể kết nối đến máy chủ BrewLite API.');
+      setIsOfflineMode(true);
+    }finally{
+      setLoading(false);
     }
+  }
+  useEffect(() => {
     fetchMenu();
   }, []);
 
@@ -225,36 +224,50 @@ export default function MenuPage() {
         </div>
 
         {/* TIÊU CHÍ 1: TRẠNG THÁI ĐANG TẢI (LOADING STATE) */}
+                {/* TIÊU CHÍ 1: TRẠNG THÁI ĐANG TẢI DẠNG SKELETON (NFR-04) */}
         {loading && (
-          <div className="flex flex-col items-center justify-center py-20 sm:py-28 text-[#4A2E1B]">
-            <div className="relative mb-4">
-              <Loader2 className="w-12 h-12 animate-spin text-[#8C5835]" />
-              <Coffee className="w-5 h-5 text-[#4A2E1B] absolute inset-0 m-auto" />
-            </div>
-            <p className="font-bold text-base text-[#2C1810]">Đang chuẩn bị thực đơn BrewLite...</p>
-            <p className="text-xs text-[#A08875] mt-1">Đang kết nối hương vị cà phê tươi ngon nhất cho bạn</p>
+          <div
+            data-testid="skeleton-loading"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-6"
+          >
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+              <div
+                key={n}
+                className="bg-white rounded-3xl p-3.5 sm:p-5 border border-[#EFE7DE] flex flex-row sm:flex-col gap-3.5 sm:gap-4 animate-pulse shadow-sm"
+              >
+                {/* Khung ảnh skeleton */}
+                <div className="w-24 h-24 sm:w-full sm:h-48 rounded-2xl bg-[#EFE7DE] shrink-0" />
+                {/* Khung chữ skeleton */}
+                <div className="flex-1 flex flex-col justify-between py-1">
+                  <div>
+                    <div className="h-4 bg-[#EFE7DE] rounded-full w-3/4 mb-2" />
+                    <div className="h-3 bg-[#F5ECE1] rounded-full w-1/2" />
+                  </div>
+                  <div className="flex items-center justify-between pt-3 border-t border-dashed border-[#EFE7DE] mt-3">
+                    <div className="h-5 bg-[#EFE7DE] rounded-full w-20" />
+                    <div className="w-8 h-8 rounded-full bg-[#EFE7DE]" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
-
-        {/* TIÊU CHÍ 2: TRẠNG THÁI EMPTY */}
-        {!loading && !error && products.length === 0 && (
-          <div className="bg-white border border-dashed border-[#EFE7DE] rounded-3xl p-12 text-center max-w-md mx-auto my-12 shadow-sm">
-            <div className="w-16 h-16 rounded-2xl bg-[#F5ECE1] flex items-center justify-center mx-auto mb-4 text-[#8C5835]">
-              <Coffee className="w-8 h-8" />
-            </div>
-            <h3 className="text-lg font-bold text-[#2C1810]">Quán tạm hết món!</h3>
-            <p className="text-sm text-[#7C6A59] mt-1">Hiện chưa có sản phẩm nào trong thực đơn hôm nay.</p>
-          </div>
-        )}
-
-        {/* TRẠNG THÁI LỖI KHI BACKEND CHƯA BẬT HOẶC RỚT MẠNG */}
+                {/* TIÊU CHÍ 2 & 3: TRẠNG THÁI LỖI KÈM NÚT THỬ LẠI & CỔNG 4003 */}
         {!loading && error && (
-          <div className="bg-[#FFF8F7] border border-red-200 rounded-3xl p-6 sm:p-8 text-center max-w-md mx-auto my-12 shadow-sm">
+          <div className="bg-[#FFF8F7] border border-red-200 rounded-3xl p-6 sm:p-8 text-center max-w-md mx-auto my-12 shadow-sm animate-in fade-in">
             <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
             <p className="text-red-800 font-bold text-base">{error}</p>
-            <p className="text-xs text-red-600/80 mt-1.5">
-              Gợi ý: Kiểm tra xem Backend cổng 4000 đã hoạt động chưa nhé.
+            <p className="text-xs text-red-600/80 mt-1.5 mb-5">
+              Gợi ý: Kiểm tra xem Backend cổng 4003 đã hoạt động chưa nhé.
             </p>
+            <button
+              type="button"
+              onClick={fetchMenu}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#4A2E1B] hover:bg-[#2C1810] text-white text-xs font-bold rounded-xl transition shadow active:scale-95 cursor-pointer"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Thử lại kết nối</span>
+            </button>
           </div>
         )}
 
