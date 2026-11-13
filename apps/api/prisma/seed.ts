@@ -1,4 +1,5 @@
 import { PrismaPg } from '@prisma/adapter-pg';
+import bcrypt from 'bcryptjs';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 
 const categories = [
@@ -71,4 +72,28 @@ for (const c of categories) {
 for (const p of products) {
   await prisma.product.upsert({ where: { id: p.id }, update: p, create: p });
 }
+// Tài khoản nhân viên (Sprint 3). Mật khẩu lấy từ SEED_STAFF_PASSWORD.
+// Production mà thiếu biến này thì bỏ qua, để không để lại tài khoản nhân viên có mật khẩu đoán được.
+const staffPassword =
+  process.env.SEED_STAFF_PASSWORD ??
+  (process.env.NODE_ENV === 'production' ? undefined : 'matkhau123');
+
+if (staffPassword) {
+  const passwordHash = await bcrypt.hash(staffPassword, 10);
+  const staff = [
+    { phone: '0900000001', name: 'Barista', role: 'BARISTA' },
+    { phone: '0900000002', name: 'Cashier', role: 'CASHIER' },
+  ] as const;
+  // upsert theo phone nên chạy lại seed không tạo trùng
+  for (const s of staff) {
+    await prisma.user.upsert({
+      where: { phone: s.phone },
+      update: { ...s, passwordHash },
+      create: { ...s, passwordHash },
+    });
+  }
+} else {
+  console.log('Bỏ qua tài khoản nhân viên: production chưa đặt SEED_STAFF_PASSWORD');
+}
+
 await prisma.$disconnect();

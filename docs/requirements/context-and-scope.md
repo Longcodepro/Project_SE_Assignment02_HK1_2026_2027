@@ -295,7 +295,7 @@ Các tính năng nâng cao đã được quy hoạch trong Product Backlog và s
 | `NFR-02` | Độ tin cậy và sẵn sàng | Không đặt ngưỡng tốc độ vì phụ thuộc hạ tầng và mạng. Production qua HTTPS, có `GET /health`; kết quả đúng khi gửi trùng hoặc đồng thời (`Idempotency-Key`, `version`); lỗi trả đúng mã, không lộ chi tiết nội bộ; môi trường tái tạo được bằng Docker Compose, migration và seed (xem RSK-08 về khởi động chậm) |
 | `NFR-03` | Chất lượng và bảo trì | Mọi PR qua CI (Install, Lint, Test, Build); API theo `docs/architecture/api-contract.md`, có Swagger tại `/docs`; migration có phiên bản |
 | `NFR-04` | Khả dụng (usability) | Mobile-first; menu có đủ 3 trạng thái Loading, Empty, Error và Retry |
-| `NFR-05` | Hiệu năng giao diện | Chỉ đo sau khi API đã khởi động xong (không tính cold start, xem RSK-08): FCP không quá 1,5 giây trên 4G, TBT không quá 200 ms, đổi size/topping cập nhật giá trong 50 ms, luồng từ duyệt menu đến thanh toán xong trong 60 giây (mục tiêu G1) |
+| `NFR-05` | Hiệu năng giao diện | Chỉ đo sau khi API đã khởi động xong (không tính cold start, xem RSK-08): FCP không quá 1,5 giây trên 4G, TBT không quá 200 ms, đổi size/topping cập nhật giá trong 50 ms, luồng từ duyệt menu đến thanh toán xong trong 60 giây (mục tiêu G1). *Kết quả đo 13/11/2026:* TBT và FCP trung vị đạt, 3 trong 9 lượt FCP vượt 1,5 giây; hai mục còn lại chưa đo (xem `docs/lighthouse.md`) |
 
 ### 6.5. Vòng đời đơn hàng
 

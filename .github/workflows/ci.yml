@@ -68,6 +68,9 @@ jobs:
       - name: Kiểm tra cú pháp (eslint)
         run: npm run lint
 
+      - name: Chạy Unit Test (Vitest)
+        run: npm test
+
       - name: Biên dịch Next.js (Turbopack)
         run: npm run build
 
