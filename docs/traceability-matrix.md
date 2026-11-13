@@ -47,7 +47,7 @@
 | **`FR-17`** | **UC-17:** Cảnh báo tồn kho tối thiểu | `Use-Case Overview:` UC-17 | *Planned (Sprint 4)* | *Planned* |
 | **`FR-18`** | **UC-15:** Quản lý menu, danh mục, giá | `Use-Case Overview:` UC-15<br>`Class-01:` Lớp `Product`, `Category` | *Planned (Sprint 4)* | *Planned* |
 | **`FR-19`** | **UC-18:** Quản lý tài khoản nhân viên | `Use-Case Overview:` UC-18<br>`Class-01:` Lớp `User`, Enum `Role` (`BARISTA`, `CASHIER`) | *Planned (Sprint 4)* | *Planned* |
-| **`FR-20`** | **UC-11:** Pha chế & cập nhật tiến độ | `Use-Case Overview:` UC-11<br>`Class-01:` Enum `OrderStatus` (`PREPARING`, `READY`) | *Planned (Sprint 3)* | *Planned* |
+| **`FR-20`** | **UC-11:** Pha chế & cập nhật tiến độ | `Use-Case Overview:` UC-11<br>`Class-01:` Enum `OrderStatus` (`PREPARING`, `READY`) | **API (S3.2, đã làm):** `GET /kds/orders`, `PATCH /kds/orders/:id/status`<br>**Code:** `apps/api/src/kds/`, `RolesGuard` (`@Roles('BARISTA')`), `order-status.ts`<br>*Giao diện Barista (S3.3): Planned* | `kds.controller.spec.ts` (phân quyền, thứ tự, xung đột `version`, 404, 400), `roles.guard.spec.ts`, `order-status.spec.ts`<br>*E2E: Planned* |
 | **`FR-21`** | **UC-07:** Nhận món; **UC-12:** Giao món | `Use-Case Overview:` UC-07, UC-12<br>`Class-01:` Thuộc tính `Order.pickupCode` (mã 6 số) | *Planned (Sprint 3)* | *Planned* |
 
 ---

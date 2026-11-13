@@ -230,6 +230,53 @@ Ba cột mới, đều cho phép rỗng, **chưa xuất hiện trong response �
 
 Bước seed tạo sẵn hai tài khoản để đăng nhập bằng `POST /auth/login`: Barista `0900000001`, Cashier `0900000002`. Mật khẩu đọc từ biến môi trường `SEED_STAFF_PASSWORD` (xem `.env.example`). Môi trường production (`NODE_ENV=production`) **không tạo** hai tài khoản này nếu chưa đặt biến đó. Chạy seed nhiều lần không tạo trùng.
 
+## GET /kds/orders
+
+Màn hình pha chế (KDS) của Barista (issue S3.2). Cần header `Authorization: Bearer <accessToken>` của tài khoản có `role` là `BARISTA`. Trả các đơn đang chờ pha: trạng thái `PAID` hoặc `PREPARING`, **đơn cũ nhất lên đầu**. Màn hình tự gọi lại khoảng 5 giây một lần (polling).
+
+200 OK
+
+```json
+[
+  {
+    "id": "ord_123",
+    "status": "PAID",
+    "version": 1,
+    "createdAt": "2026-11-13T03:40:26.834Z",
+    "items": [
+      { "productName": "Cà phê sữa", "quantity": 2, "size": "M", "toppings": ["tran-chau"] }
+    ]
+  }
+]
+```
+
+`version` là số phiên bản của đơn, phải gửi lại khi đổi trạng thái (xem bên dưới). Không có đơn nào thì trả `[]`. 401 thiếu hoặc sai token. 403 đúng token nhưng không phải `BARISTA`.
+
+## PATCH /kds/orders/:id/status
+
+Barista đổi trạng thái đơn: `PAID` → `PREPARING`, rồi `PREPARING` → `READY`. Cùng quy tắc xác thực với `GET /kds/orders`.
+
+Request
+
+```json
+{ "status": "PREPARING", "version": 1 }
+```
+
+`status` chỉ nhận `PREPARING` hoặc `READY`; `version` là số nguyên không âm, **đúng giá trị lấy từ `GET /kds/orders`**. Trường lạ bị từ chối (400).
+
+200 OK: `version` trong kết quả đã tăng thêm 1, dùng cho lần đổi tiếp theo.
+
+```json
+{ "id": "ord_123", "status": "PREPARING", "version": 2 }
+```
+
+- 400 `status` ngoài `PREPARING`/`READY`, thiếu hoặc sai kiểu `version`, hoặc có trường lạ.
+- 401 thiếu hoặc sai token. 403 không phải `BARISTA`.
+- 404 không có đơn với `id` này.
+- 409 trong hai trường hợp, thông báo khác nhau: `version` không khớp (đơn vừa bị người khác đổi, ví dụ khách vừa hủy), hoặc chuyển sai thứ tự (`PAID` → `READY`, `PREPARING` → `PREPARING`, đơn đã `CANCELLED`...). Client tải lại danh sách rồi thử lại.
+
+Chưa sinh `pickupCode` khi chuyển `READY`: việc đó thuộc S3.4.
+
 ## Idempotency-Key
 
 `POST /orders` và `POST /payments` nhận thêm header tùy chọn `Idempotency-Key` (1–128 ký tự: chữ, số, `_`, `-`). Frontend nên sinh một key duy nhất (hiện dùng `ord_<thời gian>_<ngẫu nhiên>` cho đơn và `pay_<thời gian>_<ngẫu nhiên>` cho thanh toán; `crypto.randomUUID()` cũng hợp lệ, server không bắt buộc UUID) cho mỗi lần người dùng bấm đặt/thanh toán và gửi lại **đúng key đó** khi retry do mất mạng.
