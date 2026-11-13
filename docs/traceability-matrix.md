@@ -19,7 +19,7 @@
 1. **Tuân thủ mẫu đề bài (Mục 8.1):** Cấu trúc 5 cột bắt buộc: `Mã yêu cầu` | `Use-case / User Story` | `Thiết kế / Sơ đồ` | `Code / API` | `Test`.
 2. **Khép kín vòng đời phát triển phần mềm (Bi-directional Traceability):** Mỗi yêu cầu nghiệp vụ bắt buộc phải xác định được Use-case sở hữu, sơ đồ UML trực quan thể hiện luồng, tệp mã nguồn xử lý và bài kiểm thử tương ứng để chứng minh tính đúng đắn.
 3. **Phân định rõ ranh giới MVP và Planned:** 
-   - `FR-01` đến `FR-10` thuộc Core MVP (Sprint 1 & Sprint 2): Đã có mã nguồn hoạt động; kiểm thử tự động ở `apps/api` (Vitest, Postman). Giao diện web: lint và build trong CI; E2E Playwright (`tests/e2e`, 3 test) chạy trong CI cho luồng đặt hàng; chưa có test đơn vị cho `apps/web`.
+   - `FR-01` đến `FR-10` thuộc Core MVP (Sprint 1 & Sprint 2): Đã có mã nguồn hoạt động; kiểm thử tự động ở `apps/api` (Vitest, Postman). Giao diện web: lint, build và test đơn vị Vitest (`apps/web`, 13 test cho giỏ hàng và bảng giá) trong CI; E2E Playwright (`tests/e2e`, 3 test) chạy trong CI cho luồng đặt hàng.
    - `FR-11` đến `FR-21` thuộc Planned (Sprint 3 & Sprint 4): Đã mô hình hóa trên Use Case Diagram và Class Diagram; cột Code và Test ghi rõ `Planned` theo mục 0 quy tắc SSOT.
 
 ---
@@ -72,8 +72,8 @@
 | Yêu cầu cốt lõi MVP (FR-01 đến FR-10) | 10 / 10 | 10 có mã nguồn; 8 có kiểm thử tự động (FR-02 và FR-03 chỉ kiểm tra thủ công, CI chạy lint và build) |
 | Yêu cầu mở rộng (FR-11 đến FR-21) | 11 | Planned: có Use-case và mô hình lớp, chưa có mã nguồn và kiểm thử |
 | Yêu cầu phi chức năng (NFR) | 5 / 5 | 5 có giải pháp kỹ thuật; đã kiểm chứng bằng test: NFR-01, NFR-02, NFR-03; NFR-04 và NFR-05 chưa đo |
-| Kiểm thử tự động hiện có | 73 test API (9 file) và 3 test E2E | Vitest cho `apps/api`; kịch bản Postman; Playwright `tests/e2e/checkout.spec.ts` (3 test); chưa có test đơn vị cho `apps/web` |
+| Kiểm thử tự động hiện có | 74 test API (9 file), 13 test web (2 file) và 3 test E2E | Vitest cho `apps/api` và `apps/web` (`useCartStore.test.ts`, `pricing.test.ts` so khớp bảng giá với server); kịch bản Postman; Playwright `tests/e2e/checkout.spec.ts` (3 test) |
 | Sơ đồ UML đối chiếu | 6 sơ đồ | Use Case tổng quát, Use Case Checkout, Activity, Sequence, Class, Deployment |
 
 > [!NOTE]
-> Ma trận theo mẫu **Mục 8.1 của đề bài Assignment 2**. Các ô Test ghi đúng trạng thái thực tế: chưa có test đơn vị cho giao diện web (luồng đặt hàng đã có E2E Playwright); mọi tên file và tên test trong bảng có thể đối chiếu trực tiếp trong repo.
+> Ma trận theo mẫu **Mục 8.1 của đề bài Assignment 2**. Các ô Test ghi đúng trạng thái thực tế: giao diện web có test đơn vị cho giỏ hàng và tính giá, luồng đặt hàng có E2E Playwright; mọi tên file và tên test trong bảng có thể đối chiếu trực tiếp trong repo.
