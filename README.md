@@ -80,6 +80,7 @@ docker compose up --build -d
 | **PostgreSQL DB** | `localhost:4005` | CSDL PostgreSQL 16 Alpine |
 
 *Migration và seed dữ liệu mẫu sẽ tự động thực thi khi API khởi động.*  
+*Seed cũng tạo hai tài khoản nhân viên để thử Sprint 3: Barista `0900000001` và Cashier `0900000002`, mật khẩu lấy từ `SEED_STAFF_PASSWORD` trong `.env` (mẫu: `matkhau123`). Production để trống biến này thì không tạo hai tài khoản.*  
 *Để dừng toàn bộ hệ thống:* `docker compose down` *(thêm cờ `-v` nếu muốn xóa trắng dữ liệu CSDL)*.
 
 ---
