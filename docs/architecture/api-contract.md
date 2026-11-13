@@ -112,7 +112,7 @@ Request
 
 409 khi món trong giỏ có `isAvailable: false`.
 
-Trạng thái đơn: `PENDING` → `PAID` | `PAYMENT_FAILED`. Đơn `PAYMENT_FAILED` được thanh toán lại (→ `PAID`). `PAID` là trạng thái cuối ở MVP (Sprint 3 mở rộng thêm `PREPARING`, `READY`, `COMPLETED`, `CANCELLED`).
+Trạng thái đơn: `PENDING` → `PAID` | `PAYMENT_FAILED`. Đơn `PAYMENT_FAILED` được thanh toán lại (→ `PAID`). Từ Sprint 3 đơn `PAID` còn đi tiếp qua `PREPARING`, `READY`, `COMPLETED` hoặc bị `CANCELLED`: xem mục **Vòng đời đơn hàng và phân quyền (từ Sprint 3)**.
 
 ## POST /payments
 
@@ -181,6 +181,54 @@ Cần header `Authorization: Bearer <accessToken>`. Trả số dư và lịch s�
 ```
 
 `history` lấy từ các lần thanh toán thành công (`PAID`), mới nhất trước. 401 thiếu hoặc sai token.
+
+## Vòng đời đơn hàng và phân quyền (từ Sprint 3)
+
+Nền tảng cho Sprint 3 (issue S3.1). Chưa thêm endpoint mới; các endpoint pha chế, giao món, hủy đơn, voucher, đánh giá được chốt riêng ở S3.2 trở đi.
+
+### Trạng thái đơn
+
+`PENDING`, `PAID`, `PAYMENT_FAILED`, `PREPARING`, `READY`, `COMPLETED`, `CANCELLED`. Client phải xử lý được cả 7 giá trị trong `status` của `GET /orders/me` (giá trị lạ hiển thị theo mặc định, không được làm hỏng trang).
+
+| Từ | Sang | Ai thực hiện | Ghi chú |
+|---|---|---|---|
+| `PENDING` | `PAID` | Khách (thanh toán) | |
+| `PENDING` | `PAYMENT_FAILED` | Hệ thống | thẻ `0000`, ví trên 500.000đ |
+| `PAYMENT_FAILED` | `PAID` | Khách (thanh toán lại) | |
+| `PENDING`, `PAYMENT_FAILED` | `CANCELLED` | Khách | chưa trả tiền nên không hoàn tiền |
+| `PAID` | `PREPARING` | Barista | |
+| `PAID` | `CANCELLED` | Khách hoặc Cashier | hoàn tiền mô phỏng, trừ lại điểm |
+| `PREPARING` | `READY` | Barista | sinh `pickupCode` |
+| `READY` | `COMPLETED` | Cashier | nhập đúng `pickupCode` |
+
+Không có đường hủy từ `PREPARING`, `READY`, `COMPLETED`; `COMPLETED` và `CANCELLED` là trạng thái cuối. Mọi chuyển trạng thái không có trong bảng (kể cả `PAID` sang `PAID`) trả `409`. Các endpoint thực hiện từng bước chuyển sẽ được chốt ở S3.2 (pha chế), S3.4 (giao món), S3.8 (hủy đơn).
+
+### Dữ liệu mới trên đơn
+
+Ba cột mới, đều cho phép rỗng, **chưa xuất hiện trong response ở S3.1** (tránh đổi hợp đồng khi chưa có chức năng dùng):
+
+| Cột | Nghĩa | Xuất hiện trong API từ |
+|---|---|---|
+| `pickupCode` | mã nhận hàng 6 số, chỉ có khi đơn `READY` | S3.4 |
+| `cancelReason` | lý do hủy | S3.8 |
+| `refundedAt` | thời điểm hoàn tiền mô phỏng | S3.8 |
+
+### Vai trò và phân quyền
+
+`role` của người dùng: `CUSTOMER`, `BARISTA`, `CASHIER`, `MANAGER`. JWT chứa claim `role` (đã có từ `POST /auth/login`). Route dành cho nhân viên dùng thêm kiểm tra vai trò sau khi xác thực token:
+
+- Thiếu hoặc sai token: `401` (như hiện tại).
+- Đúng token nhưng vai trò không được phép: `403`
+
+```json
+{ "statusCode": 403, "message": "Không đủ quyền truy cập", "error": "Forbidden" }
+```
+
+`POST /auth/register` vẫn luôn tạo `CUSTOMER` và từ chối body có `role`.
+
+### Tài khoản nhân viên (seed)
+
+Bước seed tạo sẵn hai tài khoản để đăng nhập bằng `POST /auth/login`: Barista `0900000001`, Cashier `0900000002`. Mật khẩu đọc từ biến môi trường `SEED_STAFF_PASSWORD` (xem `.env.example`). Môi trường production (`NODE_ENV=production`) **không tạo** hai tài khoản này nếu chưa đặt biến đó. Chạy seed nhiều lần không tạo trùng.
 
 ## Idempotency-Key
 
