@@ -23,6 +23,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      SEED_STAFF_PASSWORD: ${SEED_STAFF_PASSWORD:-}
       FRONTEND_URL: http://localhost:${FRONTEND_PORT}
     ports:
       - "${BACKEND_PORT}:4003"

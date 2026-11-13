@@ -80,6 +80,7 @@ docker compose up --build -d
 | **PostgreSQL DB** | `localhost:4005` | CSDL PostgreSQL 16 Alpine |
 
 *Migration và seed dữ liệu mẫu sẽ tự động thực thi khi API khởi động.*  
+*Seed cũng tạo hai tài khoản nhân viên để thử Sprint 3: Barista `0900000001` và Cashier `0900000002`, mật khẩu lấy từ `SEED_STAFF_PASSWORD` trong `.env` (mẫu: `matkhau123`). Production để trống biến này thì không tạo hai tài khoản.*  
 *Để dừng toàn bộ hệ thống:* `docker compose down` *(thêm cờ `-v` nếu muốn xóa trắng dữ liệu CSDL)*.
 
 ---
@@ -105,7 +106,7 @@ NEXT_PUBLIC_API_URL=http://localhost:4003 npm run dev
 
 ## 4. Hướng Dẫn Kiểm Thử Tự Động (Testing)
 
-Dự án có Unit/Integration test cho API (Vitest), Postman Collection; giao diện web kiểm tra lint, build và có E2E Playwright cho luồng đặt hàng (chưa có test đơn vị cho `apps/web`):
+Dự án có Unit/Integration test cho API (Vitest), Postman Collection; giao diện web kiểm tra lint, build, test đơn vị Vitest (`cd apps/web && npm test`: giỏ hàng, tính giá khớp server) và có E2E Playwright cho luồng đặt hàng:
 
 ```bash
 # 1. Kiểm thử Backend (Lint, Build, Unit/Integration test)

@@ -120,3 +120,133 @@ test.describe('Luồng đặt hàng', () => {
     expect(res.status()).toBe(401);
   });
 });
+
+// ---- Ví, thanh toán lại và Idempotency-Key (FR-06, FR-09) ----
+
+const MON_42K = { productId: 1, quantity: 1, size: 'M', toppings: ['tran-chau'] }; // 42.000đ
+const MON_546K = { ...MON_42K, quantity: 13 }; // 13 x 42.000 = 546.000đ, vượt hạn mức Ví 500.000đ
+
+// Tạo người dùng mới qua API (nhanh hơn đi qua giao diện) và trả về token để gọi API tiếp.
+async function taoNguoiDungApi(request: APIRequestContext) {
+  const phone = soDienThoaiMoi();
+  const reg = await request.post(`${API}/auth/register`, { data: { phone, password: MAT_KHAU } });
+  expect(reg.status()).toBe(201);
+  return { phone, auth: await dangNhapApi(request, phone) };
+}
+
+async function taoDonApi(request: APIRequestContext, auth: { headers: Record<string, string> }, item: object, key?: string) {
+  const headers = key ? { ...auth.headers, 'Idempotency-Key': key } : auth.headers;
+  const res = await request.post(`${API}/orders`, { headers, data: { items: [item] } });
+  expect(res.status()).toBe(201);
+  return res.json();
+}
+
+async function thanhToanApi(request: APIRequestContext, auth: { headers: Record<string, string> }, body: object, key?: string) {
+  const headers = key ? { ...auth.headers, 'Idempotency-Key': key } : auth.headers;
+  const res = await request.post(`${API}/payments`, { headers, data: body });
+  expect(res.status()).toBe(201);
+  return res.json();
+}
+
+// Đưa phiên đăng nhập vào trình duyệt (giống kết quả đăng nhập qua giao diện) để khỏi lặp lại màn đăng nhập.
+async function vaoTrangDaDangNhap(page: Page, phone: string, auth: { headers: Record<string, string> }) {
+  const token = auth.headers.Authorization.replace('Bearer ', '');
+  await page.addInitScript(
+    ([t, p]) => {
+      localStorage.setItem('brewlite_token', t);
+      localStorage.setItem(
+        'brewlite_auth',
+        JSON.stringify({ state: { token: t, user: { id: p, phone: p, role: 'CUSTOMER', name: p } }, version: 0 }),
+      );
+    },
+    [token, phone],
+  );
+}
+
+test.describe('Thanh toán bằng Ví, thanh toán lại và chống gửi trùng', () => {
+  test('Ví: đơn 42.000đ (không quá 500.000đ) thanh toán thành công và được tích điểm', async ({ page, request }) => {
+    const phone = soDienThoaiMoi();
+
+    await themCaPheSuaVaoGio(page);
+    await denTrangThanhToan(page);
+    // Ví điện tử là phương thức mặc định, không cần chọn và không nhập số thẻ.
+    await dangKyRoiXacNhanTra(page, phone);
+
+    await expect(page).toHaveURL(/\/order-success/);
+    const auth = await dangNhapApi(request, phone);
+    const orders = await (await request.get(`${API}/orders/me`, auth)).json();
+    expect(orders).toHaveLength(1);
+    expect(orders[0]).toMatchObject({ status: 'PAID', total: TONG_TIEN });
+    expect((await (await request.get(`${API}/loyalty/me`, auth)).json()).balance).toBe(TONG_TIEN / 1000);
+  });
+
+  test('Ví: đơn 546.000đ (trên 500.000đ) bị từ chối, không tích điểm', async ({ page, request }) => {
+    const { phone, auth } = await taoNguoiDungApi(request);
+    const don = await taoDonApi(request, auth, MON_546K);
+    expect(don.total).toBe(546_000);
+
+    const ketQua = await thanhToanApi(request, auth, { orderId: don.id, method: 'WALLET' });
+    expect(ketQua).toMatchObject({ status: 'PAYMENT_FAILED', pointsEarned: 0, reason: 'Số dư ví không đủ' });
+    expect((await (await request.get(`${API}/loyalty/me`, auth)).json()).balance).toBe(0);
+
+    // Giao diện lịch sử đơn hiển thị đơn lỗi và cho phép thanh toán lại.
+    await vaoTrangDaDangNhap(page, phone, auth);
+    await page.goto('/orders');
+    await expect(page.getByText('Lỗi thanh toán').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Thanh toán lại' })).toBeVisible();
+  });
+
+  test('Đơn PAYMENT_FAILED được thanh toán lại ở /orders và chuyển thành PAID', async ({ page, request }) => {
+    const { phone, auth } = await taoNguoiDungApi(request);
+    const don = await taoDonApi(request, auth, MON_42K);
+    const lan1 = await thanhToanApi(request, auth, { orderId: don.id, method: 'CARD', cardNumber: THE_BI_TU_CHOI });
+    expect(lan1.status).toBe('PAYMENT_FAILED');
+
+    await vaoTrangDaDangNhap(page, phone, auth);
+    await page.goto('/orders');
+    await expect(page.getByText('Lỗi thanh toán').first()).toBeVisible();
+    await page.getByRole('button', { name: 'Thanh toán lại' }).click();
+    await page.getByRole('button', { name: 'Thẻ ngân hàng' }).click();
+    await page.getByPlaceholder('9704000000000001').fill(THE_THANH_CONG);
+    await page.getByRole('button', { name: 'Xác nhận thanh toán' }).click();
+
+    await expect(page.getByText('Đã thanh toán').first()).toBeVisible();
+    const orders = await (await request.get(`${API}/orders/me`, auth)).json();
+    expect(orders).toHaveLength(1); // thanh toán lại không tạo đơn mới
+    expect(orders[0]).toMatchObject({ id: don.id, status: 'PAID' });
+    expect((await (await request.get(`${API}/loyalty/me`, auth)).json()).balance).toBe(TONG_TIEN / 1000);
+  });
+
+  test('Bấm xác nhận liên tiếp trên giao diện chỉ tạo một đơn', async ({ page, request }) => {
+    const { phone, auth } = await taoNguoiDungApi(request);
+    await vaoTrangDaDangNhap(page, phone, auth);
+
+    await themCaPheSuaVaoGio(page);
+    await denTrangThanhToan(page);
+    await page.getByRole('button', { name: /Xác nhận trả/ }).dblclick();
+
+    await expect(page).toHaveURL(/\/order-success/);
+    const orders = await (await request.get(`${API}/orders/me`, auth)).json();
+    expect(orders).toHaveLength(1);
+  });
+
+  test('Gửi lại cùng Idempotency-Key trả về đúng kết quả cũ, không tạo đơn hay trừ tiền lần nữa', async ({ request }) => {
+    const { auth } = await taoNguoiDungApi(request);
+    const khoaDon = `e2e-don-${Date.now()}`;
+    const khoaTra = `e2e-tra-${Date.now()}`;
+
+    const don1 = await taoDonApi(request, auth, MON_42K, khoaDon);
+    const don2 = await taoDonApi(request, auth, MON_42K, khoaDon);
+    expect(don2.id).toBe(don1.id);
+
+    const tra1 = await thanhToanApi(request, auth, { orderId: don1.id, method: 'WALLET' }, khoaTra);
+    const tra2 = await thanhToanApi(request, auth, { orderId: don1.id, method: 'WALLET' }, khoaTra);
+    expect(tra1.status).toBe('PAID');
+    expect(tra2).toEqual(tra1);
+
+    const orders = await (await request.get(`${API}/orders/me`, auth)).json();
+    expect(orders).toHaveLength(1);
+    // Điểm chỉ được cộng một lần dù gửi hai lần.
+    expect((await (await request.get(`${API}/loyalty/me`, auth)).json()).balance).toBe(TONG_TIEN / 1000);
+  });
+});

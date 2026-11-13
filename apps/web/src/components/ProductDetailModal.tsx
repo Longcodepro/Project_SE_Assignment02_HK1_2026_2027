@@ -3,31 +3,11 @@
 import { useState } from "react";
 import { Product } from "@/types";
 import { X, Check } from "lucide-react";
+import { SIZE_OPTIONS, TOPPING_OPTIONS, calcUnitPrice } from "@/lib/pricing";
 
-// Cấu hình giá
-export const SIZE_OPTIONS = [
-    { id: 'S', name: 'Size S (Nhỏ)', extraPrice: 0 },
-    { id: 'M', name: 'Size M (Vừa)', extraPrice: 5000 },
-    { id: 'L', name: 'Size L (Lớn)', extraPrice: 10000 },
-] as const;
-
-export const TOPPING_OPTIONS = [
-    { id: 'tran-chau', name: 'Trân châu đen', price: 8000 },
-    { id: 'kem-cheese', name: 'Kem cheese béo ngậy', price: 10000 },
-    { id: 'thach-cafe', name: 'Thạch cà phê giòn', price: 6000 },
-];
-export function calculateFinalPrice(
-    basePrice: number,
-    selectedSize: 'S' | 'M' | 'L',
-    selectedToppings: string[]
-): number{
-    const sizeExtra = SIZE_OPTIONS.find((s)=>s.id === selectedSize)?.extraPrice || 0;
-    const toppingsExtra = selectedToppings.reduce((total, toppingId)=>{
-        const topping = TOPPING_OPTIONS.find((t)=>t.id===toppingId);
-        return total + (topping? topping.price:0);
-    },0);
-    return basePrice + sizeExtra + toppingsExtra;
-}
+// Re-export bảng giá và hàm tính giá để tương thích ngược với ProductDetailModal.spec.ts
+export { SIZE_OPTIONS, TOPPING_OPTIONS };
+export const calculateFinalPrice = calcUnitPrice;
 
 interface ProductDetailModalProps {
     product: Product | null;
@@ -52,7 +32,7 @@ export default function ProductDetailModel({
     if (!product) return null;
 
     // Thuật toán tự tính tổng giá tiền
-    const finalPrice = calculateFinalPrice(product.price, selectedSize, selectedToppings);
+    const finalPrice = calcUnitPrice(product.price, selectedSize, selectedToppings);
 
     // Hàm bật/tắt chọn toppings
     const toggleTopping = (toppingId: string) => {
