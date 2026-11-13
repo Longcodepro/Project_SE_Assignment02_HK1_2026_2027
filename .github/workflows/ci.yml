@@ -71,6 +71,12 @@ jobs:
       - name: Biên dịch Next.js (Turbopack)
         run: npm run build
 
+      - name: Biên dịch Next.js (Turbopack)
+        run: npm run build
+
+      - name: Chạy Unit Test Frontend (Vitest)
+        run: npm test
+
   # KIỂM SOÁT TRIỂN KHAI & SMOKE TEST (QUALITY GATE)
   # Nếu có secret Cloud: Kích hoạt Deploy Cloud thật và kiểm tra URL Cloud live.
   # Nếu chưa có secret Cloud: Tự động chạy cụm Docker Compose để kiểm tra toàn bộ dịch vụ.
