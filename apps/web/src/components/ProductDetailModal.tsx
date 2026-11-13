@@ -5,6 +5,10 @@ import { Product } from "@/types";
 import { X, Check } from "lucide-react";
 import { SIZE_OPTIONS, TOPPING_OPTIONS, calcUnitPrice } from "@/lib/pricing";
 
+// Re-export bảng giá và hàm tính giá để tương thích ngược với ProductDetailModal.spec.ts
+export { SIZE_OPTIONS, TOPPING_OPTIONS };
+export const calculateFinalPrice = calcUnitPrice;
+
 interface ProductDetailModalProps {
     product: Product | null;
     onClose: () => void;

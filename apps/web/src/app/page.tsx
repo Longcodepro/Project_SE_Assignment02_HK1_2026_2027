@@ -3,79 +3,12 @@
 import { useEffect, useState } from 'react';
 import { Product } from '@/types';
 import { apiService } from '@/services/api';
-import { Loader2, AlertCircle, Coffee, Sparkles, ShieldCheck, Zap, Radio, RotateCcw } from 'lucide-react';
+import { AlertCircle, Coffee, Sparkles, ShieldCheck, Zap, Radio, RotateCcw } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import ProductCard from '@/components/ProductCard';
 import ProductDetailModel from '@/components/ProductDetailModal';
 import ServerConfigModal from '@/components/ServerConfigModal';
 import { useCartStore } from '@/store/useCartStore';
-
-const MOCK_PRODUCTS: Product[] = [
-  {
-    id: 1,
-    name: 'Cà phê sữa đá Sài Gòn',
-    price: 29000,
-    imageUrl: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=600',
-    category: 'cafe',
-    stock: 50,
-  },
-  {
-    id: 2,
-    name: 'Bạc xỉu 3 tầng béo ngậy',
-    price: 32000,
-    imageUrl: 'https://images.unsplash.com/photo-1551030173-122aabc4489c?w=600',
-    category: 'cafe',
-    stock: 40,
-  },
-  {
-    id: 3,
-    name: 'Cà phê đen đá đậm vị',
-    price: 25000,
-    imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600',
-    category: 'cafe',
-    stock: 30,
-  },
-  {
-    id: 4,
-    name: 'Americano đá thanh mát',
-    price: 35000,
-    imageUrl: 'https://images.unsplash.com/photo-1551030173-122aabc4489c?w=600',
-    category: 'cafe',
-    stock: 20,
-  },
-  {
-    id: 5,
-    name: 'Trà đào cam sả thanh nhiệt',
-    price: 39000,
-    imageUrl: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600',
-    category: 'tea',
-    stock: 35,
-  },
-  {
-    id: 6,
-    name: 'Trà vải hoa hồng Macchiato',
-    price: 42000,
-    imageUrl: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=600',
-    category: 'tea',
-    stock: 25,
-  },
-  {
-    id: 7,
-    name: 'Matcha đá xay kem tuyết',
-    price: 45000,
-    imageUrl: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=600',
-    category: 'freeze',
-    stock: 20,
-  },
-  {
-    id: 8,
-    name: 'Cà phê muối xứ Huế',
-    price: 35000,
-    imageUrl: 'https://images.unsplash.com/photo-1534778101976-62847782c213?w=600',
-    category: 'cafe',
-    stock: 30,
-  },
-];
 
 // Danh sách các tab phân loại
 const CATEGORIES = [
@@ -93,25 +26,47 @@ export default function MenuPage() {
   const [isServerModalOpen, setIsServerModalOpen] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const addToCart = useCartStore((state)=>state.addToCart);
-  const fetchMenu = async() => {
-    try {
-      setLoading(true);
-      setError(null);
-      setIsOfflineMode(false);
 
-      // Gọi API backend thật
+  const handleRetry = async () => {
+    setLoading(true);
+    setError(null);
+    setIsOfflineMode(false);
+    try {
       const data = await apiService.getProducts();
       setProducts(data);
-    }catch(err) {
+    } catch (err) {
       console.warn('Backend chưa bật hoặc gặp lỗi', err);
       setError('Không thể kết nối đến máy chủ BrewLite API.');
       setIsOfflineMode(true);
-    }finally{
+    } finally {
       setLoading(false);
     }
-  }
+  };
+
   useEffect(() => {
-    fetchMenu();
+    let ignore = false;
+    async function loadData() {
+      try {
+        const data = await apiService.getProducts();
+        if (!ignore) {
+          setProducts(data);
+        }
+      } catch (err) {
+        if (!ignore) {
+          console.warn('Backend chưa bật hoặc gặp lỗi', err);
+          setError('Không thể kết nối đến máy chủ BrewLite API.');
+          setIsOfflineMode(true);
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    }
+    loadData();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   return (
@@ -262,7 +217,7 @@ export default function MenuPage() {
             </p>
             <button
               type="button"
-              onClick={fetchMenu}
+              onClick={handleRetry}
               className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#4A2E1B] hover:bg-[#2C1810] text-white text-xs font-bold rounded-xl transition shadow active:scale-95 cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
