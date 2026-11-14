@@ -53,8 +53,9 @@ model Order {
   createdAt      DateTime    @default(now())
   // Khoá lạc quan: mỗi lần cập nhật đơn phải khớp version đã đọc, rồi tăng thêm 1
   version        Int         @default(0)
-  // Mã nhận hàng 6 số, chỉ có khi đơn READY (sinh ở S3.4)
-  pickupCode     String?
+  // Mã nhận hàng 6 số, chỉ khác null khi đơn READY (xóa khi COMPLETED) nên @unique
+  // cũng chính là "duy nhất trong số đơn đang READY"
+  pickupCode     String?     @unique
   // Lý do hủy và thời điểm hoàn tiền mô phỏng (dùng ở S3.8)
   cancelReason   String?
   refundedAt     DateTime?

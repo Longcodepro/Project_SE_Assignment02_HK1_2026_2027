@@ -155,6 +155,21 @@ describe('GET /orders/me', () => {
     await app.close();
   });
 
+  it('đơn READY trả pickupCode, đơn khác trả null', async () => {
+    const createdAt = new Date('2026-11-14T03:00:00.000Z');
+    const don = (id: string, status: string, pickupCode: string | null) => ({
+      id, status, total: 29000, pickupCode, createdAt, items: [],
+    });
+    const findManyOrders = vi.fn().mockResolvedValue([don('ord_2', 'READY', '038417'), don('ord_1', 'PAID', null)]);
+    const { app } = await setup(findManyOrders);
+
+    const res = await request(app.getHttpServer()).get('/orders/me').expect(200);
+
+    expect(findManyOrders.mock.calls[0][0].select.pickupCode).toBe(true);
+    expect(res.body.map((o: any) => o.pickupCode)).toEqual(['038417', null]);
+    await app.close();
+  });
+
   it('chưa có đơn thì trả mảng rỗng', async () => {
     const { app } = await setup();
     const res = await request(app.getHttpServer()).get('/orders/me').expect(200);

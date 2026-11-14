@@ -79,6 +79,7 @@ export class OrdersService {
         id: true,
         status: true,
         total: true,
+        pickupCode: true,
         createdAt: true,
         items: {
           orderBy: { id: 'asc' },

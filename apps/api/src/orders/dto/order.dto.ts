@@ -36,6 +36,14 @@ export class OrderHistoryItemDto {
 
 // Một phần tử của GET /orders/me
 export class OrderHistoryDto extends OrderSummaryDto {
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '038417',
+    description: 'Mã nhận hàng 6 số; chỉ có khi status là READY, ngược lại null',
+  })
+  pickupCode!: string | null;
+
   @ApiProperty({ example: '2026-11-06T13:55:00.000Z' })
   createdAt!: Date;
 

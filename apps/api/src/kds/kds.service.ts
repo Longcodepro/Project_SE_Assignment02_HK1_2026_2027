@@ -1,7 +1,13 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { isUniqueViolation } from '../common/idempotency.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { STAFF_ITEMS_SELECT, withProductName } from '../orders/order-items.js';
 import { assertTransition } from '../orders/order-status.js';
+import { newPickupCode } from '../orders/pickup-code.js';
 import type { UpdateKdsStatusDto } from './dto/kds.dto.js';
+
+// Trùng mã với một đơn READY khác là hiếm (một triệu mã); thử lại vài lần là đủ
+const MAX_CODE_ATTEMPTS = 5;
 
 @Injectable()
 export class KdsService {
@@ -17,21 +23,10 @@ export class KdsService {
         status: true,
         version: true,
         createdAt: true,
-        items: {
-          orderBy: { id: 'asc' },
-          select: {
-            quantity: true,
-            size: true,
-            toppings: true,
-            product: { select: { name: true } },
-          },
-        },
+        items: STAFF_ITEMS_SELECT,
       },
     });
-    return orders.map(({ items, ...order }) => ({
-      ...order,
-      items: items.map(({ product, ...item }) => ({ ...item, productName: product.name })),
-    }));
+    return orders.map(({ items, ...order }) => ({ ...order, items: items.map(withProductName) }));
   }
 
   async changeStatus(id: string, dto: UpdateKdsStatusDto) {
@@ -48,10 +43,26 @@ export class KdsService {
     assertTransition(order.status, dto.status);
 
     // Khóa lạc quan: chỉ ghi khi đơn vẫn đúng phiên bản và trạng thái lúc đọc
-    const updated = await this.prisma.order.updateMany({
-      where: { id, version: dto.version, status: order.status },
-      data: { status: dto.status, version: { increment: 1 } },
-    });
+    const update = (pickupCode?: string) =>
+      this.prisma.order.updateMany({
+        where: { id, version: dto.version, status: order.status },
+        data: { status: dto.status, version: { increment: 1 }, ...(pickupCode && { pickupCode }) },
+      });
+
+    let updated;
+    if (dto.status === 'READY') {
+      for (let attempt = 1; ; attempt++) {
+        try {
+          updated = await update(newPickupCode());
+          break;
+        } catch (e) {
+          if (!isUniqueViolation(e) || attempt >= MAX_CODE_ATTEMPTS) throw e;
+        }
+      }
+    } else {
+      updated = await update();
+    }
+
     if (updated.count === 0) {
       throw new ConflictException('Đơn vừa được cập nhật bởi yêu cầu khác, vui lòng tải lại');
     }
