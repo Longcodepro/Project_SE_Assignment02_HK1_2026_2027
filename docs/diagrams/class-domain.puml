@@ -33,7 +33,7 @@ enum OrderStatus <<Enum>> #F3E5F5 {
   PENDING
   PAID
   PAYMENT_FAILED
-  ..Sprint 3, Planned..
+  ..Sprint 3 (Done)..
   PREPARING
   READY
   COMPLETED
@@ -104,14 +104,14 @@ class Order <<Core Entity>> #FFF9C4 {
   + status : OrderStatus = PENDING
   + total : Int  {Server-side Pricing, FR-05}
   + version : Int = 0  {Optimistic Lock, FR-08}
-  + pickupCode : String?  {6 chữ số, Sprint 3 Planned — sinh khi chuyển READY}
-  + promotionId : Int? [FK]  {Sprint 3 Planned}
-  + discountAmount : Int = 0  {Sprint 3 Planned}
+  + pickupCode : String?  {6 chữ số, sinh khi chuyển READY, FR-21}
+  + promotionId : Int? [FK]  {FR-11}
+  + discountAmount : Int = 0  {FR-11}
   + createdAt : DateTime
   __
   + calculateTotal() : Int
   + transitionTo(status: OrderStatus)
-  + generatePickupCode() : String  {Sprint 3 Planned}
+  + generatePickupCode() : String
 }
 
 class OrderItem <<Core Entity>> #FFF9C4 {
@@ -143,7 +143,7 @@ class Payment <<Core Entity>> #E8F5E9 {
 ' ========================================================
 ' EXTENSION CLASSES (MÔ HÌNH MỞ RỘNG, SPRINT 3 PLANNED)
 ' ========================================================
-class Promotion <<Domain Extension (Planned)>> #FFF3E0 {
+class Promotion <<Domain Extension>> #E8F5E9 {
   + id : Int [PK]
   + code : String [Unique]
   + discountType : DiscountType
@@ -179,7 +179,7 @@ Product "1" <-- "0..*" OrderItem : "references >"
 Category "1" <-- "0..*" Product : "categorizes >"
 
 Order "1" *-- "0..*" Payment : "settled by >"
-Order "0..*" o-- "0..1" Promotion : "applies > (Sprint 3 Planned)"
+Order "0..*" o-- "0..1" Promotion : "applies >"
 
 LoyaltyTransaction "0..*" --> "0..1" Order : "tied to >"
 

@@ -225,7 +225,7 @@ else (Còn hàng)
     :Xóa sạch giỏ hàng trong Zustand Store;\nChuyển hướng sang màn hình Thông báo thành công (/order-success);\nThiết lập Polling tự động định kỳ 5 giây/lần gọi GET /orders/me;
 
     |Khách hàng\n(Customer)|
-    :Xem thông tin xác nhận đơn hàng PAID;\nTheo dõi trạng thái tiến độ pha chế cập nhật tự động (Polling 5s);\n(Khi đơn sang READY ở Sprint 3 Planned: nhận mã 6 số tại quầy - UC-07);
+    :Xem thông tin xác nhận đơn hàng PAID;\nTheo dõi trạng thái tiến độ pha chế cập nhật tự động (Polling 5s);\n(Khi đơn sang READY: nhận mã 6 số tại quầy - UC-07);
     stop
   endif
 endif

@@ -18,9 +18,10 @@
 
 1. **Tuân thủ mẫu đề bài (Mục 8.1):** Cấu trúc 5 cột bắt buộc: `Mã yêu cầu` | `Use-case / User Story` | `Thiết kế / Sơ đồ` | `Code / API` | `Test`.
 2. **Khép kín vòng đời phát triển phần mềm (Bi-directional Traceability):** Mỗi yêu cầu nghiệp vụ bắt buộc phải xác định được Use-case sở hữu, sơ đồ UML trực quan thể hiện luồng, tệp mã nguồn xử lý và bài kiểm thử tương ứng để chứng minh tính đúng đắn.
-3. **Phân định rõ ranh giới MVP và Planned:** 
+3. **Phân định rõ ranh giới MVP, Sprint 3 và Sprint 4:** 
    - `FR-01` đến `FR-10` thuộc Core MVP (Sprint 1 & Sprint 2): Đã có mã nguồn hoạt động; kiểm thử tự động ở `apps/api` (Vitest, Postman). Giao diện web: lint, build và test đơn vị Vitest (`apps/web`, 13 test cho giỏ hàng và bảng giá) trong CI; E2E Playwright (`tests/e2e`, 8 test) chạy trong CI cho luồng đặt hàng.
-   - `FR-11` đến `FR-21` thuộc Planned (Sprint 3 & Sprint 4): Đã mô hình hóa trên Use Case Diagram và Class Diagram; cột Code và Test ghi rõ `Planned` theo mục 0 quy tắc SSOT.
+   - `FR-20`, `FR-21`, `FR-11` (phía khách), `FR-12`, `FR-13` thuộc Sprint 3: Đã hoàn thành toàn diện mã nguồn API (`apps/api`), giao diện Web (`apps/web`), kiểm thử đơn vị và kiểm thử E2E Playwright tự động (`tests/e2e/sprint3.spec.ts`).
+   - `FR-14` đến `FR-19`, `FR-11` (phía Manager) thuộc Sprint 4: Đã mô hình hóa trên Use Case Diagram và Class Diagram.
 
 ---
 
@@ -69,8 +70,9 @@
 | Hạng mục truy vết | Số lượng thực tế | Mức độ phủ |
 |---|---|---|
 | Yêu cầu chức năng (FR) | 21 / 21 | 21 có Use-case và sơ đồ UML |
-| Yêu cầu cốt lõi MVP (FR-01 đến FR-10) | 10 / 10 | 10 có mã nguồn; 0/10 có kiểm thử tự động (FR-01..FR-10 đều có test tự động, bao gồm 15 unit test của apps/web cho FR-02 và FR-03) |
-| Yêu cầu mở rộng (FR-11 đến FR-21) | 11 | Planned: có Use-case và mô hình lớp, chưa có mã nguồn và kiểm thử |
+| Yêu cầu cốt lõi MVP (FR-01 đến FR-10) | 10 / 10 | 10 có mã nguồn; 10/10 có kiểm thử tự động (FR-01..FR-10 đều có test tự động, bao gồm 15 unit test của apps/web cho FR-02 và FR-03) |
+| Yêu cầu mở rộng Sprint 3 (FR-20, FR-21, FR-11 khách, FR-12, FR-13) | 5 / 5 | 5/5 có mã nguồn API & Web; 5/5 có kiểm thử đơn vị và E2E tự động (`tests/e2e/sprint3.spec.ts`) |
+| Yêu cầu mở rộng Sprint 4 (FR-14..FR-19, FR-11 Manager) | 6 | Planned: đã mô hình hóa Use-case và mô hình lớp |
 | Yêu cầu phi chức năng (NFR) | 5 / 5 | 5 có giải pháp kỹ thuật; đã kiểm chứng bằng test: NFR-01, NFR-02, NFR-03; NFR-04 đã đo Lighthouse, NFR-05 mới đo một phần (xem `docs/lighthouse.md`) |
 | Kiểm thử tự động hiện có | 74 test API (9 file), test web (Vitest) và 8 test E2E | Vitest cho `apps/api` (74 test) và `apps/web` (unit test cho giỏ hàng, bảng giá so khớp server, modal tùy chọn); kịch bản Postman; Playwright `tests/e2e/checkout.spec.ts` (8 test: thẻ, Ví, thanh toán lại, Idempotency-Key) |
 | Sơ đồ UML đối chiếu | 6 sơ đồ | Use Case tổng quát, Use Case Checkout, Activity, Sequence, Class, Deployment |

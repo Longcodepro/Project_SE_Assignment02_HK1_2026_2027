@@ -99,7 +99,7 @@ Request
 201 Created
 
 ```json
-{ "id": "ord_123", "status": "PENDING", "total": 84000 }
+{ "id": "ord_123", "status": "PENDING", "total": 84000, "discountAmount": 0, "promoCode": null }
 ```
 
 `total` do server tính: Σ `quantity × (giá sản phẩm + phụ thu size + giá topping)`. Phụ thu size: S +0, M +5.000, L +10.000. Topping: `tran-chau` 8.000, `kem-cheese` 10.000, `thach-cafe` 6.000. Ví dụ trên: 2 × (29.000 + 5.000 + 8.000) = 84.000. Client không gửi giá; trường lạ bị từ chối (400).
@@ -148,6 +148,13 @@ Cần header `Authorization: Bearer <accessToken>`. Trả lịch sử đơn củ
     "id": "ord_123",
     "status": "PAID",
     "total": 84000,
+    "discountAmount": 0,
+    "promoCode": null,
+    "pickupCode": null,
+    "version": 1,
+    "cancelReason": null,
+    "refundedAt": null,
+    "review": null,
     "createdAt": "2026-10-26T03:40:26.834Z",
     "items": [
       {
@@ -162,6 +169,8 @@ Cần header `Authorization: Bearer <accessToken>`. Trả lịch sử đơn củ
   }
 ]
 ```
+
+Từ Sprint 3 mỗi đơn có thêm các trường sau (mô tả đầy đủ ở các mục **Mã nhận hàng**, **Mã giảm giá**, **Hủy đơn hàng**, **Đánh giá đơn hàng**): `discountAmount` và `promoCode` (voucher, `total` đã là số tiền sau giảm), `pickupCode` (chuỗi 6 số khi `READY`, ngược lại `null`), `version` (gửi lại khi hủy đơn), `cancelReason`, `refundedAt` (đơn đã hủy), `review` (`null` hoặc `{ "stars", "comment" }`). Client cũ bỏ qua các trường lạ nên không bị ảnh hưởng.
 
 401 thiếu hoặc sai token.
 
@@ -184,7 +193,7 @@ Cần header `Authorization: Bearer <accessToken>`. Trả số dư và lịch s�
 
 ## Vòng đời đơn hàng và phân quyền (từ Sprint 3)
 
-Nền tảng cho Sprint 3 (issue S3.1). Chưa thêm endpoint mới; các endpoint pha chế, giao món, hủy đơn, voucher, đánh giá được chốt riêng ở S3.2 trở đi.
+Nền tảng cho Sprint 3 (issue S3.1). Các endpoint pha chế (S3.2), giao món (S3.4), voucher (S3.6), hủy đơn (S3.8) và đánh giá (S3.10) được chốt ở các mục riêng bên dưới.
 
 ### Trạng thái đơn
 
@@ -201,11 +210,11 @@ Nền tảng cho Sprint 3 (issue S3.1). Chưa thêm endpoint mới; các endpoin
 | `PREPARING` | `READY` | Barista | sinh `pickupCode` |
 | `READY` | `COMPLETED` | Cashier | nhập đúng `pickupCode` |
 
-Không có đường hủy từ `PREPARING`, `READY`, `COMPLETED`; `COMPLETED` và `CANCELLED` là trạng thái cuối. Mọi chuyển trạng thái không có trong bảng (kể cả `PAID` sang `PAID`) trả `409`. Các endpoint thực hiện từng bước chuyển sẽ được chốt ở S3.2 (pha chế), S3.4 (giao món), S3.8 (hủy đơn).
+Không có đường hủy từ `PREPARING`, `READY`, `COMPLETED`; `COMPLETED` và `CANCELLED` là trạng thái cuối. Mọi chuyển trạng thái không có trong bảng (kể cả `PAID` sang `PAID`) trả `409`. Endpoint thực hiện từng bước chuyển: S3.2 (pha chế), S3.4 (giao món), S3.8 (hủy đơn).
 
 ### Dữ liệu mới trên đơn
 
-Ba cột mới, đều cho phép rỗng, **chưa xuất hiện trong response ở S3.1** (tránh đổi hợp đồng khi chưa có chức năng dùng):
+Ba cột mới, đều cho phép rỗng; không xuất hiện trong response ở S3.1 và lần lượt xuất hiện ở `GET /orders/me` khi chức năng dùng chúng hoàn tất:
 
 | Cột | Nghĩa | Xuất hiện trong API từ |
 |---|---|---|
