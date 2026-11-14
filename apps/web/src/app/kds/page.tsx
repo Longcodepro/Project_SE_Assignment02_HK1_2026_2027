@@ -196,6 +196,7 @@ export default function KdsPage(){
               return (
                 <div
                   key={order.id}
+                  data-testid={`kds-card-${order.id}`}
                   className={`rounded-3xl p-5 border transition flex flex-col justify-between shadow-lg ${
                     isPreparing
                       ? 'bg-[#2A2318] border-amber-500/50 ring-1 ring-amber-500/30'

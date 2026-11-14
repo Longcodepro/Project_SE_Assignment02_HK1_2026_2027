@@ -264,7 +264,7 @@ export default function CashierPage() {
                                     const code = codes[order.id] ?? '';
                                     const busy = busyId === order.id;
                                     return (
-                                        <div key={order.id} className="rounded-3xl p-5 border bg-[#261A13] border-[#3E291F] shadow-lg flex flex-col justify-between">
+                                        <div key={order.id} data-testid={`cashier-ready-${order.id}`} className="rounded-3xl p-5 border bg-[#261A13] border-[#3E291F] shadow-lg flex flex-col justify-between">
                                             <div>
                                                 <div className="flex items-center justify-between pb-3 border-b border-[#3D291E] mb-3">
                                                     <span className="font-mono font-bold text-sm text-white">
@@ -360,7 +360,7 @@ export default function CashierPage() {
                                 ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         {paidOrders.map((order) => (
-                                            <div key={order.id} className="rounded-2xl p-4 border bg-[#261A13] border-[#3E291F] flex items-start justify-between gap-3">
+                                            <div key={order.id} data-testid={`cashier-paid-${order.id}`} className="rounded-2xl p-4 border bg-[#261A13] border-[#3E291F] flex items-start justify-between gap-3">
                                                 <div className="min-w-0">
                                                     <p className="font-mono font-bold text-sm text-white">#{order.id.slice(-6).toUpperCase()}</p>
                                                     <p className="text-xs text-[#BFA89B] mt-0.5 truncate">
