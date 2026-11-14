@@ -7,6 +7,8 @@ import {
   IsIn,
   IsInt,
   IsOptional,
+  IsString,
+  Matches,
   Max,
   Min,
   ValidateNested,
@@ -49,4 +51,13 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => OrderItemDto)
   items!: OrderItemDto[];
+
+  @ApiPropertyOptional({
+    example: 'WELCOME10',
+    description: 'Mã giảm giá, tối đa một mã mỗi đơn; server tính số tiền giảm',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Za-z0-9_-]{3,32}$/, { message: 'promoCode must be 3-32 characters: letters, digits, _ or -' })
+  promoCode?: string;
 }

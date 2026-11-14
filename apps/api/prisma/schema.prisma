@@ -59,11 +59,37 @@ model Order {
   // Lý do hủy và thời điểm hoàn tiền mô phỏng (dùng ở S3.8)
   cancelReason   String?
   refundedAt     DateTime?
+  // Mã giảm giá đã áp; total là số tiền sau giảm, discountAmount là phần được giảm (VND)
+  promotionId    Int?
+  promotion      Promotion?  @relation(fields: [promotionId], references: [id])
+  discountAmount Int         @default(0)
   items          OrderItem[]
   payments       Payment[]
 
   @@unique([userPhone, idempotencyKey])
   @@index([userPhone])
+}
+
+enum DiscountType {
+  FIXED
+  PERCENT
+}
+
+model Promotion {
+  id             Int          @id @default(autoincrement())
+  // Viết hoa; khách nhập không phân biệt hoa thường
+  code           String       @unique
+  discountType   DiscountType
+  // FIXED: VND; PERCENT: 1 đến 100
+  discountValue  Int
+  // VND, tính trước giảm
+  minOrderAmount Int          @default(0)
+  isActive       Boolean      @default(true)
+  expiryDate     DateTime?
+  // null là không giới hạn; usedCount tăng khi tạo đơn và giảm khi đơn bị hủy
+  maxUses        Int?
+  usedCount      Int          @default(0)
+  orders         Order[]
 }
 
 model OrderItem {

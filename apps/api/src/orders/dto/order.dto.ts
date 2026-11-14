@@ -10,8 +10,14 @@ export class OrderSummaryDto {
   @ApiProperty({ enum: OrderStatus, example: OrderStatus.PENDING })
   status!: string;
 
-  @ApiProperty({ example: 71000, description: 'VND, do server tính' })
+  @ApiProperty({ example: 71000, description: 'VND, do server tính, đã trừ giảm giá' })
   total!: number;
+
+  @ApiProperty({ example: 0, description: 'VND được giảm nhờ mã giảm giá; 0 nếu không dùng mã' })
+  discountAmount!: number;
+
+  @ApiProperty({ type: String, nullable: true, example: 'WELCOME10', description: 'Mã đã áp, null nếu không dùng' })
+  promoCode!: string | null;
 }
 
 export class OrderHistoryItemDto {
