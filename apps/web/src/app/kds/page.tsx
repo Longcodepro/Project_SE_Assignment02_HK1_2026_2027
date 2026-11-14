@@ -61,10 +61,10 @@ export default function KdsPage(){
   // Polling tự động làm mới mỗi 5 giây
   useEffect(() => {
     let ignore = false;
-    setCurrentTimestamp(Date.now());
     async function initialLoad() {
+      await fetchOrders(true);
       if (!ignore) {
-        await fetchOrders(true);
+        setCurrentTimestamp(Date.now());
       }
     }
     initialLoad();
