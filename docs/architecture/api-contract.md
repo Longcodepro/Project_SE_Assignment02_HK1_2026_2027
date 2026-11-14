@@ -792,7 +792,7 @@ Một nguyên liệu: `{ "id": 1, "name": "Cà phê rang xay", "unit": "G", "sto
 
 ### Phiếu nhập kho
 
-- `POST /admin/ingredients/:id/receipts` (`BARISTA`, `MANAGER`), body `{ "quantity": 2000, "note": "Nhập hàng NCC A" }`: `quantity` số nguyên từ 1 đến 1.000.000.000; `note` tùy chọn, tối đa 200 ký tự. Một transaction: tạo phiếu (ghi `createdByPhone` là người trong token) và **cộng** `stock`. 201 Created:
+- `POST /admin/ingredients/:id/receipts` (`BARISTA`, `MANAGER`), body `{ "quantity": 2000, "note": "Nhập hàng NCC A" }`: `quantity` số nguyên từ 1 đến 100.000.000 (để tồn kho không tràn số nguyên 32 bit); `note` tùy chọn, tối đa 200 ký tự. Một transaction: tạo phiếu (ghi `createdByPhone` là người trong token) và **cộng** `stock`. 201 Created:
 
 ```json
 { "id": 7, "ingredientId": 1, "quantity": 2000, "note": "Nhập hàng NCC A", "createdByPhone": "0900000001", "createdAt": "2026-11-15T03:00:00.000Z", "stock": 7000 }
