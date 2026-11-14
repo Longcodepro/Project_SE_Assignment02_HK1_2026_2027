@@ -201,6 +201,7 @@ export class OrdersService {
         discountAmount: true,
         promotion: { select: { code: true } },
         pickupCode: true,
+        review: { select: { stars: true, comment: true } },
         createdAt: true,
         items: {
           orderBy: { id: 'asc' },

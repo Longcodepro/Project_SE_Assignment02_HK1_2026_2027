@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { OrderStatus, Size } from '../../generated/prisma/enums.js';
+import { OrderReviewDto } from '../../reviews/dto/review.dto.js';
 import { TOPPING_PRICE } from '../pricing.js';
 
 // Kết quả POST /orders
@@ -55,6 +56,13 @@ export class OrderHistoryDto extends OrderSummaryDto {
 
   @ApiProperty({ type: String, nullable: true, example: 'Đổi ý', description: 'Lý do hủy; null nếu chưa hủy' })
   cancelReason!: string | null;
+
+  @ApiProperty({
+    type: OrderReviewDto,
+    nullable: true,
+    description: 'Đánh giá của khách; null nếu chưa đánh giá',
+  })
+  review!: OrderReviewDto | null;
 
   @ApiProperty({
     type: String,

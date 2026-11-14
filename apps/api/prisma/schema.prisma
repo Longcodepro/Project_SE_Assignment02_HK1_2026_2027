@@ -65,9 +65,21 @@ model Order {
   discountAmount Int         @default(0)
   items          OrderItem[]
   payments       Payment[]
+  review         Review?
 
   @@unique([userPhone, idempotencyKey])
   @@index([userPhone])
+}
+
+// Mỗi đơn COMPLETED được đánh giá một lần (orderId @unique); chủ đơn lấy qua order.userPhone
+model Review {
+  id        Int      @id @default(autoincrement())
+  orderId   String   @unique
+  order     Order    @relation(fields: [orderId], references: [id])
+  // 1 đến 5 (có CHECK trong migration)
+  stars     Int
+  comment   String?
+  createdAt DateTime @default(now())
 }
 
 enum DiscountType {

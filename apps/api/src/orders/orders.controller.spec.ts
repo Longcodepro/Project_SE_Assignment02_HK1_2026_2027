@@ -188,6 +188,21 @@ describe('GET /orders/me', () => {
     await app.close();
   });
 
+  it('trả review của đơn đã đánh giá, null nếu chưa', async () => {
+    const createdAt = new Date('2026-11-14T03:00:00.000Z');
+    const don = (id: string, review: unknown) => ({ id, status: 'COMPLETED', total: 29000, review, createdAt, items: [] });
+    const findManyOrders = vi
+      .fn()
+      .mockResolvedValue([don('ord_2', { stars: 5, comment: 'Ngon' }), don('ord_1', null)]);
+    const { app } = await setup(findManyOrders);
+
+    const res = await request(app.getHttpServer()).get('/orders/me').expect(200);
+
+    expect(findManyOrders.mock.calls[0][0].select.review).toEqual({ select: { stars: true, comment: true } });
+    expect(res.body.map((o: any) => o.review)).toEqual([{ stars: 5, comment: 'Ngon' }, null]);
+    await app.close();
+  });
+
   it('chưa có đơn thì trả mảng rỗng', async () => {
     const { app } = await setup();
     const res = await request(app.getHttpServer()).get('/orders/me').expect(200);
