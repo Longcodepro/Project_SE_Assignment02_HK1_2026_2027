@@ -594,6 +594,64 @@ Request: ít nhất một trong hai trường.
 - 404 không có tài khoản với SĐT này.
 - 409 tài khoản không phải nhân viên (`MANAGER` hoặc `CUSTOMER`), thông báo `Chỉ quản lý được tài khoản nhân viên`.
 
+## Quản lý mã giảm giá (Manager)
+
+Issue S4.8. Manager tạo, sửa và vô hiệu mã giảm giá; khách dùng mã như đã chốt ở mục **Mã giảm giá (voucher) phía khách**. Mọi route dưới `/admin/promotions` chỉ cho `MANAGER` (401 thiếu hoặc sai token, 403 sai vai trò). Không có route xóa: mã đã gắn vào đơn nên chỉ **vô hiệu** (`isActive: false`).
+
+Một mã trả về có dạng:
+
+```json
+{
+  "id": 1,
+  "code": "WELCOME10",
+  "discountType": "PERCENT",
+  "discountValue": 10,
+  "minOrderAmount": 50000,
+  "isActive": true,
+  "expiryDate": null,
+  "maxUses": 1000,
+  "usedCount": 3
+}
+```
+
+### GET /admin/promotions
+
+Mọi mã (kể cả đã vô hiệu hoặc hết hạn), mới tạo nhất lên đầu. 200 OK, mảng các mã như trên.
+
+### POST /admin/promotions
+
+Request
+
+```json
+{
+  "code": "tet2027",
+  "discountType": "PERCENT",
+  "discountValue": 15,
+  "minOrderAmount": 60000,
+  "expiryDate": "2027-02-20T16:59:59.000Z",
+  "maxUses": 200
+}
+```
+
+- `code`: 3–32 ký tự chữ, số, `_`, `-`; server đổi thành chữ hoa (`TET2027`); **không đổi được sau khi tạo**.
+- `discountType`: `FIXED` hoặc `PERCENT`. `discountValue`: số nguyên; `PERCENT` từ 1 đến 100, `FIXED` từ 1 đến 10.000.000 (VND).
+- `minOrderAmount`: số nguyên không âm, mặc định `0`. `expiryDate`: chuỗi ISO 8601, tùy chọn (bỏ trống hoặc `null` là không hết hạn). `maxUses`: số nguyên từ 1, tùy chọn (bỏ trống hoặc `null` là không giới hạn).
+- Trường lạ bị từ chối (400), kể cả `usedCount`, `isActive`, `id`. Mã mới luôn `isActive: true`, `usedCount: 0`.
+
+201 Created: mã vừa tạo. 400 dữ liệu không hợp lệ. 409 `code` đã tồn tại (`Mã giảm giá đã tồn tại`).
+
+### PATCH /admin/promotions/:id
+
+Sửa hoặc vô hiệu/kích hoạt lại một mã. Body gồm ít nhất một trong các trường: `discountType`, `discountValue`, `minOrderAmount`, `expiryDate` (`null` để bỏ hạn), `maxUses` (`null` để bỏ giới hạn), `isActive`. Không có `code`, `usedCount`, `id`.
+
+```json
+{ "isActive": false }
+```
+
+Quy tắc kiểm tra trên giá trị **sau khi sửa**: `discountValue` phải hợp lệ với `discountType` (xem trên); `maxUses` không được nhỏ hơn `usedCount` hiện tại (`Tổng lượt tối đa không được nhỏ hơn số lượt đã dùng`). Sửa mã **không ảnh hưởng đơn đã tạo** (đơn lưu sẵn `discountAmount` và `total`). Mã vừa vô hiệu thì `POST /orders` dùng mã đó nhận 400 như mã không tồn tại.
+
+200 OK: mã sau khi sửa. 400 body rỗng, sai kiểu, `:id` không phải số nguyên, hoặc vi phạm quy tắc trên. 404 không có mã với `id` này.
+
 ## Idempotency-Key
 
 `POST /orders` và `POST /payments` nhận thêm header tùy chọn `Idempotency-Key` (1–128 ký tự: chữ, số, `_`, `-`). Frontend nên sinh một key duy nhất (hiện dùng `ord_<thời gian>_<ngẫu nhiên>` cho đơn và `pay_<thời gian>_<ngẫu nhiên>` cho thanh toán; `crypto.randomUUID()` cũng hợp lệ, server không bắt buộc UUID) cho mỗi lần người dùng bấm đặt/thanh toán và gửi lại **đúng key đó** khi retry do mất mạng.
