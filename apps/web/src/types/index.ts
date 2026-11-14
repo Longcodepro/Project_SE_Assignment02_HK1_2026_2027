@@ -14,10 +14,11 @@ export interface Product {
     category?: string | ProductCategory;
 }
 
+export type UserRole = 'CUSTOMER' | 'BARISTA' | 'CASHIER' | 'MANAGER';
 export interface User {
     id?: string | number;
     phone: string;
-    role?: 'CUSTOMER' | 'STAFF';
+    role?: UserRole;
     email?: string;
     name?: string;
     loyaltyPoints?: number;
@@ -85,4 +86,19 @@ export interface CartItem {
     toppings: string[];
     quantity: number;
     unitPrice: number; // giá của ly nước khi được add thêm topping
+}
+
+export interface KdsItem{
+    productName: string;
+    quantity: number;
+    size: 'S' | 'M' | 'L';
+    toppings: string[];
+}
+
+export interface KdsOrder{
+    id: string;
+    status: 'PAID' | 'PREPARING';
+    version: number;
+    createdAt: string;
+    items: KdsItem[];
 }
