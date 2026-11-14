@@ -1,0 +1,338 @@
+% !TEX program = xelatex
+% Báo cáo Assignment 2 - BrewLite. Biên dịch: latexmk -xelatex BaoCao_Assignment2.tex
+\documentclass[12pt, a4paper]{article}
+\newcommand{\tenLong}{Nguyễn Thành Long}
+\newcommand{\tenTai}{Trần Quốc Tài}
+\newcommand{\mssvLong}{MSSV: ..........}   % TODO: điền MSSV
+\newcommand{\mssvTai}{MSSV: ..........}    % TODO: điền MSSV
+\newcommand{\sgufooter}{Bài tập lớn môn Công nghệ phần mềm -- Assignment 2 -- HK1 2026-2027}
+\input{sgu}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcommand{\hinh}[3]{\begin{figure}[H]\centering
+  \includegraphics[width=#2\textwidth, height=0.78\textheight, keepaspectratio]{hinh/#1.png}
+  \caption{#3}\end{figure}}
+
+\begin{document}
+\sgutitle{BrewLite -- Requirements to Deployment}{Assignment 2: Từ yêu cầu đến triển khai}{THÁNG 11/2026}
+
+% =====================================================================
+\section{Giới thiệu}
+\subsection{Mục tiêu}
+Assignment 2 tiếp tục đề tài BrewLite của Assignment 1 nhưng chấm \emph{quy trình kỹ thuật phần mềm đầy đủ}:
+khai thác và đặc tả yêu cầu, mô hình hóa, thiết kế kiến trúc, hiện thực hai Sprint, thiết lập CI/CD và triển khai
+lên môi trường truy cập được. Đề gồm 5 task, mỗi task 2 điểm, \textbf{làm tuần tự}: tạo phẩm của task trước phải có
+trong lịch sử git trước task sau. Luồng nghiệp vụ tối thiểu giữ nguyên:
+\emph{xem menu $\rightarrow$ chọn tùy chọn $\rightarrow$ giỏ hàng $\rightarrow$ đặt đơn $\rightarrow$ thanh toán $\rightarrow$ theo dõi đơn}.
+
+\subsection{Khác biệt so với Assignment 1}
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{@{}L{3cm} X X@{}}
+\toprule & \textbf{Assignment 1} & \textbf{Assignment 2} \\ \midrule
+Trọng tâm & Hiện thực nghiệp vụ, chia việc theo Scrum & Quy trình từ yêu cầu đến triển khai \\
+Kho mã & Kho riêng, chứng minh phân công từng thành viên & Kho riêng, đẩy lên theo đúng thứ tự tài liệu $\rightarrow$ mã \\
+Tài liệu & User story, backlog & SRS (FR/NFR, MoSCoW), use-case, 6 sơ đồ PlantUML, ADR, truy vết \\
+Triển khai & Docker Compose chạy cục bộ & CI/CD, production trên Internet, kiểm thử E2E \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Nhóm, kho mã và sản phẩm}
+\begin{itemize}
+  \item Nhóm: \tenLong{} (\texttt{Longcodepro}) -- backend, DevOps, Scrum Master; \tenTai{} (\texttt{TaiTran263}) -- frontend, tài liệu yêu cầu và truy vết.
+  \item Kho mã: \url{https://github.com/Longcodepro/Project_SE_Assignment02_HK1_2026_2027} (monorepo \fpath{apps/web}, \fpath{apps/api}, \fpath{docs/}, \fpath{tests/}).
+  \item Frontend (Vercel): \url{https://se-as2-brewlite.vercel.app}. Backend (Render): \url{https://brewlite-api.onrender.com}, kiểm tra tại \texttt{/health}, tài liệu API tại \texttt{/docs}.
+        Ngày 14/11/2026 frontend trả 200; backend trả 200 sau khoảng 8 giây (khởi động nguội của gói miễn phí).
+  \item Công nghệ: Next.js 16, NestJS 12, PostgreSQL 16 (Neon) với Prisma, Docker, GitHub Actions.
+\end{itemize}
+
+% =====================================================================
+\section{Task 1: Khai thác và đặc tả yêu cầu}
+\subsection{Bối cảnh, stakeholder và phạm vi}
+Quán đồ uống nhỏ cần nhận đơn và thanh toán không tiền mặt trên điện thoại để giảm xếp hàng. Nguồn sự thật của phần này là
+\fpath{docs/requirements/context-and-scope.md}.
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule \textbf{Stakeholder} & \textbf{Mục tiêu chính} \\ \midrule
+Khách hàng & Đặt đồ uống nhanh, đúng ý, không phải chờ ở quầy \\
+Nhân viên quầy, pha chế & Chuẩn bị đúng đơn, giảm sai sót giờ cao điểm \\
+Quản lý cửa hàng & Tăng hiệu suất bán, kiểm soát doanh thu, chống thất thoát \\
+Đơn vị thanh toán (mô phỏng) & Giao dịch toàn vẹn, bảo mật, chính xác \\
+Nhóm phát triển & Sản phẩm đúng kiến trúc, có kiểm thử tự động, bàn giao đúng hạn \\
+Giảng viên nghiệm thu & Đánh giá kỹ thuật, quy trình và tính chạy được \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Trong phạm vi MVP (Sprint 1--2):} menu theo danh mục, tìm kiếm, ba trạng thái giao diện; chọn size và topping; giỏ hàng
+Zustand lưu \texttt{localStorage}; đăng ký/đăng nhập bằng số điện thoại 10 số, JWT; tạo đơn với giá do server tính;
+thanh toán mô phỏng Thẻ/Ví; vòng đời đơn, khóa lạc quan, \texttt{Idempotency-Key}; tích điểm; lịch sử đơn có polling 5 giây;
+Docker, CI, CD, production, kiểm thử tự động.
+\textbf{Ngoài phạm vi (Won't):} hoàn tiền về ví nội bộ, SMS/OTP trả phí, quản lý nhân sự và chấm công, đặt bàn.
+
+\subsection{Yêu cầu chức năng và phi chức năng}
+Tài liệu có 21 yêu cầu chức năng (\texttt{FR-01}--\texttt{FR-21}) và 5 yêu cầu phi chức năng (\texttt{NFR-01}--\texttt{NFR-05}),
+xếp mức MoSCoW: 9 Must, 1 Should, 11 Could. Cột ``Trạng thái'' phản ánh \texttt{main} ngày 14/11/2026.
+
+\begin{table}[H]\centering\scriptsize
+\begin{tabularx}{\textwidth}{@{}l X c l l@{}}
+\toprule \textbf{Mã} & \textbf{Yêu cầu} & \textbf{Sprint} & \textbf{MoSCoW} & \textbf{Trạng thái} \\ \midrule
+FR-01 & Xem menu theo danh mục, tìm kiếm/lọc, nhãn hết hàng & 1 & Must & Đã làm \\
+FR-02 & Chọn size, topping, xem giá tạm tính & 2 & Must & Đã làm \\
+FR-03 & Giỏ hàng phía client, lưu \texttt{localStorage} & 2 & Must & Đã làm \\
+FR-04 & Đăng ký, đăng nhập bằng SĐT, JWT, vai trò & 2 & Must & Đã làm \\
+FR-05 & Tạo đơn, server tự tính tổng tiền & 2 & Must & Đã làm \\
+FR-06 & Thanh toán mô phỏng Thẻ/Ví, không lưu số thẻ & 2 & Must & Đã làm \\
+FR-07 & Lịch sử đơn, theo dõi trạng thái (polling) & 2 & Must & Đã làm \\
+FR-08 & Vòng đời đơn theo bảng chuyển, khóa lạc quan \texttt{version} & 2 & Must & Đã làm \\
+FR-09 & Chống gửi trùng bằng \texttt{Idempotency-Key} & 2 & Must & Đã làm \\
+FR-10 & Tích điểm 1 điểm/1.000đ, xem số dư và lịch sử & 2 & Should & Đã làm \\
+FR-11 & Voucher (khách áp mã, Manager quản lý mã) & 3, 4 & Could & Kế hoạch \\
+FR-12 & Hủy đơn trước khi pha chế, hoàn tiền/kho/điểm & 3 & Could & Kế hoạch \\
+FR-13 & Đánh giá 1--5 sao cho đơn đã hoàn tất & 3 & Could & Kế hoạch \\
+FR-14 & Báo cáo doanh thu, tỷ lệ hủy, Top 5 món & 4 & Could & Kế hoạch \\
+FR-15 & Kho nguyên liệu, trừ/hoàn kho tự động & 4 & Could & Kế hoạch \\
+FR-16 & Công thức pha chế theo món, size, topping & 4 & Could & Kế hoạch \\
+FR-17 & Cảnh báo nguyên liệu chạm ngưỡng & 4 & Could & Kế hoạch \\
+FR-18 & Quản lý danh mục, món, topping, phụ thu size & 4 & Could & Kế hoạch \\
+FR-19 & Quản lý tài khoản nhân viên & 4 & Could & Kế hoạch \\
+FR-20 & Màn hình KDS cho Barista (\texttt{PAID} $\rightarrow$ \texttt{PREPARING} $\rightarrow$ \texttt{READY}) & 3 & Could & Đã làm \\
+FR-21 & Mã nhận hàng 6 số, Cashier hoàn tất đơn & 3 & Could & Kế hoạch \\ \bottomrule
+\end{tabularx}
+\caption{Yêu cầu chức năng (nguồn: \fpath{context-and-scope.md}, mục 6.3)}
+\end{table}
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule \textbf{Mã} & \textbf{Nhóm} & \textbf{Nội dung} \\ \midrule
+NFR-01 & Bảo mật & Không tin giá từ client; \texttt{bcryptjs}; JWT 24 giờ, không có giá trị mặc định cho \texttt{JWT\_SECRET}; không lưu số thẻ thô; không commit secret \\
+NFR-02 & Tin cậy, sẵn sàng & Production qua HTTPS, có \texttt{GET /health}; kết quả đúng khi gửi trùng hoặc đồng thời \\
+NFR-03 & Chất lượng, bảo trì & Mọi PR qua CI; Swagger tại \texttt{/docs}; migration có phiên bản \\
+NFR-04 & Khả dụng & Mobile-first; menu có đủ ba trạng thái Loading, Empty, Error + Retry \\
+NFR-05 & Hiệu năng giao diện & FCP $\le$ 1,5 s, TBT $\le$ 200 ms; đo sau khi API đã khởi động \\ \bottomrule
+\end{tabularx}
+\caption{Yêu cầu phi chức năng}
+\end{table}
+
+Mỗi yêu cầu có tiêu chí chấp nhận kiểm chứng được ở \fpath{requirements-api.md} (phía API) và \fpath{requirements-web.md}
+(phía giao diện); 14 user story \texttt{US-01}--\texttt{US-14} ở \fpath{user-stories.md}.
+
+\hinh{usecase-overview}{0.8}{Sơ đồ use-case tổng quát (\fpath{docs/diagrams/usecase-overview.puml})}
+
+\subsection{Đặc tả use-case trọng tâm: UC-05 Đặt hàng và thanh toán}
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{@{}L{3.2cm} X@{}}
+\toprule \textbf{Mục} & \textbf{Nội dung} \\ \midrule
+Mã, ưu tiên & UC-05, Must; liên kết FR-05, FR-06, FR-08, FR-09, FR-10 \\
+Actor & Chính: khách hàng. Phụ: cổng thanh toán mô phỏng; nhân viên pha chế/quầy (nhận đơn sau khi thanh toán) \\
+Trigger & Khách bấm ``Tiến hành Đặt hàng'' ở \texttt{/cart} hoặc ``Xác nhận Thanh toán'' ở \texttt{/checkout} \\
+Tiền điều kiện & Giỏ hàng có ít nhất một món hợp lệ; backend và cơ sở dữ liệu đang chạy (\texttt{GET /health} trả 200) \\
+Hậu điều kiện (thành công) & Đơn \texttt{PAID} ($\texttt{version}=1$), có \texttt{OrderItem} và \texttt{Payment} \texttt{SUCCESS}; cộng điểm 1/1.000đ; xóa giỏ; chuyển sang \texttt{/order-success} và polling 5 giây \\
+Hậu điều kiện (thất bại) & Đơn \texttt{PAYMENT\_FAILED} (API vẫn trả 201 kèm \texttt{status}); không trừ tiền, không cộng điểm; giữ nguyên giỏ; được thanh toán lại \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Luồng chính.} (1) Khách xem giỏ và bấm đặt hàng; hệ thống kiểm tra đăng nhập. (2) Chuyển sang \texttt{/checkout}.
+(3--4) Khách chọn Thẻ (\texttt{CARD}) hoặc Ví (\texttt{WALLET}). (5) Khách xác nhận; giao diện sinh \texttt{Idempotency-Key}, khóa nút.
+(6) \texttt{POST /orders}: xác thực JWT, tính giá ở server, tạo đơn \texttt{PENDING}. (7) \texttt{POST /payments}.
+(8) Cổng mô phỏng duyệt thanh toán. (9) Một transaction: đơn $\rightarrow$ \texttt{PAID}, ghi \texttt{Payment}, cộng điểm. (10) Hiện màn xác nhận, xóa giỏ.
+
+\textbf{Luồng thay thế và ngoại lệ.} Chưa đăng nhập: hiện modal đăng nhập, giữ giỏ rồi tiếp tục (\texttt{<<include>>} UC-04).
+Áp mã giảm giá (\texttt{<<extend>>} UC-10, thuộc kế hoạch Sprint 3). Đổi phương thức thanh toán. Thẻ có 4 số cuối \texttt{0000} hoặc Ví với
+đơn trên 500.000đ: \texttt{PAYMENT\_FAILED}. Đơn đã \texttt{PAID} thanh toán tiếp: 409. Thiếu hoặc hết hạn token: 401.
+
+\hinh{usecase-checkout}{0.9}{Use-case Đặt hàng và thanh toán (\fpath{docs/diagrams/usecase-checkout.puml})}
+
+% =====================================================================
+\section{Task 2: Mô hình hóa hệ thống}
+Cả ba sơ đồ viết bằng PlantUML; tệp \texttt{.puml} là nguồn sự thật, \texttt{.svg} xuất ra cùng commit.
+Hình trong báo cáo xuất từ chính các tệp \texttt{.puml} đó.
+
+\subsection{Activity diagram (Activity-01)}
+Mô tả luồng từ mở ứng dụng đến theo dõi đơn, gồm các giai đoạn: xem menu, chọn món và size, giỏ hàng, xác thực,
+thanh toán, theo dõi đơn hàng; có nhánh thanh toán lại đơn \texttt{PAYMENT\_FAILED}.
+\hinh{activity-01-menu-cart-auth}{1.0}{Activity-01: luồng đặt món và thanh toán (\fpath{docs/diagrams/activity-01-menu-cart-auth.puml})}
+
+\subsection{Sequence diagram (Sequence-01)}
+Các thành phần phối hợp: khách hàng, Next.js Web, NestJS API, PostgreSQL và cổng thanh toán mô phỏng. Sơ đồ có nhánh
+\texttt{opt} cho \texttt{Idempotency-Key}, nhánh \texttt{alt} cho thanh toán thành công/thất bại và đoạn transaction kiểm tra \texttt{version}.
+\hinh{sequence-checkout}{1.0}{Sequence-01: luồng đặt hàng và thanh toán (\fpath{docs/diagrams/sequence-checkout.puml})}
+
+\subsection{Class diagram (Class-01)}
+Mô hình miền gồm các lớp lõi \texttt{User}, \texttt{Category}, \texttt{Product}, \texttt{Order}, \texttt{OrderItem}, \texttt{Payment}, các enum
+\texttt{Role}, \texttt{OrderStatus}, \texttt{Size}, \texttt{PaymentMethod}, \texttt{PaymentStatus}, \texttt{DiscountType}, và hai lớp mở rộng
+\texttt{Promotion} (kế hoạch), \texttt{LoyaltyTransaction} (mức miền, chưa là bảng ở MVP). Tên lớp, enum và cột bám theo \fpath{apps/api/prisma/schema.prisma}.
+\hinh{class-domain}{0.72}{Class-01: mô hình miền (\fpath{docs/diagrams/class-domain.puml})}
+
+% =====================================================================
+\section{Task 3: Thiết kế kiến trúc}
+\subsection{Phương pháp và quyết định}
+\textbf{Backend} theo mô hình \emph{Modular Monolith} phân lớp Controller $\rightarrow$ Service $\rightarrow$ Prisma, các module:
+\texttt{auth}, \texttt{products}, \texttt{orders}, \texttt{payments}, \texttt{loyalty}, \texttt{kds}, \texttt{prisma}. Bốn nguyên tắc: module hóa theo miền
+nghiệp vụ; server nắm quyền định giá; nguyên tử hóa bằng transaction; chống gửi trùng. \textbf{Frontend} dùng Next.js App Router, mobile-first,
+Zustand (\texttt{useCartStore}, \texttt{useAuthStore}), Axios có interceptor gắn Bearer token, cho phép đổi URL backend ngay trên giao diện.
+
+\begin{table}[H]\centering\footnotesize
+\begin{tabularx}{\textwidth}{@{}l L{3.4cm} X@{}}
+\toprule \textbf{ADR} & \textbf{Quyết định} & \textbf{Lý do và đánh đổi} \\ \midrule
+001 & Monorepo (\texttt{apps/web}, \texttt{apps/api}, \texttt{docs}, \texttt{tests}) & Một PR cho tính năng xuyên tầng, tài liệu cạnh mã, một pipeline; đổi lại lịch sử chung xen kẽ và phải tự đồng bộ hai \texttt{package-lock.json} \\
+002 & Modular Monolith + phân lớp & Giao dịch ACID cho tạo đơn, thanh toán, cộng điểm; chi phí thấp, dễ tách sau; đổi lại dùng chung một tiến trình, cần kỷ luật tránh import chéo module \\
+003 & PostgreSQL + Prisma & Dữ liệu quan hệ chặt, schema tập trung, migration có phiên bản, type-safe; đổi lại truy vấn thống kê phức tạp có thể cần SQL thô và có độ trễ khởi động \\
+004 & Zustand + \texttt{persist} & Nhẹ, ít re-render, tự đồng bộ \texttt{localStorage}; đổi lại DevTools yếu hơn Redux, cần xử lý hydration trên Next.js \\
+005 & \texttt{Idempotency-Key} & Chặn tạo đơn và trừ tiền hai lần khi mạng chập chờn; đổi lại frontend phải luôn gửi header, tốn thêm chỉ mục duy nhất \\ \bottomrule
+\end{tabularx}
+\caption{Các quyết định kiến trúc (\fpath{docs/architecture/adr/})}
+\end{table}
+
+\subsection{Deployment diagram}
+Sơ đồ có ba ranh giới: máy phát triển (Docker Compose), CI trên GitHub Actions và production (Vercel, Render, Neon).
+\hinh{deployment}{1.0}{Deployment diagram (\fpath{docs/diagrams/deployment.puml})}
+
+% =====================================================================
+\section{Task 4: Sprint 1}
+\subsection{Repository và quản lý tài liệu}
+Monorepo theo cấu trúc bắt buộc của đề: \fpath{apps/web}, \fpath{apps/api}, \fpath{docs/requirements}, \fpath{docs/diagrams},
+\fpath{docs/architecture}, \fpath{tests/}, \fpath{.github/workflows/}. Mỗi tạo phẩm một nhánh, một Pull Request, một issue
+(tên nhánh \texttt{tai/task-1.1-...}, \texttt{long/task-1-2b-...}); commit dạng \texttt{docs(task-x.y): ...}, \texttt{feat(task-x.y): ...}.
+Mỗi sơ đồ \texttt{.puml} có chú thích đầu tệp ghi tên, mã (\texttt{Activity-01}, \texttt{Sequence-01}, \texttt{Class-01}) và mã FR/UC liên quan.
+
+\subsection{MVP Sprint 1 và CI}
+Sprint 1 (29/10 -- 05/11/2026) bàn giao \texttt{GET /products} và giao diện Menu mobile-first có ba trạng thái (Skeleton Loading,
+Empty, Error + Retry). Logic size/topping chuyển sang Sprint 2 để tích hợp với giỏ hàng và định giá phía server.
+Pipeline CI (\fpath{.github/workflows/ci.yml}) chạy ở mọi Pull Request, gồm bốn job: (1) backend: lint \texttt{oxlint}, build NestJS, Vitest;
+(2) frontend: lint \texttt{eslint}, Vitest, build Next.js; (3) triển khai và smoke test; (4) E2E luồng đặt hàng bằng Playwright.
+Job nào lỗi thì chặn merge.
+
+% =====================================================================
+\section{Task 5: Sprint 2, CI/CD và bàn giao}
+\subsection{MVP hoàn chỉnh}
+Sprint 2 (06/11 -- 10/11/2026) hoàn thiện luồng giỏ hàng $\rightarrow$ thanh toán $\rightarrow$ tích điểm: modal size/topping tính giá thời gian thực,
+giỏ hàng bền vững, đăng ký/đăng nhập số điện thoại, màn thanh toán Thẻ/Ví có chống gửi trùng, lịch sử đơn polling 5 giây; phía API gồm
+\texttt{POST /orders} (định giá server), \texttt{POST /payments}, \texttt{GET /orders/me}, \texttt{GET /loyalty/me}, \texttt{GET /health}.
+Ngoài MVP, \texttt{main} còn có phần nền Sprint 3 đã merge: bốn trạng thái đơn mới (\texttt{PREPARING}, \texttt{READY}, \texttt{COMPLETED}, \texttt{CANCELLED}),
+bốn vai trò (\texttt{CUSTOMER}, \texttt{BARISTA}, \texttt{CASHIER}, \texttt{MANAGER}) và màn hình KDS cho Barista (FR-20).
+
+\subsection{Kiểm thử và kết quả}
+Số liệu chạy trên bản \texttt{origin/main} ngày 14/11/2026 (commit \texttt{0e4d14e}).
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{@{}l X l@{}}
+\toprule \textbf{Hạng mục} & \textbf{Nội dung} & \textbf{Kết quả} \\ \midrule
+Backend & \texttt{oxlint}, \texttt{nest build} & không lỗi \\
+Unit test API & Vitest, 11 file & 112/112 qua \\
+Unit test web & Vitest (giỏ hàng, bảng giá so khớp server, modal), 5 file & 32/32 qua \\
+E2E & Playwright, \fpath{tests/e2e/checkout.spec.ts}: thẻ thành công, thẻ \texttt{0000} bị từ chối, 401 khi thiếu token, Ví $\le$ 500.000đ, Ví $>$ 500.000đ,
+thanh toán lại đơn \texttt{PAYMENT\_FAILED}, bấm xác nhận liên tiếp chỉ tạo một đơn, gửi lại cùng \texttt{Idempotency-Key} & 8 kịch bản \\
+CI trên \texttt{main} & bốn job như mục 5.2 & xanh \\
+CD trên \texttt{main} & đóng gói ảnh Docker \fpath{apps/api} lên GHCR; kích hoạt Render và smoke test \texttt{/health} nếu đã đặt secret & xanh \\ \bottomrule
+\end{tabularx}
+\end{table}
+Lint, build và Vitest của hai ứng dụng được chạy lại trên bản sao sạch của \texttt{origin/main}; riêng 8 kịch bản E2E được đếm từ mã nguồn,
+kết quả chạy lấy từ job E2E của CI (trạng thái chung của CI trên \texttt{main} là xanh).
+
+\subsection{Triển khai và bàn giao}
+\textbf{CI/CD.} CD chạy khi merge vào \texttt{main}: build ảnh từ \fpath{apps/api/Dockerfile}, gắn thẻ \texttt{latest}
+và mã commit ngắn, đẩy lên GHCR. Render kết nối GitHub và tự build lại khi \texttt{main} đổi; lệnh khởi động chạy
+\texttt{prisma migrate deploy}, \texttt{prisma db seed} rồi \texttt{node dist/main}.
+\textbf{Môi trường.} Frontend trên Vercel, backend trên Render, cơ sở dữ liệu PostgreSQL 16 trên Neon (Singapore, bắt buộc \texttt{sslmode=require});
+Cloudflare Tunnel làm đường demo dự phòng. Biến môi trường chỉ ghi tên trong tài liệu, không có giá trị bí mật.
+
+\textbf{Đo hiệu năng (Lighthouse 12.8.2, di động, ngày 13/11/2026 trên production).}
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{@{}l c c c c c@{}}
+\toprule \textbf{Trang} & \textbf{Perf.} & \textbf{A11y} & \textbf{Best Pr.} & \textbf{FCP (giữa)} & \textbf{TBT lớn nhất} \\ \midrule
+\texttt{/} & 97 & 92 & 100 & 1,2 s & 80 ms \\
+\texttt{/cart} & 97 & 95 & 100 & 1,2 s & 70 ms \\
+\texttt{/checkout} & 97 & 95 & 100 & 1,2 s & 70 ms \\ \bottomrule
+\end{tabularx}
+\caption{Giá trị giữa của 3 lượt đo; CLS = 0 ở cả ba trang}
+\end{table}
+FCP đạt mục tiêu 1,5 s ở giá trị giữa, nhưng 3 trong 9 lượt đo vượt (2,1 s, 1,8 s, 1,8 s), và điều kiện giả lập của Lighthouse chậm hơn 4G thực.
+Accessibility chưa đạt 100: còn lỗi tương phản màu ở \texttt{/} và liên kết không có tên mô tả ở \texttt{/}, \texttt{/cart}.
+Vì vậy NFR-05 mới được đo một phần.
+
+% =====================================================================
+\section{Ma trận truy vết}
+Ma trận đầy đủ cho 21 FR và 5 NFR nằm ở \fpath{docs/traceability-matrix.md}. Bảng dưới trích các yêu cầu đã hiện thực (MVP), theo mẫu của đề:
+yêu cầu $\rightarrow$ use-case/user story $\rightarrow$ sơ đồ $\rightarrow$ mã $\rightarrow$ kiểm thử.
+
+\begin{table}[H]\centering\scriptsize
+\begin{tabularx}{\textwidth}{@{}l L{2.4cm} L{2.2cm} L{3.3cm} X@{}}
+\toprule \textbf{FR} & \textbf{UC / US} & \textbf{Sơ đồ} & \textbf{Mã} & \textbf{Kiểm thử} \\ \midrule
+01 & UC-01, US-01 & Activity-01, Class-01 & \texttt{GET /products}; \fpath{page.tsx}, \fpath{ProductCard.tsx} & \fpath{products.controller.spec.ts}, \fpath{swagger.spec.ts}, Postman \\
+02 & UC-02, US-02 & Activity-01, Class-01 & \fpath{ProductDetailModal.tsx}; \fpath{orders/pricing.ts} & \fpath{orders.controller.spec.ts}; unit test web \\
+03 & UC-03, US-03 & Activity-01, ADR-004 & \fpath{cart/page.tsx}, \fpath{useCartStore.ts} & E2E, unit test \fpath{useCartStore} \\
+04 & UC-04, US-04 & Activity-01, Sequence-01 & \texttt{POST /auth/register}, \texttt{/auth/login}; \fpath{jwt-auth.guard.ts} & \fpath{auth.controller.spec.ts} \\
+05 & UC-05, US-05 & Sequence-01, Class-01 & \texttt{POST /orders}; \texttt{OrdersService.create} & \fpath{orders.controller.spec.ts}, E2E \\
+06 & UC-05, US-06 & Sequence-01 (\texttt{alt}) & \texttt{POST /payments}; \fpath{mock-gateway.ts} & \fpath{payments.controller.spec.ts}, E2E \\
+07 & UC-06, US-07 & Activity-01 & \texttt{GET /orders/me}; \fpath{orders/page.tsx} & \fpath{orders.controller.spec.ts}, E2E \\
+08 & UC-05, US-08 & Sequence-01 & \fpath{order-status.ts}; \texttt{PaymentsService.pay} & \fpath{order-status.spec.ts}, \fpath{payments.controller.spec.ts} \\
+09 & UC-05, US-09 & Sequence-01 (\texttt{opt}), ADR-005 & \fpath{common/idempotency.ts} & \fpath{orders/payments.controller.spec.ts}, E2E \\
+10 & UC-20, US-10 & Sequence-01, Class-01 & \fpath{payments/loyalty.ts}; \texttt{GET /loyalty/me} & \fpath{loyalty.spec.ts}, E2E \\ \bottomrule
+\end{tabularx}
+\caption{Truy vết các yêu cầu MVP}
+\end{table}
+
+\begin{ghichu}
+\textbf{Những chỗ tài liệu trong kho chưa khớp thực tế (cần sửa ở bản sau).}
+(1) \fpath{traceability-matrix.md} còn ghi 74 test API trong khi thực tế là 112, và có một ô tự mâu thuẫn (``0/10 có kiểm thử tự động'' nhưng chú thích
+trong ngoặc nói cả 10 đều có test). (2) Ma trận vẫn ghi FR-20 là kế hoạch, trong khi KDS đã merge vào \texttt{main}.
+Báo cáo này dùng số liệu đo lại, không dùng số trong ma trận.
+\end{ghichu}
+
+% =====================================================================
+\section{Lịch sử Git và thứ tự tạo phẩm}
+Đề yêu cầu tài liệu Task 1--3 có trong lịch sử git trước mã. Số liệu dưới đây lấy từ \texttt{git log} trên \texttt{origin/main}.
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule \textbf{Ngày (2026)} & \textbf{Sự kiện (commit đầu tiên của tạo phẩm)} \\ \midrule
+26/10 & Khung thư mục, CI; \textbf{đưa backend và frontend từ Assignment 1 vào} \fpath{apps/api}, \fpath{apps/web} \\
+27/10 & Đồng bộ thêm tính năng từ Assignment 1, workflow CD, backlog MoSCoW \\
+30/10 & Task 1: bối cảnh và phạm vi (\fpath{context-and-scope.md}), SRS giao diện, user story \\
+01/11 -- 07/11 & Task 2: Activity-01, Class-01 (01/11), Sequence-01 (07/11); Task 1.3: use-case checkout (06/11) \\
+03/11 -- 04/11 & Task 3: ADR 001, 004, kiến trúc frontend (03/11), Deployment diagram (04/11), SRS backend (04/11) \\
+Từ 11/11 & Sprint 2 hoàn thiện, E2E (12/11), Lighthouse (13/11), nền Sprint 3 và KDS \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{ghichu}
+\textbf{Điều cần nói thẳng.} Mã nền của MVP (gồm cả backend đặt đơn, thanh toán và frontend) được đưa vào kho ngày 26/10 từ Assignment 1,
+\emph{trước} các tài liệu yêu cầu (từ 30/10). Nên lịch sử git của kho này \textbf{không} thể hiện đúng thứ tự ``tài liệu $\rightarrow$ mã'' mà đề đòi hỏi cho phần
+mã nền. Các tạo phẩm tài liệu (Task 1--3) vẫn được commit đầy đủ, có Pull Request riêng, và đã được đối chiếu, sửa cho khớp mã ở các PR \#117--\#144.
+Báo cáo nêu rõ điểm này thay vì mô tả là đúng quy trình.
+\end{ghichu}
+
+\subsection{Đóng góp}
+Số liệu tính trên \texttt{origin/main} ngày 14/11/2026 (trước các commit Sprint 3--4 chưa đẩy lên).
+Tài dùng hai tên hiển thị git (\texttt{Tài Trần}, \texttt{TeoThanhLich}) với cùng một địa chỉ email nên được gộp theo email.
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{@{}l X r r@{}}
+\toprule \textbf{Nội dung} & \textbf{Cách tính} & \textbf{Long} & \textbf{Tài} \\ \midrule
+Pull Request đã merge & tiền tố nhánh \texttt{long/}, \texttt{tai/} (74 PR) & 21 & 53 \\
+Commit không tính merge & theo email tác giả & 84 & 31 \\
+Dòng thêm / xóa & trong \fpath{apps/}, \fpath{docs/}, \fpath{tests/} & +35.891 / $-$11.320 & +5.255 / $-$589 \\ \bottomrule
+\end{tabularx}
+\end{table}
+Số dòng của Long lớn vì gồm đợt đưa mã Assignment 1 vào ngày 26/10. Phần lớn Pull Request tài liệu (Task 1--3, ADR, truy vết, release notes) do Tài thực hiện;
+backend, CI/CD, E2E và triển khai do Long thực hiện.
+
+% =====================================================================
+\section{Hạn chế và hướng phát triển}
+\begin{itemize}
+  \item Thứ tự ``tài liệu trước mã'' không thể hiện được cho phần mã nền (mục 8).
+  \item FR-11 đến FR-19 và FR-21 (voucher, hủy đơn, đánh giá, báo cáo, kho, quản lý menu và nhân sự, mã nhận hàng) chưa merge vào \texttt{main}
+        tại thời điểm viết; chỉ FR-20 (KDS) đã merge. Các phần này được làm ở nhánh riêng và phải được đẩy lên, thêm test, rồi mới được tính là hoàn thành.
+  \item NFR-05 chưa đo hết (chưa đo đổi size/topping trong 50 ms và luồng menu đến thanh toán trong 60 giây); NFR-04 còn lỗi tương phản và tên liên kết.
+  \item Backend production chạy trên gói miễn phí nên khởi động nguội mất vài giây đến hơn một phút ở lần gọi đầu.
+  \item Các số liệu kiểm thử trong \fpath{traceability-matrix.md} và \fpath{release-notes.md} cần cập nhật theo số đo mới.
+\end{itemize}
+
+% =====================================================================
+\begin{thebibliography}{9}
+\bibitem{de} Đề bài lớn \emph{BrewLite -- Assignment 2: Requirements to Deployment}, Trường Đại học Sài Gòn, 2026.
+\bibitem{nest} NestJS Documentation, \url{https://docs.nestjs.com}.
+\bibitem{prisma} Prisma ORM Documentation, \url{https://www.prisma.io/docs}.
+\bibitem{next} Next.js Documentation, \url{https://nextjs.org/docs}.
+\bibitem{puml} PlantUML, \url{https://plantuml.com}.
+\bibitem{adr} M. Nygard, \emph{Documenting Architecture Decisions}, 2011.
+\bibitem{lh} Google, \emph{Lighthouse}, \url{https://developer.chrome.com/docs/lighthouse}.
+\end{thebibliography}
+\end{document}
