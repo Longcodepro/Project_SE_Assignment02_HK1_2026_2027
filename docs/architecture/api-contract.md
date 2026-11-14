@@ -536,6 +536,64 @@ Token đã cấp trước khi khóa vẫn dùng được cho đến khi hết h�
 
 Seed `Topping` và `SizeSurcharge` đúng bảng giá hiện tại (`tran-chau` 8.000, `kem-cheese` 10.000, `thach-cafe` 6.000; size S +0, M +5.000, L +10.000), nên kết quả tính giá không đổi cho tới khi S4.2 chuyển `POST /orders` sang đọc bảng này. Migration chỉ thêm bảng và cột có giá trị mặc định, chạy được trên CSDL đã có dữ liệu.
 
+## Quản trị nhân sự (Manager)
+
+Issue S4.7. Mọi route dưới `/admin/staff` chỉ cho `MANAGER` (quy tắc chung ở mục **Nền tảng Sprint 4**: 401 thiếu hoặc sai token, 403 sai vai trò). Nhân viên là tài khoản có `role` `BARISTA` hoặc `CASHIER`. Manager không tạo, không đổi vai trò, không khóa tài khoản `MANAGER` hay `CUSTOMER` qua các route này.
+
+### GET /admin/staff
+
+Danh sách tài khoản nhân viên và Manager (mọi `role` khác `CUSTOMER`), cũ nhất lên đầu. Không trả mật khẩu.
+
+200 OK
+
+```json
+[
+  { "phone": "0900000001", "name": "Barista", "role": "BARISTA", "isLocked": false, "createdAt": "2026-11-13T03:00:00.000Z" }
+]
+```
+
+### POST /admin/staff
+
+Tạo tài khoản nhân viên; nhân viên đăng nhập bằng SĐT ở `POST /auth/login`.
+
+Request
+
+```json
+{ "phone": "0911222333", "password": "matkhau123", "name": "Thu ngân 2", "role": "CASHIER" }
+```
+
+`phone` theo đúng quy tắc của `POST /auth/register` (số di động Việt Nam, `+84` được đổi thành `0`). `password` 6–72 ký tự. `name` tùy chọn, tối đa 100 ký tự. `role` chỉ nhận `BARISTA` hoặc `CASHIER`. Trường lạ bị từ chối (400).
+
+201 Created
+
+```json
+{ "phone": "0911222333", "name": "Thu ngân 2", "role": "CASHIER", "isLocked": false }
+```
+
+400 dữ liệu không hợp lệ, hoặc `role` ngoài `BARISTA`/`CASHIER` (kể cả `MANAGER`, `CUSTOMER`). 409 `phone` đã có tài khoản.
+
+### PATCH /admin/staff/:phone
+
+Đổi vai trò và/hoặc khóa, mở khóa một tài khoản nhân viên. `:phone` là SĐT 10 chữ số của tài khoản.
+
+Request: ít nhất một trong hai trường.
+
+```json
+{ "role": "BARISTA", "isLocked": true }
+```
+
+`role` chỉ nhận `BARISTA` hoặc `CASHIER`; `isLocked` là `true` (khóa) hoặc `false` (mở khóa). Gửi lại đúng trạng thái hiện tại vẫn trả 200 (không lỗi). Tài khoản bị khóa không đăng nhập được (xem mục **Khóa tài khoản**), token đã cấp vẫn dùng được đến khi hết hạn.
+
+200 OK
+
+```json
+{ "phone": "0911222333", "name": "Thu ngân 2", "role": "BARISTA", "isLocked": true }
+```
+
+- 400 body rỗng, `role` hoặc `isLocked` sai kiểu, hoặc `:phone` không phải SĐT hợp lệ.
+- 404 không có tài khoản với SĐT này.
+- 409 tài khoản không phải nhân viên (`MANAGER` hoặc `CUSTOMER`), thông báo `Chỉ quản lý được tài khoản nhân viên`.
+
 ## Idempotency-Key
 
 `POST /orders` và `POST /payments` nhận thêm header tùy chọn `Idempotency-Key` (1–128 ký tự: chữ, số, `_`, `-`). Frontend nên sinh một key duy nhất (hiện dùng `ord_<thời gian>_<ngẫu nhiên>` cho đơn và `pay_<thời gian>_<ngẫu nhiên>` cho thanh toán; `crypto.randomUUID()` cũng hợp lệ, server không bắt buộc UUID) cho mỗi lần người dùng bấm đặt/thanh toán và gửi lại **đúng key đó** khi retry do mất mạng.
