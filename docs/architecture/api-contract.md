@@ -775,6 +775,62 @@ Một dòng: `{ "size": "M", "extra": 5000 }`.
 - `GET /admin/sizes`: ba dòng S, M, L. 200 OK.
 - `PATCH /admin/sizes/:size`, body `{ "extra": 6000 }` (số nguyên 0 đến 10.000.000): 200 OK, trả dòng sau khi sửa. 400 `:size` ngoài `S`/`M`/`L`, `extra` sai, trường lạ. Phụ thu mới chỉ áp cho đơn tạo sau đó.
 
+## Kho nguyên liệu và công thức pha chế
+
+Issue S4.4. Kho theo dõi **số lượng thực** từng nguyên liệu theo đơn vị của nó; công thức khai báo mỗi ly món (theo size) và mỗi phần topping dùng bao nhiêu nguyên liệu. Kiểm tra, trừ và hoàn kho khi có đơn là việc của S4.5; mục này chỉ có dữ liệu và các route quản lý.
+
+Phân quyền: **đọc kho và nhập kho** cho `BARISTA` và `MANAGER` (Barista cần xem tồn và nhập hàng); **tạo, sửa nguyên liệu và khai báo công thức** chỉ `MANAGER`. Thiếu hoặc sai token: 401; vai trò khác: 403.
+
+Một nguyên liệu: `{ "id": 1, "name": "Cà phê rang xay", "unit": "G", "stock": 5000, "minStock": 1000 }`. `unit` là `G`, `ML` hoặc `PIECE` (hiển thị g, ml, cái). `stock` và `minStock` là số nguyên theo `unit`. `stock` **chỉ thay đổi qua phiếu nhập kho** (và tự động trừ, hoàn khi có đơn ở S4.5), không sửa trực tiếp, để mọi biến động đều truy vết được.
+
+### Nguyên liệu
+
+- `GET /admin/ingredients` (`BARISTA`, `MANAGER`): mọi nguyên liệu, theo `id` tăng dần. 200 OK.
+- `POST /admin/ingredients` (`MANAGER`), body `{ "name": "Sữa đặc", "unit": "ML", "minStock": 500 }`: `name` 1–100 ký tự, duy nhất; `unit` bắt buộc, **không đổi được sau khi tạo** vì công thức tính theo đơn vị; `minStock` số nguyên không âm, mặc định 0. Nguyên liệu mới có `stock` bằng 0. 201 Created. 409 tên đã tồn tại (`Nguyên liệu đã tồn tại`).
+- `PATCH /admin/ingredients/:id` (`MANAGER`), body có ít nhất một trong `name`, `minStock`: 200 OK, trả nguyên liệu sau khi sửa. 404 không có nguyên liệu. 409 tên trùng.
+- 400 dữ liệu không hợp lệ, body rỗng, trường lạ (kể cả `stock`, `unit` ở PATCH), `:id` không phải số nguyên.
+
+### Phiếu nhập kho
+
+- `POST /admin/ingredients/:id/receipts` (`BARISTA`, `MANAGER`), body `{ "quantity": 2000, "note": "Nhập hàng NCC A" }`: `quantity` số nguyên từ 1 đến 1.000.000.000; `note` tùy chọn, tối đa 200 ký tự. Một transaction: tạo phiếu (ghi `createdByPhone` là người trong token) và **cộng** `stock`. 201 Created:
+
+```json
+{ "id": 7, "ingredientId": 1, "quantity": 2000, "note": "Nhập hàng NCC A", "createdByPhone": "0900000001", "createdAt": "2026-11-15T03:00:00.000Z", "stock": 7000 }
+```
+
+`stock` là tồn sau khi nhập. 400 dữ liệu không hợp lệ. 404 không có nguyên liệu.
+
+- `GET /admin/ingredients/:id/receipts` (`BARISTA`, `MANAGER`): lịch sử nhập của nguyên liệu, mới nhất trước, query `limit` từ 1 đến 200 (mặc định 50). Mỗi phần tử như phiếu trên, không có `stock`. 404 không có nguyên liệu. 400 `limit` ngoài khoảng.
+
+### Công thức món
+
+Công thức khai báo **số nguyên liệu cho một ly** theo từng size. Một dòng: `{ "size": "M", "ingredientId": 1, "quantity": 18 }`.
+
+- `GET /admin/products/:id/recipe` (`MANAGER`): 200 OK
+
+```json
+{
+  "productId": 1,
+  "items": [
+    { "size": "S", "ingredientId": 1, "ingredientName": "Cà phê rang xay", "unit": "G", "quantity": 15 },
+    { "size": "M", "ingredientId": 1, "ingredientName": "Cà phê rang xay", "unit": "G", "quantity": 18 }
+  ]
+}
+```
+
+`items` sắp theo size S, M, L rồi `ingredientId`. Món chưa có công thức trả `items: []`. 404 không có món.
+
+- `PUT /admin/products/:id/recipe` (`MANAGER`), body `{ "items": [ { "size": "M", "ingredientId": 1, "quantity": 18 } ] }`: **thay toàn bộ** công thức của món bằng danh sách gửi lên (một transaction), gửi `items: []` để xóa công thức. Mỗi cặp (`size`, `ingredientId`) chỉ xuất hiện một lần; `quantity` số nguyên từ 1 đến 1.000.000; mọi `ingredientId` phải tồn tại. 200 OK, trả công thức mới như `GET`. 400 dữ liệu không hợp lệ, trùng cặp, hoặc nguyên liệu không tồn tại (`Nguyên liệu không tồn tại: 99`). 404 không có món.
+
+Món **chưa có công thức** (không có dòng nào) thì không kiểm tra và không trừ kho (xem S4.5).
+
+### Công thức topping
+
+Công thức một **phần** topping. Một dòng: `{ "ingredientId": 3, "quantity": 30 }`.
+
+- `GET /admin/toppings/:code/recipe` (`MANAGER`): 200 OK `{ "toppingCode": "tran-chau", "items": [ { "ingredientId": 3, "ingredientName": "Trân châu", "unit": "G", "quantity": 30 } ] }`. 404 không có topping.
+- `PUT /admin/toppings/:code/recipe` (`MANAGER`), body `{ "items": [ { "ingredientId": 3, "quantity": 30 } ] }`: thay toàn bộ, cùng quy tắc với công thức món (mỗi `ingredientId` một lần). 200 OK, trả như `GET`. 400, 404 như trên.
+
 ## Idempotency-Key
 
 `POST /orders` và `POST /payments` nhận thêm header tùy chọn `Idempotency-Key` (1–128 ký tự: chữ, số, `_`, `-`). Frontend nên sinh một key duy nhất (hiện dùng `ord_<thời gian>_<ngẫu nhiên>` cho đơn và `pay_<thời gian>_<ngẫu nhiên>` cho thanh toán; `crypto.randomUUID()` cũng hợp lệ, server không bắt buộc UUID) cho mỗi lần người dùng bấm đặt/thanh toán và gửi lại **đúng key đó** khi retry do mất mạng.
