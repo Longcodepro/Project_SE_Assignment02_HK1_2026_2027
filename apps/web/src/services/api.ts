@@ -346,6 +346,19 @@ export const apiService = {
         return res.data;
     },
 
+    // 12c. Đánh giá 1-5 sao kèm nhận xét cho đơn COMPLETED của mình, mỗi đơn một lần
+    reviewOrder: async (
+        orderId: string,
+        stars: number,
+        comment?: string,
+    ): Promise<{ id: number; orderId: string; stars: number; comment: string | null; createdAt: string }> => {
+        const res = await axios.post(`${getApiUrl()}/orders/${orderId}/review`, {
+            stars,
+            ...(comment ? { comment } : {}),
+        });
+        return res.data;
+    },
+
     // 12b. Bỏ đơn nháp (đơn chưa trả tiền) để trả lại lượt dùng mã; lỗi thì bỏ qua vì chỉ là dọn dẹp
     discardDraftOrder: async (orderId: string): Promise<void> => {
         try {

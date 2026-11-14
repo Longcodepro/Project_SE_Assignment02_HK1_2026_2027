@@ -10,7 +10,9 @@ import { formatPickupCode } from '@/lib/pickup';
 import { canCustomerCancel } from '@/lib/cancel';
 import { apiErrorMessage, httpStatus } from '@/lib/errors';
 import CancelOrderModal from '@/components/CancelOrderModal';
-import { Clock, Coffee, CheckCircle2, AlertCircle, ChevronRight, RefreshCw, ChefHat, LogIn, CreditCard, Wallet, X, Loader2, Ban } from 'lucide-react';
+import ReviewModal from '@/components/ReviewModal';
+import { loadDismissedReviews, pickOrderToReview, saveDismissedReviews } from '@/lib/review';
+import { Clock, Coffee, CheckCircle2, AlertCircle, ChevronRight, RefreshCw, ChefHat, LogIn, CreditCard, Wallet, X, Loader2, Ban, Star } from 'lucide-react';
 
 export default function OrderHistoryPage(){
     const isClient = useSyncExternalStore(() => () => {}, () => true, () => false);
@@ -34,6 +36,14 @@ export default function OrderHistoryPage(){
     const [cancelBusy, setCancelBusy] = useState<boolean>(false);
     const [cancelError, setCancelError] = useState<string | null>(null);
     const [notice, setNotice] = useState<{ kind: 'ok' | 'warn'; text: string } | null>(null);
+
+    // Đánh giá: popup tự bật cho đơn COMPLETED chưa đánh giá; "Để sau" thì nhớ trên máy, vẫn đánh giá được bằng nút trên đơn
+    const [dismissedReviews, setDismissedReviews] = useState<string[]>(() => loadDismissedReviews());
+    const [manualReview, setManualReview] = useState<Order | null>(null);
+    const [reviewBusy, setReviewBusy] = useState<boolean>(false);
+    const [reviewError, setReviewError] = useState<string | null>(null);
+    const autoReview = pickOrderToReview(orders, dismissedReviews);
+    const reviewTarget = manualReview ?? autoReview ?? null;
 
     // Gọi API lấy danh sách đơn thật
     const fetchOrders = async (silent = false) => {
@@ -128,6 +138,39 @@ export default function OrderHistoryPage(){
             setRetryError(msg);
         } finally {
             setRetryLoading(false);
+        }
+    };
+
+    const closeReview = () => {
+        if (reviewTarget && !manualReview) {
+            const next = [...dismissedReviews, String(reviewTarget.id)];
+            setDismissedReviews(next);
+            saveDismissedReviews(next);
+        }
+        setManualReview(null);
+        setReviewError(null);
+    };
+
+    const handleReview = async (stars: number, comment: string) => {
+        if (!reviewTarget) return;
+        setReviewBusy(true);
+        setReviewError(null);
+        try {
+            await apiService.reviewOrder(String(reviewTarget.id), stars, comment || undefined);
+            setManualReview(null);
+            setNotice({ kind: 'ok', text: 'Cảm ơn bạn đã đánh giá! BrewLite sẽ tiếp tục cải thiện.' });
+            await fetchOrders(true);
+        } catch (err: unknown) {
+            if (httpStatus(err) === 409) {
+                // Đơn đã được đánh giá (hoặc chưa hoàn tất): làm mới để popup tự tắt, không đánh giá lần hai
+                setManualReview(null);
+                setNotice({ kind: 'warn', text: 'Đơn này đã được đánh giá rồi.' });
+                await fetchOrders(true);
+            } else {
+                setReviewError(apiErrorMessage(err, 'Không thể gửi đánh giá, vui lòng thử lại.'));
+            }
+        } finally {
+            setReviewBusy(false);
         }
     };
 
@@ -391,6 +434,32 @@ export default function OrderHistoryPage(){
                                     </div>
                                 )}
 
+                                {order.status === 'COMPLETED' && order.review && (
+                                    <div data-testid="review-done" className="mt-2.5 sm:mt-3.5 bg-amber-50/70 border border-amber-200/70 rounded-xl px-3 py-2 text-[11px] sm:text-xs text-amber-900">
+                                        <p className="flex items-center gap-1 font-bold">
+                                            Bạn đã đánh giá
+                                            <span className="inline-flex" aria-label={`${order.review.stars} sao`}>
+                                                {[1, 2, 3, 4, 5].map((n) => (
+                                                    <Star key={n} className={`w-3.5 h-3.5 ${n <= order.review!.stars ? 'fill-amber-400 text-amber-400' : 'text-amber-200'}`} />
+                                                ))}
+                                            </span>
+                                        </p>
+                                        {order.review.comment && <p className="mt-0.5 text-amber-800">“{order.review.comment}”</p>}
+                                    </div>
+                                )}
+                                {order.status === 'COMPLETED' && order.review === null && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setManualReview(order);
+                                            setReviewError(null);
+                                        }}
+                                        className="mt-2.5 sm:mt-3.5 inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-xl px-3 py-1.5 transition"
+                                    >
+                                        <Star className="w-3.5 h-3.5" />
+                                        Đánh giá đơn này
+                                    </button>
+                                )}
                                 {order.status === 'CANCELLED' && (
                                     <div className="mt-2.5 sm:mt-3.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-[11px] sm:text-xs text-gray-700 space-y-0.5">
                                         {order.cancelReason && (
@@ -490,6 +559,18 @@ export default function OrderHistoryPage(){
                     </div>
                 )}    
             </main>
+
+            {/* POPUP ĐÁNH GIÁ SAU KHI NHẬN MÓN */}
+            {reviewTarget && !cancelingOrder && !retryingOrder && (
+                <ReviewModal
+                    key={String(reviewTarget.id)}
+                    orderLabel={`#${reviewTarget.id}`}
+                    error={reviewError}
+                    busy={reviewBusy}
+                    onSubmit={(stars, comment) => void handleReview(stars, comment)}
+                    onClose={closeReview}
+                />
+            )}
 
             {/* MODAL HỦY ĐƠN */}
             {cancelingOrder && (

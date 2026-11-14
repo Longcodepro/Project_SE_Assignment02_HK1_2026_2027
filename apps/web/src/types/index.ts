@@ -78,6 +78,8 @@ export interface Order {
     // Lý do hủy và thời điểm hoàn tiền mô phỏng (đơn CANCELLED)
     cancelReason?: string | null;
     refundedAt?: string | null;
+    // Đánh giá của khách (null nếu chưa đánh giá, mỗi đơn đánh giá một lần)
+    review?: { stars: number; comment: string | null } | null;
 }
 
 // Kết quả POST /orders: server tính tổng và số tiền giảm
