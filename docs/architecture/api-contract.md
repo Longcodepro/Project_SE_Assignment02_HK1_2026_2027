@@ -652,6 +652,58 @@ Quy tắc kiểm tra trên giá trị **sau khi sửa**: `discountValue` phải 
 
 200 OK: mã sau khi sửa. 400 body rỗng, sai kiểu, `:id` không phải số nguyên, hoặc vi phạm quy tắc trên. 404 không có mã với `id` này.
 
+## Báo cáo doanh thu và sản lượng (Manager)
+
+Issue S4.9. Chỉ `MANAGER` (401 thiếu hoặc sai token, 403 sai vai trò).
+
+### GET /admin/reports
+
+Query (đều tùy chọn):
+
+| Tham số | Ý nghĩa | Mặc định |
+|---|---|---|
+| `from` | ngày bắt đầu `YYYY-MM-DD` (bao gồm) | `to` trừ 6 ngày |
+| `to` | ngày kết thúc `YYYY-MM-DD` (bao gồm) | hôm nay |
+| `groupBy` | `day`, `week` hoặc `month` | `day` |
+
+Ngày tính theo **giờ Việt Nam (UTC+7)** và theo **thời điểm tạo đơn** (`createdAt`). Khoảng `from` đến `to` tối đa 366 ngày. Tuần bắt đầu từ thứ Hai.
+
+200 OK
+
+```json
+{
+  "from": "2026-11-01",
+  "to": "2026-11-14",
+  "groupBy": "week",
+  "totals": {
+    "revenue": 1234000,
+    "completedOrders": 12,
+    "totalOrders": 20,
+    "cancelledOrders": 2,
+    "cancelRate": 0.1
+  },
+  "series": [
+    { "period": "2026-10-26", "revenue": 500000, "completedOrders": 5, "totalOrders": 8, "cancelledOrders": 1, "cancelRate": 0.125 },
+    { "period": "2026-11-02", "revenue": 734000, "completedOrders": 7, "totalOrders": 12, "cancelledOrders": 1, "cancelRate": 0.0833 }
+  ],
+  "topProducts": [
+    { "productId": 1, "productName": "Cà phê sữa", "quantity": 42 }
+  ]
+}
+```
+
+Định nghĩa các chỉ số (theo `context-and-scope.md` §6.6, mục 7):
+
+- `revenue` (VND): tổng `total` (đã trừ giảm giá) của các đơn có trạng thái `PAID`, `PREPARING`, `READY`, `COMPLETED`. Đơn `PENDING`, `PAYMENT_FAILED`, `CANCELLED` không tính.
+- `completedOrders`: số đơn `COMPLETED`.
+- `totalOrders`: số đơn tạo trong kỳ, mọi trạng thái. `cancelledOrders`: số đơn `CANCELLED`.
+- `cancelRate`: `cancelledOrders / totalOrders`, từ 0 đến 1, làm tròn 4 chữ số thập phân; `0` khi `totalOrders` là 0.
+- `topProducts`: tối đa 5 món có tổng số ly bán nhiều nhất (cộng `quantity` của các đơn được tính doanh thu) trong **cả khoảng** `from` đến `to`, giảm dần theo `quantity`, bằng nhau thì theo `productId` tăng dần. Không có món nào thì `[]`.
+- `series`: một phần tử cho **mỗi kỳ** trong khoảng, tăng dần theo thời gian, kỳ không có đơn vẫn có mặt với các giá trị `0`. `period` là `YYYY-MM-DD` (ngày) hoặc ngày thứ Hai của tuần `YYYY-MM-DD` (tuần) hoặc `YYYY-MM` (tháng). Với `week` và `month`, kỳ đầu và cuối có thể rộng hơn khoảng `from` đến `to` nhưng chỉ tính đơn nằm trong khoảng đó. `totals` bằng tổng của `series`.
+
+- 400 `from` hoặc `to` không phải ngày hợp lệ dạng `YYYY-MM-DD`, `from` sau `to`, khoảng vượt 366 ngày, `groupBy` ngoài ba giá trị, hoặc có tham số lạ.
+- 401 thiếu hoặc sai token. 403 không phải `MANAGER`.
+
 ## Idempotency-Key
 
 `POST /orders` và `POST /payments` nhận thêm header tùy chọn `Idempotency-Key` (1–128 ký tự: chữ, số, `_`, `-`). Frontend nên sinh một key duy nhất (hiện dùng `ord_<thời gian>_<ngẫu nhiên>` cho đơn và `pay_<thời gian>_<ngẫu nhiên>` cho thanh toán; `crypto.randomUUID()` cũng hợp lệ, server không bắt buộc UUID) cho mỗi lần người dùng bấm đặt/thanh toán và gửi lại **đúng key đó** khi retry do mất mạng.
