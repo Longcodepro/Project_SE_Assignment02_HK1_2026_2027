@@ -399,6 +399,68 @@ Lượt dùng được **giữ ngay khi tạo đơn** (tăng `usedCount`, cùng 
 
 Mỗi đơn có thêm `discountAmount` (số nguyên, `0` nếu không dùng mã) và `promoCode` (chuỗi hoặc `null`). `total` đã là số tiền sau giảm.
 
+## Hủy đơn hàng
+
+Issue S3.8. Hủy theo bảng chuyển trạng thái ở mục **Vòng đời đơn hàng và phân quyền**: chỉ hủy được khi quán chưa bắt đầu pha chế.
+
+| Trạng thái đơn | Khách (chủ đơn) | Cashier | Hoàn tiền mô phỏng và trừ điểm |
+|---|---|---|---|
+| `PENDING`, `PAYMENT_FAILED` | hủy được | **không** (403) | không (chưa trả tiền) |
+| `PAID` | hủy được, **bắt buộc có lý do** | hủy được, **bắt buộc có lý do** | có |
+| `PREPARING`, `READY`, `COMPLETED`, `CANCELLED` | 409 | 409 | |
+
+Khi hủy đơn `PAID`, trong cùng một transaction: đơn sang `CANCELLED` kèm `cancelReason`; `refundedAt` ghi thời điểm hoàn tiền mô phỏng (không có giao dịch hoàn tiền thật, không thêm dòng `Payment`); trừ lại số điểm đã tích của đơn đó khỏi `loyaltyPoints`; nếu đơn dùng mã giảm giá thì trả lại một lượt dùng của mã. Hủy đơn chưa trả tiền chỉ trả lại lượt dùng của mã (nếu có). Hoàn kho nguyên liệu bổ sung ở Sprint 4 (S4.5).
+
+### POST /orders/:id/cancel
+
+Khách hủy đơn của chính mình. Cần header `Authorization: Bearer <accessToken>`. Đơn của người khác trả 404 như không có đơn.
+
+Request
+
+```json
+{ "version": 2, "reason": "Đổi ý, không muốn uống nữa" }
+```
+
+`version` là số nguyên không âm, **đúng giá trị `version` của đơn lấy từ `GET /orders/me`**. `reason` là chuỗi tối đa 200 ký tự, bắt buộc khi đơn đang `PAID` (sau khi cắt khoảng trắng không được rỗng), tùy chọn ở các trạng thái khác. Trường lạ bị từ chối (400).
+
+200 OK: `version` đã tăng thêm 1. `refundedAt` là thời điểm hoàn tiền mô phỏng khi đơn từng `PAID`, ngược lại `null`.
+
+```json
+{ "id": "ord_123", "status": "CANCELLED", "version": 3, "refundedAt": "2026-11-14T04:10:00.000Z" }
+```
+
+- 400 thiếu hoặc sai kiểu `version`, `reason` quá 200 ký tự, có trường lạ, hoặc đơn `PAID` mà không có `reason` (thông báo `Cần ghi lý do khi hủy đơn đã thanh toán`).
+- 401 thiếu hoặc sai token.
+- 404 không có đơn này, hoặc không phải đơn của người dùng trong token.
+- 409 `version` không khớp (đơn vừa bị đổi, ví dụ Barista vừa bấm `PREPARING`), hoặc đơn không hủy được từ trạng thái hiện tại (`PREPARING`, `READY`, `COMPLETED`, `CANCELLED`). Client tải lại `GET /orders/me` rồi thử lại.
+
+Kiểm tra theo thứ tự: 404, rồi 409 (`version`), rồi 409 (trạng thái), rồi 400 (`reason`).
+
+### POST /cashier/orders/:id/cancel
+
+Cashier hủy đơn **đã thanh toán** (`PAID`) tại quầy. Cần token của tài khoản `role` `CASHIER`. Cùng body, cùng kết quả và cùng quy tắc `version` với `POST /orders/:id/cancel`, trừ các điểm khác:
+
+- Hủy được đơn của mọi khách (tìm theo `id`).
+- Chỉ hủy được đơn `PAID`; đơn `PENDING` hoặc `PAYMENT_FAILED` trả 403 (`Quầy chỉ hủy được đơn đã thanh toán`).
+- Danh sách đơn có thể hủy lấy ở `GET /cashier/orders?status=PAID` (kèm `version`).
+- 401 thiếu hoặc sai token. 403 không phải `CASHIER`.
+
+Tình huống Barista bấm `PREPARING` đúng lúc khách bấm hủy: cả hai gửi `version` của cùng lần đọc, bên đến sau nhận 409; nếu Barista đến trước thì đơn đã `PREPARING` và không hủy được nữa.
+
+### GET /orders/me (bổ sung)
+
+Mỗi đơn có thêm ba trường:
+
+| Trường | Nghĩa |
+|---|---|
+| `version` | số phiên bản của đơn, gửi lại khi hủy |
+| `cancelReason` | lý do hủy, `null` nếu chưa hủy hoặc hủy không ghi lý do |
+| `refundedAt` | thời điểm hoàn tiền mô phỏng (ISO 8601), `null` nếu chưa hoàn |
+
+### GET /loyalty/me (điều chỉnh)
+
+`history` **không liệt kê** các lần thanh toán của đơn đã `CANCELLED` (điểm đã được trừ lại), để tổng `history` luôn khớp `balance`.
+
 ## Idempotency-Key
 
 `POST /orders` và `POST /payments` nhận thêm header tùy chọn `Idempotency-Key` (1–128 ký tự: chữ, số, `_`, `-`). Frontend nên sinh một key duy nhất (hiện dùng `ord_<thời gian>_<ngẫu nhiên>` cho đơn và `pay_<thời gian>_<ngẫu nhiên>` cho thanh toán; `crypto.randomUUID()` cũng hợp lệ, server không bắt buộc UUID) cho mỗi lần người dùng bấm đặt/thanh toán và gửi lại **đúng key đó** khi retry do mất mạng.
