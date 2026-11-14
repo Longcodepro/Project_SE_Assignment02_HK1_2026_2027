@@ -461,6 +461,39 @@ Mỗi đơn có thêm ba trường:
 
 `history` **không liệt kê** các lần thanh toán của đơn đã `CANCELLED` (điểm đã được trừ lại), để tổng `history` luôn khớp `balance`.
 
+## Đánh giá đơn hàng
+
+Issue S3.10. Khách chấm 1–5 sao kèm nhận xét sau khi nhận món.
+
+### POST /orders/:id/review
+
+Cần header `Authorization: Bearer <accessToken>`. Chỉ chủ đơn đánh giá được; đơn của người khác trả 404 như không có đơn. Chỉ đơn `COMPLETED` được đánh giá, và **mỗi đơn đánh giá một lần** (không sửa, không xóa).
+
+Request
+
+```json
+{ "stars": 5, "comment": "Cà phê ngon, ra món nhanh" }
+```
+
+`stars` là số nguyên từ 1 đến 5. `comment` tùy chọn, chuỗi tối đa 500 ký tự (cắt khoảng trắng đầu cuối; rỗng thì lưu `null`). Trường lạ bị từ chối (400).
+
+201 Created
+
+```json
+{ "id": 1, "orderId": "ord_123", "stars": 5, "comment": "Cà phê ngon, ra món nhanh", "createdAt": "2026-11-14T04:30:00.000Z" }
+```
+
+- 400 `stars` ngoài 1–5 hoặc không phải số nguyên, `comment` không phải chuỗi hoặc quá 500 ký tự, hoặc có trường lạ.
+- 401 thiếu hoặc sai token.
+- 404 không có đơn này, hoặc không phải đơn của người dùng trong token.
+- 409 đơn chưa `COMPLETED` (`Chỉ đánh giá được đơn đã hoàn tất`), hoặc đơn đã được đánh giá (`Đơn này đã được đánh giá`). Hai yêu cầu đánh giá đến cùng lúc: chỉ một yêu cầu thành công, yêu cầu còn lại nhận 409.
+
+Kiểm tra theo thứ tự: 404, rồi 409 (chưa hoàn tất), rồi 409 (đã đánh giá).
+
+### GET /orders/me (bổ sung)
+
+Mỗi đơn có thêm trường `review`: `null` nếu chưa đánh giá, ngược lại `{ "stars": 5, "comment": "..." }` (`comment` có thể là `null`). Client dùng trường này để biết có hiển thị popup đánh giá hay không (S3.11): đơn `COMPLETED` mà `review` là `null`.
+
 ## Idempotency-Key
 
 `POST /orders` và `POST /payments` nhận thêm header tùy chọn `Idempotency-Key` (1–128 ký tự: chữ, số, `_`, `-`). Frontend nên sinh một key duy nhất (hiện dùng `ord_<thời gian>_<ngẫu nhiên>` cho đơn và `pay_<thời gian>_<ngẫu nhiên>` cho thanh toán; `crypto.randomUUID()` cũng hợp lệ, server không bắt buộc UUID) cho mỗi lần người dùng bấm đặt/thanh toán và gửi lại **đúng key đó** khi retry do mất mạng.
