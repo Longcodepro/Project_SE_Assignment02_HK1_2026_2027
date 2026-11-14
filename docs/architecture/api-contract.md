@@ -831,6 +831,47 @@ Công thức một **phần** topping. Một dòng: `{ "ingredientId": 3, "quant
 - `GET /admin/toppings/:code/recipe` (`MANAGER`): 200 OK `{ "toppingCode": "tran-chau", "items": [ { "ingredientId": 3, "ingredientName": "Trân châu", "unit": "G", "quantity": 30 } ] }`. 404 không có topping.
 - `PUT /admin/toppings/:code/recipe` (`MANAGER`), body `{ "items": [ { "ingredientId": 3, "quantity": 30 } ] }`: thay toàn bộ, cùng quy tắc với công thức món (mỗi `ingredientId` một lần). 200 OK, trả như `GET`. 400, 404 như trên.
 
+## Kiểm tra, trừ, hoàn kho và cảnh báo tồn kho
+
+Issue S4.5. Dùng kho và công thức của S4.4 trong luồng đơn hàng. Quy tắc chung: **món chưa có công thức (hoặc size chưa khai báo công thức) không kiểm tra và không trừ kho**; topping chưa có công thức cũng vậy. Cờ `isAvailable` của món vẫn là công tắc thủ công của Manager và được kiểm tra như trước; kho là kiểm tra thực tế bổ sung.
+
+**Nguyên liệu cần cho một đơn** = với mỗi dòng đơn: (công thức món theo size) × `quantity`, cộng (công thức từng topping đã chọn) × `quantity`; cộng dồn theo nguyên liệu.
+
+### Khi tạo đơn: `POST /orders`
+
+Kiểm tra mọi nguyên liệu cần có `stock` đủ. Thiếu thì **không tạo đơn**, trả `409`:
+
+```json
+{ "statusCode": 409, "message": "Không đủ nguyên liệu cho đơn này: Sữa đặc, Cà phê rang xay", "error": "Conflict" }
+```
+
+Đây là kiểm tra sớm, **không giữ chỗ**: hai đơn cùng qua kiểm tra khi chỉ còn đủ cho một, đơn thanh toán sau sẽ thất bại ở bước trừ kho dưới đây. Thứ tự lỗi: sản phẩm không tồn tại (400), món hết hàng `isAvailable` (409), topping không hợp lệ (400), mã giảm giá (400, 409), rồi thiếu nguyên liệu (409).
+
+### Khi thanh toán: `POST /payments`
+
+Khi cổng thanh toán báo thành công, **trong cùng transaction với việc chuyển đơn sang `PAID`** (và cộng điểm), server trừ kho có điều kiện: với từng nguyên liệu, chỉ trừ khi `stock >= cần` (`UPDATE ... WHERE stock >= cần`), nên hai thanh toán đồng thời không bao giờ làm tồn âm. Số đã trừ của từng đơn được lưu (bảng `StockUsage`) để hoàn đúng số đó, kể cả khi công thức đổi sau đó.
+
+Nếu **bất kỳ** nguyên liệu nào không đủ: toàn bộ transaction bị hoàn tác (đơn không sang `PAID`, không cộng điểm, không trừ kho), thanh toán được ghi nhận là **thất bại và không tính tiền**, response vẫn `201` như mọi thanh toán thất bại:
+
+```json
+{ "paymentId": 4, "orderId": "ord_123", "method": "WALLET", "amount": 84000, "status": "PAYMENT_FAILED", "pointsEarned": 0, "reason": "Hết nguyên liệu: Sữa đặc" }
+```
+
+Đơn chuyển sang (hoặc giữ) `PAYMENT_FAILED` và được thanh toán lại sau khi kho được nhập thêm. Gửi lại cùng `Idempotency-Key` trả đúng kết quả đã ghi. Thanh toán thất bại do cổng (thẻ `0000`, ví trên 500.000đ) không đụng tới kho.
+
+### Khi hủy đơn đã `PAID`
+
+`POST /orders/:id/cancel` và `POST /cashier/orders/:id/cancel` **hoàn lại đúng số nguyên liệu đã trừ** của đơn (theo `StockUsage`), cùng transaction với việc đổi sang `CANCELLED`, hoàn tiền mô phỏng và trừ điểm. Đơn chưa từng `PAID` không có gì để hoàn.
+
+### Cảnh báo ngưỡng tối thiểu
+
+Nguyên liệu có `stock <= minStock` được coi là **sắp hết** (kể cả hết sạch).
+
+- Mỗi phần tử của `GET /admin/ingredients` có thêm `isLow` (`true` khi `stock <= minStock`).
+- `GET /admin/ingredients/alerts` (`BARISTA`, `MANAGER`): chỉ các nguyên liệu sắp hết, **thiếu nhiều nhất lên đầu** (`stock - minStock` tăng dần, bằng nhau thì theo `id`). 200 OK, mảng như `GET /admin/ingredients` (có `isLow: true`); không có thì `[]`. 401, 403 như các route kho khác.
+
+Client hiển thị cảnh báo bằng cách gọi lại route này định kỳ (polling), không có kênh đẩy thông báo.
+
 ## Idempotency-Key
 
 `POST /orders` và `POST /payments` nhận thêm header tùy chọn `Idempotency-Key` (1–128 ký tự: chữ, số, `_`, `-`). Frontend nên sinh một key duy nhất (hiện dùng `ord_<thời gian>_<ngẫu nhiên>` cho đơn và `pay_<thời gian>_<ngẫu nhiên>` cho thanh toán; `crypto.randomUUID()` cũng hợp lệ, server không bắt buộc UUID) cho mỗi lần người dùng bấm đặt/thanh toán và gửi lại **đúng key đó** khi retry do mất mạng.
