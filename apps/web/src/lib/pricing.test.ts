@@ -1,15 +1,20 @@
 import { describe, expect, it } from 'vitest';
-// Import thẳng bảng giá của server để bắt lệch giá giữa hai bên
-import { SIZE_EXTRA, TOPPING_PRICE, unitPrice } from '../../../api/src/orders/pricing';
+// Hàm tính giá của server; phụ thu size và giá topping do server đọc từ CSDL (Sprint 4)
+import { unitPrice } from '../../../api/src/orders/pricing';
 import { SIZE_OPTIONS, TOPPING_OPTIONS, calcUnitPrice } from './pricing';
 
-describe('bảng giá khớp server', () => {
-    it('phụ thu size giống nhau', () => {
-        expect(Object.fromEntries(SIZE_OPTIONS.map((s) => [s.id, s.extraPrice]))).toEqual(SIZE_EXTRA);
+// Giá seed mặc định của server (apps/api/prisma/seed.ts): bảng hiển thị mặc định phải khớp
+describe('bảng giá mặc định khớp giá seed của server', () => {
+    it('phụ thu size', () => {
+        expect(Object.fromEntries(SIZE_OPTIONS.map((s) => [s.id, s.extraPrice]))).toEqual({ S: 0, M: 5000, L: 10000 });
     });
 
-    it('giá topping giống nhau', () => {
-        expect(Object.fromEntries(TOPPING_OPTIONS.map((t) => [t.id, t.price]))).toEqual(TOPPING_PRICE);
+    it('giá topping', () => {
+        expect(Object.fromEntries(TOPPING_OPTIONS.map((t) => [t.id, t.price]))).toEqual({
+            'tran-chau': 8000,
+            'kem-cheese': 10000,
+            'thach-cafe': 6000,
+        });
     });
 });
 
@@ -26,12 +31,18 @@ describe('calcUnitPrice', () => {
         expect(calcUnitPrice(29000, 'L', ['khong-co'])).toBe(39000);
     });
 
-    it('cho cùng kết quả với server ở mọi tổ hợp size và topping', () => {
-        const ids = TOPPING_OPTIONS.map((t) => t.id) as (keyof typeof TOPPING_PRICE)[];
-        for (const size of SIZE_OPTIONS.map((s) => s.id)) {
+    it('cho cùng kết quả với hàm của server ở mọi tổ hợp size và topping', () => {
+        const ids = TOPPING_OPTIONS.map((t) => t.id);
+        for (const size of SIZE_OPTIONS) {
             for (const mask of Array.from({ length: 2 ** ids.length }, (_, i) => i)) {
-                const picked = ids.filter((_, i) => mask & (1 << i));
-                expect(calcUnitPrice(29000, size, picked)).toBe(unitPrice(29000, size, picked));
+                const picked = TOPPING_OPTIONS.filter((_, i) => mask & (1 << i));
+                expect(calcUnitPrice(29000, size.id, picked.map((t) => t.id))).toBe(
+                    unitPrice(
+                        29000,
+                        size.extraPrice,
+                        picked.map((t) => t.price),
+                    ),
+                );
             }
         }
     });
