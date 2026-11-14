@@ -8,8 +8,9 @@ import { Coffee, Clock, RotateCcw, CheckCircle2, ChefHat, AlertTriangle, ShieldA
 import Navbar from "@/components/Navbar";
 import axios from "axios";
 
-// Tính khoảng cách thời gian từ lúc khách đặt món (Hàm thuần túy / Pure function để pass React 19 rules)
-export function getWaitingTime(dateStr: string, currentTimestamp: number): string {
+// Tính khoảng cách thời gian từ lúc khách đặt món (Hàm thuần túy / Pure function để pass React 19 & Next.js prerender rules)
+export function getWaitingTime(dateStr: string, currentTimestamp: number | null): string {
+  if (!currentTimestamp) return 'Đang tải...';
   const diffMs = Math.max(0, currentTimestamp - new Date(dateStr).getTime());
   const diffMins = Math.floor(diffMs / (1000 * 60));
   if (diffMins < 1) return 'Vừa đặt';
@@ -23,7 +24,7 @@ export default function KdsPage(){
     const [error, setError] = useState<string | null>(null);
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
     const [conflictMessage, setConflictMessage] = useState<string | null>(null);
-    const [currentTimestamp, setCurrentTimestamp] = useState<number>(() => Date.now());
+    const [currentTimestamp, setCurrentTimestamp] = useState<number | null>(null);
 
     const user = useAuthStore((state) => state.user);
     const openAuthModal = useAuthStore((state) => state.openAuthModal);
@@ -60,6 +61,7 @@ export default function KdsPage(){
   // Polling tự động làm mới mỗi 5 giây
   useEffect(() => {
     let ignore = false;
+    setCurrentTimestamp(Date.now());
     async function initialLoad() {
       if (!ignore) {
         await fetchOrders(true);

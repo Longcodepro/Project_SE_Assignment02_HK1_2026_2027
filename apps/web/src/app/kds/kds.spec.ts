@@ -19,4 +19,9 @@ describe('KDS Helper Functions', () => {
     const orderCreatedAt = '2026-11-14T10:00:00Z';
     expect(getWaitingTime(orderCreatedAt, now)).toBe('1h 25p');
   });
+
+  it('trả về "Đang tải..." khi chưa có currentTimestamp (tránh lỗi prerender Next.js)', () => {
+    const orderCreatedAt = '2026-11-14T10:00:00Z';
+    expect(getWaitingTime(orderCreatedAt, null)).toBe('Đang tải...');
+  });
 });
