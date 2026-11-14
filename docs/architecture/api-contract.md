@@ -344,6 +344,61 @@ Request
 
 Kiểm tra theo thứ tự: 404, rồi 409 (sai trạng thái), rồi 400 (sai mã).
 
+## Mã giảm giá (voucher) phía khách
+
+Issue S3.6. Khách nhập mã khi đặt đơn; **server tính giảm giá**, client không gửi số tiền giảm.
+
+### Mã giảm giá trong CSDL (`Promotion`)
+
+| Trường | Ý nghĩa |
+|---|---|
+| `code` | mã duy nhất, viết hoa (`WELCOME10`); khi khách nhập, server cắt khoảng trắng đầu cuối và so không phân biệt hoa thường |
+| `discountType` | `FIXED` (giảm số tiền cố định) hoặc `PERCENT` (giảm theo phần trăm) |
+| `discountValue` | `FIXED`: số VND; `PERCENT`: 1 đến 100 |
+| `minOrderAmount` | giá trị đơn tối thiểu (VND, tính trước giảm), 0 là không yêu cầu |
+| `isActive` | `false` là mã đã bị vô hiệu |
+| `expiryDate` | hạn dùng, rỗng là không hết hạn; quá hạn khi thời điểm đặt đơn lớn hơn `expiryDate` |
+| `maxUses`, `usedCount` | tổng số lượt dùng tối đa (rỗng là không giới hạn) và số lượt đã giữ |
+
+Seed sẵn: `WELCOME10` (giảm 10%, đơn từ 50.000đ, tối đa 1.000 lượt), `GIAM15K` (giảm 15.000đ, đơn từ 80.000đ, không giới hạn lượt), `BREW20` (giảm 20%, đơn từ 100.000đ, tối đa 50 lượt). Chạy seed nhiều lần không tạo trùng và không đặt lại `usedCount`. Giao diện quản lý mã dành cho Manager làm ở Sprint 4 (S4.8).
+
+### POST /orders (bổ sung)
+
+Thêm trường tùy chọn `promoCode` (3–32 ký tự: chữ, số, `_`, `-`). Một đơn dùng tối đa một mã.
+
+```json
+{
+  "items": [{ "productId": 1, "quantity": 2, "size": "M", "toppings": ["tran-chau"] }],
+  "promoCode": "WELCOME10"
+}
+```
+
+Cách tính (server): `subtotal` = Σ `quantity × unitPrice` như trước. `FIXED`: giảm `discountValue`, nhưng không quá `subtotal`. `PERCENT`: giảm `⌊subtotal × discountValue / 100⌋`. **`total` = `subtotal` − giảm**, đây cũng là số tiền `POST /payments` thu và là cơ sở tính điểm thưởng (1 điểm / 1.000đ trên số tiền thực trả).
+
+201 Created. Hai trường mới, luôn có mặt (`discountAmount` là `0` khi không dùng mã):
+
+```json
+{ "id": "ord_123", "status": "PENDING", "total": 75600, "discountAmount": 8400, "promoCode": "WELCOME10" }
+```
+
+Ví dụ: `subtotal` 84.000đ, `WELCOME10` (10%) giảm 8.400đ, `total` 75.600đ. `promoCode` là `null` khi đơn không dùng mã. Gửi lại cùng `Idempotency-Key` trả đơn cũ, không giữ thêm lượt dùng.
+
+Mã bị từ chối thì **không tạo đơn** và không giữ lượt:
+
+| Mã | Khi nào | Thông báo (`message`) |
+|---|---|---|
+| 400 | mã không tồn tại, hoặc bị vô hiệu | `Mã giảm giá không tồn tại hoặc đã bị vô hiệu` |
+| 400 | quá `expiryDate` | `Mã giảm giá đã hết hạn` |
+| 400 | `subtotal` nhỏ hơn `minOrderAmount` | `Đơn chưa đạt giá trị tối thiểu 50000đ để dùng mã này` (con số là `minOrderAmount`) |
+| 409 | `usedCount` đã bằng `maxUses` | `Mã giảm giá đã hết lượt sử dụng` |
+| 400 | `promoCode` sai định dạng, hoặc có trường lạ trong body | lỗi validate như các trường khác |
+
+Lượt dùng được **giữ ngay khi tạo đơn** (tăng `usedCount`, cùng transaction với việc tạo đơn nên hai khách tranh lượt cuối cùng chỉ một người được). Đơn bị hủy (S3.8) trả lại lượt đã giữ.
+
+### GET /orders/me (bổ sung)
+
+Mỗi đơn có thêm `discountAmount` (số nguyên, `0` nếu không dùng mã) và `promoCode` (chuỗi hoặc `null`). `total` đã là số tiền sau giảm.
+
 ## Idempotency-Key
 
 `POST /orders` và `POST /payments` nhận thêm header tùy chọn `Idempotency-Key` (1–128 ký tự: chữ, số, `_`, `-`). Frontend nên sinh một key duy nhất (hiện dùng `ord_<thời gian>_<ngẫu nhiên>` cho đơn và `pay_<thời gian>_<ngẫu nhiên>` cho thanh toán; `crypto.randomUUID()` cũng hợp lệ, server không bắt buộc UUID) cho mỗi lần người dùng bấm đặt/thanh toán và gửi lại **đúng key đó** khi retry do mất mạng.
