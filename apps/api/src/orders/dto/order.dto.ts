@@ -50,6 +50,21 @@ export class OrderHistoryDto extends OrderSummaryDto {
   })
   pickupCode!: string | null;
 
+  @ApiProperty({ example: 2, description: 'Gửi lại khi hủy đơn (POST /orders/:id/cancel)' })
+  version!: number;
+
+  @ApiProperty({ type: String, nullable: true, example: 'Đổi ý', description: 'Lý do hủy; null nếu chưa hủy' })
+  cancelReason!: string | null;
+
+  @ApiProperty({
+    type: String,
+    format: 'date-time',
+    nullable: true,
+    example: '2026-11-14T04:10:00.000Z',
+    description: 'Thời điểm hoàn tiền mô phỏng; null nếu chưa hoàn',
+  })
+  refundedAt!: Date | null;
+
   @ApiProperty({ example: '2026-11-06T13:55:00.000Z' })
   createdAt!: Date;
 

@@ -1,9 +1,11 @@
-import { Body, Controller, Get, Headers, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiHeader,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -11,6 +13,7 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser, JwtAuthGuard, type AuthUser } from '../auth/jwt-auth.guard.js';
 import { parseIdempotencyKey } from '../common/idempotency.js';
+import { CancelOrderDto, CancelOrderResultDto } from './dto/cancel-order.dto.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
 import { OrderHistoryDto, OrderSummaryDto } from './dto/order.dto.js';
 import { OrdersService } from './orders.service.js';
@@ -38,6 +41,18 @@ export class OrdersController {
     @Headers('idempotency-key') key?: string,
   ) {
     return this.ordersService.create(user.phone, dto, parseIdempotencyKey(key));
+  }
+
+  @Post(':id/cancel')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Khách hủy đơn của mình (PENDING, PAYMENT_FAILED, PAID); PAID cần lý do' })
+  @ApiOkResponse({ type: CancelOrderResultDto })
+  @ApiBadRequestResponse({ description: 'version/reason không hợp lệ, hoặc đơn PAID thiếu lý do' })
+  @ApiNotFoundResponse({ description: 'Không có đơn này hoặc không phải đơn của bạn' })
+  @ApiConflictResponse({ description: 'Sai version hoặc đơn đã sang PREPARING trở đi' })
+  cancel(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() dto: CancelOrderDto) {
+    return this.ordersService.cancel(id, dto, { kind: 'customer', phone: user.phone });
   }
 
   @Get('me')

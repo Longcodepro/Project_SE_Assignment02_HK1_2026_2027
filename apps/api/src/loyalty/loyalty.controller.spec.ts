@@ -57,6 +57,17 @@ describe('GET /loyalty/me', () => {
     await app.close();
   });
 
+  it('lịch sử không liệt kê đơn đã hủy (điểm đã được trừ lại)', async () => {
+    const { app, prisma } = await setup();
+    await request(app.getHttpServer()).get('/loyalty/me').expect(200);
+    expect(prisma.payment.findMany.mock.calls[0][0].where).toEqual({
+      order: { userPhone: '0912345678', status: { not: 'CANCELLED' } },
+      status: 'SUCCESS',
+      pointsEarned: { gt: 0 },
+    });
+    await app.close();
+  });
+
   it('404 khi người dùng không tồn tại', async () => {
     const { app } = await setup(null, []);
     await request(app.getHttpServer()).get('/loyalty/me').expect(404);

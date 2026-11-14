@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { createValidationPipe } from '../common/validation.js';
+import { OrdersService } from '../orders/orders.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CashierController } from './cashier.controller.js';
 import { CashierService } from './cashier.service.js';
@@ -30,11 +31,20 @@ async function setup(opts: { order?: any; updateCount?: number; orders?: any[] }
   const findMany = vi.fn().mockResolvedValue(opts.orders ?? []);
   const findUnique = vi.fn().mockResolvedValue(opts.order ?? null);
   const updateMany = vi.fn().mockResolvedValue({ count: opts.updateCount ?? 1 });
+  const findFirst = vi.fn().mockResolvedValue(opts.order ?? null);
+  const userUpdate = vi.fn().mockResolvedValue({});
+  const db = {
+    order: { findMany, findUnique, findFirst, updateMany },
+    payment: { findFirst: vi.fn().mockResolvedValue({ pointsEarned: 84 }) },
+    user: { update: userUpdate },
+    promotion: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+  };
   const moduleRef = await Test.createTestingModule({
     controllers: [CashierController],
     providers: [
       CashierService,
-      { provide: PrismaService, useValue: { order: { findMany, findUnique, updateMany } } },
+      OrdersService,
+      { provide: PrismaService, useValue: { ...db, $transaction: (fn: (tx: typeof db) => unknown) => fn(db) } },
     ],
   })
     .overrideGuard(JwtAuthGuard)
@@ -43,7 +53,7 @@ async function setup(opts: { order?: any; updateCount?: number; orders?: any[] }
   const app = moduleRef.createNestApplication();
   app.useGlobalPipes(createValidationPipe());
   await app.init();
-  return { app, findMany, findUnique, updateMany };
+  return { app, findMany, findUnique, findFirst, updateMany, userUpdate };
 }
 
 describe('GET /cashier/orders', () => {
@@ -88,6 +98,72 @@ describe('GET /cashier/orders', () => {
     const res = await request(app.getHttpServer()).get('/cashier/orders').set('x-role', role).expect(403);
     expect(res.body.message).toBe('Không đủ quyền truy cập');
     expect(findMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe('POST /cashier/orders/:id/cancel', () => {
+  const huy = (app: any, id: string, body: object, role = 'CASHIER') =>
+    request(app.getHttpServer()).post(`/cashier/orders/${id}/cancel`).set('x-role', role).send(body);
+  const donPaid = { status: 'PAID', version: 2, userPhone: '0912345678', promotionId: null };
+
+  it('hủy đơn PAID của bất kỳ khách nào: tìm theo id (không lọc userPhone), hoàn tiền, trừ điểm của chủ đơn', async () => {
+    const { app, findFirst, updateMany, userUpdate } = await setup({ order: donPaid });
+
+    const res = await huy(app, 'ord_1', { version: 2, reason: 'Hết nguyên liệu' }).expect(200);
+
+    expect(res.body).toMatchObject({ id: 'ord_1', status: 'CANCELLED', version: 3 });
+    expect(res.body.refundedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(findFirst.mock.calls[0][0].where).toEqual({ id: 'ord_1' });
+    expect(updateMany.mock.calls[0][0].where).toEqual({ id: 'ord_1', version: 2, status: 'PAID' });
+    expect(userUpdate).toHaveBeenCalledWith({
+      where: { phone: '0912345678' },
+      data: { loyaltyPoints: { decrement: 84 } },
+    });
+    await app.close();
+  });
+
+  it.each(['PENDING', 'PAYMENT_FAILED'])('403 khi đơn đang %s: quầy chỉ hủy đơn đã thanh toán', async (status) => {
+    const { app, updateMany } = await setup({ order: { ...donPaid, status } });
+    const res = await huy(app, 'ord_1', { version: 2, reason: 'x' }).expect(403);
+    expect(res.body.message).toBe('Quầy chỉ hủy được đơn đã thanh toán');
+    expect(updateMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it.each(['PREPARING', 'READY', 'COMPLETED', 'CANCELLED'])('409 khi đơn đang %s', async (status) => {
+    const { app, updateMany } = await setup({ order: { ...donPaid, status } });
+    await huy(app, 'ord_1', { version: 2, reason: 'x' }).expect(409);
+    expect(updateMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('409 khi sai version (Barista vừa chuyển PREPARING)', async () => {
+    const { app, updateMany } = await setup({ order: { ...donPaid, status: 'PREPARING', version: 3 } });
+    await huy(app, 'ord_1', { version: 2, reason: 'x' }).expect(409);
+    expect(updateMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('400 khi thiếu lý do', async () => {
+    const { app, updateMany } = await setup({ order: donPaid });
+    const res = await huy(app, 'ord_1', { version: 2 }).expect(400);
+    expect(res.body.message).toBe('Cần ghi lý do khi hủy đơn đã thanh toán');
+    expect(updateMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('404 khi không có đơn', async () => {
+    const { app } = await setup();
+    await huy(app, 'ord_khong_co', { version: 2, reason: 'x' }).expect(404);
+    await app.close();
+  });
+
+  it.each(['CUSTOMER', 'BARISTA', 'MANAGER'])('403 với vai trò %s và không đụng tới CSDL', async (role) => {
+    const { app, findFirst, updateMany } = await setup({ order: donPaid });
+    await huy(app, 'ord_1', { version: 2, reason: 'x' }, role).expect(403);
+    expect(findFirst).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
     await app.close();
   });
 });
