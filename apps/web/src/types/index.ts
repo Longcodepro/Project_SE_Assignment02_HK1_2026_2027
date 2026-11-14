@@ -72,6 +72,18 @@ export interface Order {
     version?: number;
     // Mã nhận hàng 6 số, chỉ có khi đơn READY
     pickupCode?: string | null;
+    // Mã giảm giá đã áp và số tiền được giảm (total đã là số tiền sau giảm)
+    discountAmount?: number;
+    promoCode?: string | null;
+}
+
+// Kết quả POST /orders: server tính tổng và số tiền giảm
+export interface CreatedOrder {
+    id: string;
+    status: OrderStatus;
+    total: number;
+    discountAmount: number;
+    promoCode: string | null;
 }
 
 export interface Payment {

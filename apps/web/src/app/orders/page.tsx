@@ -359,6 +359,12 @@ export default function OrderHistoryPage(){
                                 {/* Footer thẻ đơn: Tổng tiền và Nút thanh toán lại nếu cần */}
                                 <div className="pt-2.5 sm:pt-3 border-t border-dashed border-amber-200/80 flex items-center justify-between gap-3">
                                     <div>
+                                        {(order.discountAmount ?? 0) > 0 && (
+                                            <span className="block text-[11px] sm:text-xs font-semibold text-emerald-700">
+                                                Đã giảm {(order.discountAmount ?? 0).toLocaleString('vi-VN')}đ
+                                                {order.promoCode ? ` (mã ${order.promoCode})` : ''}
+                                            </span>
+                                        )}
                                         <span className="text-xs font-medium text-gray-500">Tổng thanh toán:</span>
                                         <p className="text-sm sm:text-lg font-black text-amber-900">
                                             {order.total.toLocaleString('vi-VN')}đ
