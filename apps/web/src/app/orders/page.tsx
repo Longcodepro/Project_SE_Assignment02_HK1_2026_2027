@@ -6,6 +6,7 @@ import Navbar from '@/components/Navbar';
 import { apiService } from '@/services/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Order, OrderStatus } from '@/types';
+import { formatPickupCode } from '@/lib/pickup';
 import { Clock, Coffee, CheckCircle2, AlertCircle, ChevronRight, RefreshCw, ChefHat, LogIn, CreditCard, Wallet, X, Loader2 } from 'lucide-react';
 
 export default function OrderHistoryPage(){
@@ -76,10 +77,10 @@ export default function OrderHistoryPage(){
 
         void load(false);
 
-        // Polling cập nhật mỗi 10 giây
+        // Polling cập nhật mỗi 5 giây để khách thấy mã nhận hàng ngay khi đơn READY
         const interval = setInterval(() => {
             void load(true);
-        }, 10000);
+        }, 5000);
 
         return () => {
             isMounted = false;
@@ -304,9 +305,25 @@ export default function OrderHistoryPage(){
                                     </div>
                                 )}
                                 {order.status === 'READY' && (
-                                    <div className="mt-2.5 sm:mt-3.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 sm:px-3.5 sm:py-2 text-[11px] sm:text-xs font-bold text-emerald-800 flex items-center gap-2">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                                        <span>Cà phê của bạn đã sẵn sàng! Mời bạn tới quầy nhận nước.</span>
+                                    <div className="mt-2.5 sm:mt-3.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 text-emerald-800">
+                                        <div className="flex items-center gap-2 text-[11px] sm:text-xs font-bold">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                                            <span>Cà phê của bạn đã sẵn sàng! Mời bạn tới quầy nhận nước.</span>
+                                        </div>
+                                        {order.pickupCode && (
+                                            <div className="mt-2.5 flex items-center justify-between gap-3 bg-white border border-emerald-300 rounded-xl px-3.5 py-2.5">
+                                                <span className="text-[11px] sm:text-xs font-semibold text-emerald-900">
+                                                    Đọc mã này cho nhân viên quầy:
+                                                </span>
+                                                <span
+                                                    data-testid="pickup-code"
+                                                    aria-label={`Mã nhận hàng ${order.pickupCode}`}
+                                                    className="font-mono text-2xl sm:text-3xl font-black tracking-[0.25em] text-emerald-900"
+                                                >
+                                                    {formatPickupCode(order.pickupCode)}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

@@ -68,6 +68,10 @@ export interface Order {
     status: OrderStatus;
     createdAt: string;
     items: OrderItem[];
+    // Số phiên bản của đơn, gửi lại khi đổi trạng thái (khóa lạc quan)
+    version?: number;
+    // Mã nhận hàng 6 số, chỉ có khi đơn READY
+    pickupCode?: string | null;
 }
 
 export interface Payment {
@@ -93,6 +97,16 @@ export interface KdsItem{
     quantity: number;
     size: 'S' | 'M' | 'L';
     toppings: string[];
+}
+
+// Đơn trên màn hình của Cashier (GET /cashier/orders): READY chờ giao, PAID có thể hủy; không có mã nhận hàng
+export interface CashierOrder {
+    id: string;
+    status: 'READY' | 'PAID';
+    version: number;
+    total: number;
+    createdAt: string;
+    items: KdsItem[];
 }
 
 export interface KdsOrder{

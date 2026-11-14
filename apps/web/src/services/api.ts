@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Product, Order, AuthResponse, User, LoyaltyInfo, KdsOrder } from "@/types";
+import { Product, Order, AuthResponse, User, LoyaltyInfo, KdsOrder, CashierOrder } from "@/types";
 
 // Lấy URL Backend động: ưu tiên custom URL trong localStorage (để test trên mobile / demo từ xa), sau đó đến biến môi trường
 export const getApiUrl = (): string => {
@@ -284,6 +284,20 @@ export const apiService = {
         version: number
     ): Promise<{id: string; status: string; version: number}> =>{
         const res = await axios.patch(`${getApiUrl()}/kds/orders/${orderId}/status`, {status, version});
+        return res.data;
+    },
+
+    // 9. Đơn Cashier xử lý được: READY (chờ giao món) và PAID (có thể hủy), cũ nhất lên đầu
+    getCashierOrders: async (status?: 'READY' | 'PAID'): Promise<CashierOrder[]> => {
+        const res = await axios.get<CashierOrder[]>(`${getApiUrl()}/cashier/orders`, {
+            params: status ? { status } : undefined,
+        });
+        return res.data;
+    },
+
+    // 10. Cashier nhập mã khách đọc để giao món: READY -> COMPLETED
+    completeOrder: async (orderId: string, pickupCode: string): Promise<{ id: string; status: string; version: number }> => {
+        const res = await axios.post(`${getApiUrl()}/cashier/orders/${orderId}/complete`, { pickupCode });
         return res.data;
     },
 
