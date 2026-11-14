@@ -494,6 +494,48 @@ Kiểm tra theo thứ tự: 404, rồi 409 (chưa hoàn tất), rồi 409 (đã 
 
 Mỗi đơn có thêm trường `review`: `null` nếu chưa đánh giá, ngược lại `{ "stars": 5, "comment": "..." }` (`comment` có thể là `null`). Client dùng trường này để biết có hiển thị popup đánh giá hay không (S3.11): đơn `COMPLETED` mà `review` là `null`.
 
+## Nền tảng Sprint 4 (Manager, kho, khóa tài khoản)
+
+Issue S4.1. Chưa thêm endpoint nghiệp vụ mới; các endpoint quản trị được chốt riêng ở S4.2, S4.4, S4.5, S4.7, S4.8, S4.9. Mục này chốt **quy tắc chung của khu quản trị**, **khóa tài khoản** và **mô hình dữ liệu**.
+
+### Khu quản trị `/admin/*`
+
+Mọi route quản trị của Manager nằm dưới tiền tố `/admin`. Cần header `Authorization: Bearer <accessToken>` của tài khoản có `role` là `MANAGER`. Thiếu hoặc sai token: `401`. Đúng token nhưng vai trò khác: `403` như Sprint 3:
+
+```json
+{ "statusCode": 403, "message": "Không đủ quyền truy cập", "error": "Forbidden" }
+```
+
+Ngoại lệ có chủ đích: nhập kho (S4.4) cho cả `BARISTA` và `MANAGER`, được ghi rõ ở mục kho.
+
+Seed tạo thêm tài khoản Manager `0900000003` cùng quy tắc với Barista và Cashier: mật khẩu đọc từ `SEED_STAFF_PASSWORD`, môi trường production (`NODE_ENV=production`) không tạo nếu chưa đặt biến đó.
+
+### Khóa tài khoản
+
+`User` có thêm cờ `isLocked` (mặc định `false`; mọi tài khoản hiện có không bị khóa). `POST /auth/login` với tài khoản bị khóa:
+
+- Sai SĐT hoặc sai mật khẩu: `401` như cũ (không lộ tài khoản có bị khóa hay không).
+- Đúng mật khẩu nhưng tài khoản bị khóa: `403`
+
+```json
+{ "statusCode": 403, "message": "Tài khoản đã bị khóa", "error": "Forbidden" }
+```
+
+Token đã cấp trước khi khóa vẫn dùng được cho đến khi hết hạn (24 giờ); server không tra CSDL ở mỗi request. Người quản trị cần chặn ngay thì đổi `JWT_SECRET` (đăng xuất mọi người), không có cơ chế thu hồi từng token.
+
+### Mô hình dữ liệu mới
+
+| Model | Trường chính | Dùng ở |
+|---|---|---|
+| `Ingredient` | `id`, `name` (duy nhất), `unit` (`G`, `ML`, `PIECE`: hiển thị g, ml, cái), `stock` (số nguyên theo `unit`), `minStock` (ngưỡng cảnh báo) | S4.4, S4.5 |
+| `StockReceipt` (phiếu nhập kho) | `ingredientId`, `quantity` (lớn hơn 0), `note`, `createdByPhone` (người thực hiện), `createdAt` | S4.4 |
+| `RecipeItem` | `productId`, `size`, `ingredientId`, `quantity`: nguyên liệu cho **một ly** món đó ở cỡ đó; duy nhất theo (`productId`, `size`, `ingredientId`) | S4.4, S4.5 |
+| `Topping` | `code` (khóa, ví dụ `tran-chau`), `name`, `price` (VND), `isActive` | S4.2 |
+| `SizeSurcharge` | `size` (khóa, `S`/`M`/`L`), `extra` (VND) | S4.2 |
+| `ToppingRecipeItem` | `toppingCode`, `ingredientId`, `quantity`: nguyên liệu cho **một phần** topping; duy nhất theo (`toppingCode`, `ingredientId`) | S4.4, S4.5 |
+
+Seed `Topping` và `SizeSurcharge` đúng bảng giá hiện tại (`tran-chau` 8.000, `kem-cheese` 10.000, `thach-cafe` 6.000; size S +0, M +5.000, L +10.000), nên kết quả tính giá không đổi cho tới khi S4.2 chuyển `POST /orders` sang đọc bảng này. Migration chỉ thêm bảng và cột có giá trị mặc định, chạy được trên CSDL đã có dữ liệu.
+
 ## Idempotency-Key
 
 `POST /orders` và `POST /payments` nhận thêm header tùy chọn `Idempotency-Key` (1–128 ký tự: chữ, số, `_`, `-`). Frontend nên sinh một key duy nhất (hiện dùng `ord_<thời gian>_<ngẫu nhiên>` cho đơn và `pay_<thời gian>_<ngẫu nhiên>` cho thanh toán; `crypto.randomUUID()` cũng hợp lệ, server không bắt buộc UUID) cho mỗi lần người dùng bấm đặt/thanh toán và gửi lại **đúng key đó** khi retry do mất mạng.
