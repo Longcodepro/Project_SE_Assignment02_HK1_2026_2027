@@ -147,3 +147,30 @@ Phiên bản **BrewLite v1.1.0** mở rộng hệ thống sang quy trình vận 
   - Backend: 112 unit/integration tests bao phủ trạng thái đơn, tính tiền voucher, đối chiếu mã nhận hàng, hủy đơn và đánh giá.
   - Frontend: 91 unit tests cho các hàm xử lý mã giảm giá, mã nhận hàng, hủy đơn và đánh giá.
   - E2E Playwright: 5 kịch bản tự động kiểm tra toàn vẹn luồng Sprint 3 trong file `tests/e2e/sprint3.spec.ts`.
+
+---
+
+# Bản Ghi Chú Phát Hành — Release Notes v1.2.0 (Sprint 4)
+
+> **Phiên bản phát hành:** `v1.2.0` (Mốc hoàn thành Sprint 4 — Quản trị hệ thống & Số hóa kho)  
+> **Ngày phát hành:** 14/11/2026  
+> **Nhóm thực hiện:** Nguyễn Thành Long (`Longcodepro`), Trần Quốc Tài (`TaiTran263`)
+
+---
+
+## 1. Tổng Quan Phiên Bản v1.2.0
+
+Phiên bản **BrewLite v1.2.0** hoàn thiện toàn diện phân hệ quản trị dành cho Quản lý cửa hàng (Store Manager):
+- **Quản lý Menu & Bảng giá động (`/admin/categories`, `/admin/products`, `/admin/toppings`, `/admin/sizes`):** Toàn bộ bảng giá chuyển sang CSDL, cung cấp API CRUD cho Quản lý thay đổi giá bán, thêm topping, ẩn/hiện danh mục linh hoạt.
+- **Kho nguyên liệu & Định lượng công thức (`/admin/ingredients`, `/admin/recipes`):** Quản lý tồn kho nguyên liệu, phiếu nhập kho lưu vết nhân viên, công thức pha chế theo size và topping.
+- **Trừ kho & Hoàn kho tự động:** Kiểm tra tồn kho trước khi đặt đơn, tự động trừ kho khi đơn sang `PAID`, lưu vết trừ kho trong `StockUsage`, hoàn kho chính xác khi hủy đơn.
+- **Cảnh báo tồn kho tối thiểu (`/admin/ingredients/alerts`):** Tự động phát hiện nguyên liệu chạm hoặc dưới ngưỡng an toàn, sắp xếp theo mức độ thiếu hụt.
+- **Quản trị nhân sự (`/admin/staff`):** Tạo tài khoản nhân viên (Barista, Cashier), phân quyền, khóa và mở khóa tài khoản tức thời.
+- **Quản lý Voucher phía Manager (`/admin/promotions`):** Tạo mới, chỉnh sửa điều kiện và vô hiệu hóa các mã khuyến mãi.
+- **Báo cáo doanh thu & sản lượng (`/admin/reports`):** Thống kê doanh thu thực thu, số đơn hoàn tất, tỷ lệ hủy đơn và Top 5 món bán chạy nhất theo khoảng thời gian tùy chọn.
+
+## 2. Thống Kê Thay Đổi Kỹ Thuật & Kiểm Thử
+- **Mã nguồn:** Bổ sung các module `menu` (admin CRUD), `inventory` (nguyên liệu, phiếu nhập, công thức, trừ/hoàn kho, cảnh báo), `staff` (nhân sự, khóa tài khoản), `promotions` (quản trị voucher), `reports` (báo cáo doanh thu).
+- **Kiểm thử tự động:**
+  - Backend: Toàn bộ **526 tests Vitest (24 test suites)** chạy tự động và PASS 100%, bao phủ đầy đủ tất cả các trường hợp biên, phân quyền `@Roles('MANAGER')`, khóa tài khoản, khóa lạc quan và giao dịch CSDL.
+  - Frontend: 91 tests Vitest PASS 100%.

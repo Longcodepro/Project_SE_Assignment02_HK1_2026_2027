@@ -21,7 +21,7 @@
 3. **Phân định rõ ranh giới MVP, Sprint 3 và Sprint 4:** 
    - `FR-01` đến `FR-10` thuộc Core MVP (Sprint 1 & Sprint 2): Đã có mã nguồn hoạt động; kiểm thử tự động ở `apps/api` (Vitest, Postman). Giao diện web: lint, build và test đơn vị Vitest (`apps/web`, 13 test cho giỏ hàng và bảng giá) trong CI; E2E Playwright (`tests/e2e`, 8 test) chạy trong CI cho luồng đặt hàng.
    - `FR-20`, `FR-21`, `FR-11` (phía khách), `FR-12`, `FR-13` thuộc Sprint 3: Đã hoàn thành toàn diện mã nguồn API (`apps/api`), giao diện Web (`apps/web`), kiểm thử đơn vị và kiểm thử E2E Playwright tự động (`tests/e2e/sprint3.spec.ts`).
-   - `FR-14` đến `FR-19`, `FR-11` (phía Manager) thuộc Sprint 4: Đã mô hình hóa trên Use Case Diagram và Class Diagram.
+   - `FR-14` đến `FR-19`, `FR-11` (phía Manager) thuộc Sprint 4: Đã hoàn thành toàn diện mã nguồn backend API (`apps/api`), bảng giá động trong CSDL, kho nguyên liệu, công thức, trừ/hoàn kho, nhân sự, voucher và báo cáo; kiểm thử đơn vị tự động Vitest đầy đủ. Giao diện Manager: Planned.
 
 ---
 
@@ -72,7 +72,7 @@
 | Yêu cầu chức năng (FR) | 21 / 21 | 21 có Use-case và sơ đồ UML |
 | Yêu cầu cốt lõi MVP (FR-01 đến FR-10) | 10 / 10 | 10 có mã nguồn; 10/10 có kiểm thử tự động (FR-01..FR-10 đều có test tự động, bao gồm 15 unit test của apps/web cho FR-02 và FR-03) |
 | Yêu cầu mở rộng Sprint 3 (FR-20, FR-21, FR-11 khách, FR-12, FR-13) | 5 / 5 | 5/5 có mã nguồn API & Web; 5/5 có kiểm thử đơn vị và E2E tự động (`tests/e2e/sprint3.spec.ts`) |
-| Yêu cầu mở rộng Sprint 4 (FR-14..FR-19, FR-11 Manager) | 6 | Planned: đã mô hình hóa Use-case và mô hình lớp |
+| Yêu cầu mở rộng Sprint 4 (FR-14..FR-19, FR-11 Manager) | 6 / 6 | 6/6 có mã nguồn API (`apps/api`); 6/6 có kiểm thử tự động Vitest (menu-admin, inventory, recipes, staff, promotions, reports) |
 | Yêu cầu phi chức năng (NFR) | 5 / 5 | 5 có giải pháp kỹ thuật; đã kiểm chứng bằng test: NFR-01, NFR-02, NFR-03; NFR-04 đã đo Lighthouse, NFR-05 mới đo một phần (xem `docs/lighthouse.md`) |
 | Kiểm thử tự động hiện có | 74 test API (9 file), test web (Vitest) và 8 test E2E | Vitest cho `apps/api` (74 test) và `apps/web` (unit test cho giỏ hàng, bảng giá so khớp server, modal tùy chọn); kịch bản Postman; Playwright `tests/e2e/checkout.spec.ts` (8 test: thẻ, Ví, thanh toán lại, Idempotency-Key) |
 | Sơ đồ UML đối chiếu | 6 sơ đồ | Use Case tổng quát, Use Case Checkout, Activity, Sequence, Class, Deployment |

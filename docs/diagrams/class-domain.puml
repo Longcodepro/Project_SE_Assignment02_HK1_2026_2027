@@ -71,6 +71,7 @@ class User <<Core Entity>> #E8F8F5 {
   + role : Role = CUSTOMER
   + loyaltyPoints : Int = 0
   + email : String? {Tùy chọn, không duy nhất}
+  + isLocked : Boolean = false  {Sprint 4}
   + createdAt : DateTime
   __
   + register(phone, password)
@@ -82,6 +83,7 @@ class User <<Core Entity>> #E8F8F5 {
 class Category <<Core Entity>> #E1F5FE {
   + id : Int [PK]
   + name : String
+  + isActive : Boolean = true  {Sprint 4}
 }
 
 class Product <<Core Entity>> #E1F5FE {
@@ -169,10 +171,73 @@ class LoyaltyTransaction <<Domain Extension>> #FFF3E0 {
 }
 
 ' ========================================================
+' SPRINT 4 DOMAIN CLASSES (KHO, CÔNG THỨC, BẢNG GIÁ)
+' ========================================================
+enum Unit <<Enum>> #F3E5F5 {
+  g
+  ml
+  phan
+}
+
+class Ingredient <<Core Entity>> #E0F2F1 {
+  + id : Int [PK]
+  + name : String [Unique]
+  + unit : Unit
+  + stock : Int = 0
+  + minStock : Int = 0
+  __
+  + isLow() : Boolean
+}
+
+class StockReceipt <<Core Entity>> #E0F2F1 {
+  + id : Int [PK]
+  + ingredientId : Int [FK]
+  + quantity : Int
+  + note : String?
+  + createdByPhone : String [FK -> User.phone]
+  + createdAt : DateTime
+}
+
+class RecipeItem <<Core Entity>> #E0F2F1 {
+  + id : Int [PK]
+  + productId : Int [FK]
+  + size : Size
+  + ingredientId : Int [FK]
+  + quantity : Int
+}
+
+class Topping <<Core Entity>> #E1F5FE {
+  + code : String [PK]
+  + name : String
+  + price : Int
+  + isActive : Boolean = true
+}
+
+class SizeSurcharge <<Core Entity>> #E1F5FE {
+  + size : Size [PK]
+  + extra : Int
+}
+
+class ToppingRecipeItem <<Core Entity>> #E0F2F1 {
+  + id : Int [PK]
+  + toppingCode : String [FK -> Topping.code]
+  + ingredientId : Int [FK]
+  + quantity : Int
+}
+
+class StockUsage <<Core Entity>> #E0F2F1 {
+  + id : Int [PK]
+  + orderId : String [FK]
+  + ingredientId : Int [FK]
+  + quantity : Int
+}
+
+' ========================================================
 ' RELATIONSHIPS & MULTIPLICITY
 ' ========================================================
 User "1" *-- "0..*" Order : "places >"
 User "1" *-- "0..*" LoyaltyTransaction : "owns >"
+User "1" *-- "0..*" StockReceipt : "creates >"
 
 Order "1" *-- "1..*" OrderItem : "contains >"
 Product "1" <-- "0..*" OrderItem : "references >"
@@ -180,8 +245,17 @@ Category "1" <-- "0..*" Product : "categorizes >"
 
 Order "1" *-- "0..*" Payment : "settled by >"
 Order "0..*" o-- "0..1" Promotion : "applies >"
+Order "1" *-- "0..*" StockUsage : "records >"
 
 LoyaltyTransaction "0..*" --> "0..1" Order : "tied to >"
+
+Ingredient "1" *-- "0..*" StockReceipt : "receives <"
+Ingredient "1" *-- "0..*" RecipeItem : "used in <"
+Ingredient "1" *-- "0..*" ToppingRecipeItem : "used in <"
+Ingredient "1" *-- "0..*" StockUsage : "consumed <"
+
+Product "1" *-- "0..*" RecipeItem : "requires >"
+Topping "1" *-- "0..*" ToppingRecipeItem : "requires >"
 
 ' Enum dependencies
 User ..> Role : uses

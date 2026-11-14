@@ -316,11 +316,11 @@ Task 1: Yêu cầu  ──>  Task 2: Sơ đồ  ──>  Task 3: Kiến trúc  �
 ---
 
 ### [Issue #27] [Mở rộng - HK1] Báo cáo thống kê doanh thu và sản lượng bán ra cho Quản lý
-- **Phân loại:** **COULD HAVE** | **Sprint:** Hậu Sprint 2 (Nếu còn thời gian) | **Phụ trách:** Long
+- **Phân loại:** **COULD HAVE** | **Sprint:** Sprint 4 (Đã hoàn thành) | **Phụ trách:** Long
 - **Mô tả:** API thống kê tổng doanh thu, số đơn thành công và top các món bán chạy nhất trong ngày/tuần.
 - **Tiêu chí chấp nhận:**
-  - [ ] API báo cáo tổng hợp số liệu doanh thu (tên endpoint chốt khi vào Sprint 4).
-  - [ ] Biểu đồ thống kê cơ bản.
+  - [x] API báo cáo tổng hợp số liệu doanh thu (`GET /admin/reports`, S4.9).
+  - [x] Thống kê tổng doanh thu, số đơn, tỷ lệ hủy, top 5 món bán chạy nhất.
 
 ---
 
@@ -336,13 +336,13 @@ Mã chức năng (`CN`), yêu cầu (`FR`) và use case (`UC`) theo `docs/requir
 | `CN-09` | Giao nhận quầy và mã nhận hàng 6 số | 3 | FR-21 | UC-07, UC-12 | **Done** (S3.4 API, S3.5 Web) |
 | `CN-10` | Voucher, hủy đơn, đánh giá (Issue #24, #25, #26) | 3 | FR-11, FR-12, FR-13 | UC-10, UC-08, UC-13, UC-09 | **Done** (S3.6..S3.12) |
 
-### 4.2. Sprint 4 — Quản trị & Số hóa kho (Planned, Could Have)
+### 4.2. Sprint 4 — Quản trị & Số hóa kho (Đã hoàn thành backend / Done Backend)
 
 | Chức năng | Tên | Sprint | FR | UC | Trạng thái |
 |:---:|---|:---:|---|---|:---:|
-| `CN-11` | Quản lý menu, danh mục, topping (CRUD) | 4 | FR-18 | UC-15 | Planned |
-| `CN-12` | Kho nguyên liệu và công thức pha chế (thay cờ `isAvailable`) | 4 | FR-15, FR-16, FR-17 | UC-14, UC-16, UC-17 | Planned |
-| `CN-13` | Nhân sự, voucher, báo cáo (Issue #27) | 4 | FR-11, FR-14, FR-19 | UC-18, UC-21, UC-19 | Planned |
+| `CN-11` | Quản lý menu, danh mục, topping (CRUD) | 4 | FR-18 | UC-15 | **Done** (S4.2 API) |
+| `CN-12` | Kho nguyên liệu và công thức pha chế (thay cờ `isAvailable`) | 4 | FR-15, FR-16, FR-17 | UC-14, UC-16, UC-17 | **Done** (S4.4, S4.5 API) |
+| `CN-13` | Nhân sự, voucher, báo cáo (Issue #27) | 4 | FR-11, FR-14, FR-19 | UC-18, UC-21, UC-19 | **Done** (S4.1, S4.7, S4.8, S4.9 API) |
 
 ---
 
