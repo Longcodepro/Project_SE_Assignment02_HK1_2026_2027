@@ -275,7 +275,74 @@ Request
 - 404 không có đơn với `id` này.
 - 409 trong hai trường hợp, thông báo khác nhau: `version` không khớp (đơn vừa bị người khác đổi, ví dụ khách vừa hủy), hoặc chuyển sai thứ tự (`PAID` → `READY`, `PREPARING` → `PREPARING`, đơn đã `CANCELLED`...). Client tải lại danh sách rồi thử lại.
 
-Chưa sinh `pickupCode` khi chuyển `READY`: việc đó thuộc S3.4.
+Khi chuyển sang `READY`, server sinh `pickupCode` (xem mục **Mã nhận hàng và giao món** bên dưới). Mã **không** có trong kết quả của endpoint này: Barista không cần biết mã, khách đọc mã ở `GET /orders/me`.
+
+## Mã nhận hàng và giao món
+
+Issue S3.4. Mã nhận hàng (`pickupCode`) là chuỗi đúng 6 chữ số (có thể bắt đầu bằng `0`, luôn là chuỗi, không phải số). Quy tắc:
+
+- Sinh ngẫu nhiên khi đơn sang `READY`, **duy nhất trong số các đơn đang `READY`**.
+- Khách đọc mã ở trường `pickupCode` của `GET /orders/me`; trường này là `null` ở mọi trạng thái khác `READY`.
+- Cashier hỏi khách mã rồi nhập vào hệ thống để giao món. Danh sách của Cashier **không** hiển thị mã, để việc đối chiếu có ý nghĩa.
+- Đơn sang `COMPLETED` thì mã được xóa (trả về `null`), mã của đơn đó có thể được cấp lại cho đơn `READY` khác.
+
+### GET /orders/me (bổ sung)
+
+Mỗi đơn có thêm một trường:
+
+```json
+{ "id": "ord_123", "status": "READY", "total": 84000, "pickupCode": "038417", "createdAt": "...", "items": [] }
+```
+
+`pickupCode`: chuỗi 6 chữ số khi `status` là `READY`, ngược lại `null`.
+
+### GET /cashier/orders
+
+Danh sách đơn Cashier xử lý được tại quầy. Cần header `Authorization: Bearer <accessToken>` của tài khoản có `role` là `CASHIER`. Trả các đơn `READY` (chờ giao món) và `PAID` (có thể hủy tại quầy, xem S3.8), **cũ nhất lên đầu**. Query tùy chọn `status=READY` hoặc `status=PAID` để chỉ lấy một loại.
+
+200 OK
+
+```json
+[
+  {
+    "id": "ord_123",
+    "status": "READY",
+    "version": 3,
+    "total": 84000,
+    "createdAt": "2026-11-14T03:40:26.834Z",
+    "items": [
+      { "productName": "Cà phê sữa", "quantity": 2, "size": "M", "toppings": ["tran-chau"] }
+    ]
+  }
+]
+```
+
+Không có đơn nào thì trả `[]`. Không trả `pickupCode`. 400 khi `status` ngoài `READY`/`PAID`. 401 thiếu hoặc sai token. 403 không phải `CASHIER`.
+
+### POST /cashier/orders/:id/complete
+
+Cashier nhập mã khách đọc để giao món: `READY` → `COMPLETED`. Cùng quy tắc xác thực với `GET /cashier/orders`.
+
+Request
+
+```json
+{ "pickupCode": "038417" }
+```
+
+`pickupCode` là chuỗi đúng 6 chữ số. Trường lạ bị từ chối (400).
+
+200 OK: `version` đã tăng thêm 1.
+
+```json
+{ "id": "ord_123", "status": "COMPLETED", "version": 4 }
+```
+
+- 400 `pickupCode` không đúng định dạng 6 chữ số, hoặc **sai mã** (thông báo `Mã nhận hàng không đúng`). Sai mã không đổi trạng thái đơn.
+- 401 thiếu hoặc sai token. 403 không phải `CASHIER`.
+- 404 không có đơn với `id` này.
+- 409 đơn không ở trạng thái `READY` (chưa pha xong, đã `COMPLETED`, đã `CANCELLED`...), hoặc đơn vừa bị yêu cầu khác cập nhật.
+
+Kiểm tra theo thứ tự: 404, rồi 409 (sai trạng thái), rồi 400 (sai mã).
 
 ## Idempotency-Key
 
