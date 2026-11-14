@@ -90,14 +90,14 @@ for (const s of [
   await prisma.sizeSurcharge.upsert({ where: { size: s.size }, update: {}, create: s });
 }
 
-// Mã giảm giá (Sprint 3). Chỉ cập nhật phần định nghĩa, không đặt lại usedCount khi chạy seed lại.
+// Mã giảm giá (Sprint 3). update rỗng: chạy seed lại không ghi đè mã Manager đã sửa hay đặt lại usedCount.
 const promotions = [
   { code: 'WELCOME10', discountType: 'PERCENT', discountValue: 10, minOrderAmount: 50000, maxUses: 1000 },
   { code: 'GIAM15K', discountType: 'FIXED', discountValue: 15000, minOrderAmount: 80000, maxUses: null },
   { code: 'BREW20', discountType: 'PERCENT', discountValue: 20, minOrderAmount: 100000, maxUses: 50 },
 ] as const;
 for (const p of promotions) {
-  await prisma.promotion.upsert({ where: { code: p.code }, update: p, create: p });
+  await prisma.promotion.upsert({ where: { code: p.code }, update: {}, create: p });
 }
 
 // Tài khoản nhân viên (Sprint 3). Mật khẩu lấy từ SEED_STAFF_PASSWORD.
