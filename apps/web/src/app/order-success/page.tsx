@@ -9,6 +9,8 @@ function OrderSuccessContent(){
     const searchParams = useSearchParams();
     const orderId = searchParams.get('orderId') || '#NaN'
     const total = Number(searchParams.get('total')) || 0;
+    const discount = Number(searchParams.get('discount')) || 0;
+    const promo = searchParams.get('promo') || '';
     const method = searchParams.get('method') === 'CARD' ? 'Thẻ ngân hàng' : 'Ví điện tử';
 
     return(
@@ -44,6 +46,13 @@ function OrderSuccessContent(){
                         <span className="text-gray-500 text-xs">Phương thức:</span>
                         <span className="font-semibold text-gray-800 text-xs">{method}</span>
                     </div>
+
+                    {discount > 0 && (
+                        <div className="flex justify-between items-center text-emerald-700">
+                            <span className="text-xs">Giảm giá{promo ? ` (${promo})` : ''}:</span>
+                            <span className="font-bold text-xs">−{discount.toLocaleString('vi-VN')}đ</span>
+                        </div>
+                    )}
 
                     {total > 0 && (
                         <div className="flex justify-between items-center pt-2 border-t border-dashed border-amber-200">

@@ -42,6 +42,7 @@ describe('ProductsController', () => {
       },
     ]);
     expect(findMany).toHaveBeenCalledWith({
+      where: { category: { isActive: true } },
       orderBy: { id: 'asc' },
       include: { category: { select: { id: true, name: true } } },
     });
@@ -70,6 +71,40 @@ describe('ProductsController', () => {
       isAvailable: true,
       category: { id: 1, name: 'Cà phê' },
     });
+    await app.close();
+  });
+
+  it('GET /products/:id chỉ tìm món của danh mục đang hiện; món của danh mục ẩn trả 404', async () => {
+    const findUnique = vi.fn().mockResolvedValue(null);
+    const moduleRef = await Test.createTestingModule({
+      controllers: [ProductsController],
+      providers: [
+        ProductsService,
+        { provide: PrismaService, useValue: { product: { findUnique } } },
+      ],
+    }).compile();
+    const app = moduleRef.createNestApplication();
+    await app.init();
+
+    await request(app.getHttpServer()).get('/products/1').expect(404);
+    expect(findUnique.mock.calls[0][0].where).toEqual({ id: 1, category: { isActive: true } });
+    await app.close();
+  });
+
+  it('GET /products trả thêm mô tả món (description)', async () => {
+    const findMany = vi.fn().mockResolvedValue([{ ...rows[0], description: 'Cà phê phin pha sữa đặc' }]);
+    const moduleRef = await Test.createTestingModule({
+      controllers: [ProductsController],
+      providers: [
+        ProductsService,
+        { provide: PrismaService, useValue: { product: { findMany } } },
+      ],
+    }).compile();
+    const app = moduleRef.createNestApplication();
+    await app.init();
+
+    const res = await request(app.getHttpServer()).get('/products').expect(200);
+    expect(res.body[0].description).toBe('Cà phê phin pha sữa đặc');
     await app.close();
   });
 

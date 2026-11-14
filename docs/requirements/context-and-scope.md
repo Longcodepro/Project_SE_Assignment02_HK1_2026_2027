@@ -228,12 +228,12 @@ Các tính năng nâng cao đã được quy hoạch trong Product Backlog và s
 | `CN-05` | Xác thực tài khoản bằng số điện thoại | 2 | Must | Long | FR-04 | UC-04 |
 | `CN-06` | Đặt hàng và thanh toán không tiền mặt | 2 | Must | Long và Tài | FR-05, FR-06, FR-08, FR-09 | UC-05 |
 | `CN-07` | Lịch sử, theo dõi đơn và tích điểm | 2 | Must (FR-07), Should (FR-10) | Long và Tài | FR-07, FR-10 | UC-06, UC-20 |
-| `CN-08` | Màn hình pha chế KDS cho Barista (Đã hoàn thành S3.2 API, S3.3 Web) | 3 | Could | Long và Tài | FR-20 | UC-11 |
-| `CN-09` | Giao nhận quầy và mã 6 số | 3 | Could | Long và Tài | FR-21 | UC-07, UC-12 |
-| `CN-10` | Tiện ích khách: voucher, hủy đơn, đánh giá | 3 | Could | Long và Tài | FR-11 (phía khách), FR-12, FR-13 | UC-10, UC-08, UC-13, UC-09 |
-| `CN-11` | Quản lý menu, danh mục, topping (CRUD) | 4 | Could | Long và Tài | FR-18 | UC-15 |
-| `CN-12` | Kho nguyên liệu và công thức pha chế | 4 | Could | Long và Tài | FR-15, FR-16, FR-17 | UC-14, UC-16, UC-17 |
-| `CN-13` | Quản trị nhân sự, voucher và báo cáo | 4 | Could | Long và Tài | FR-11 (phía Manager), FR-14, FR-19 | UC-18, UC-21, UC-19 |
+| `CN-08` | Màn hình pha chế KDS cho Barista (Đã hoàn thành Sprint 3: S3.2 API, S3.3 Web) | 3 | Could | Long và Tài | FR-20 | UC-11 |
+| `CN-09` | Giao nhận quầy và mã 6 số (Đã hoàn thành Sprint 3: S3.4 API, S3.5 Web) | 3 | Could | Long và Tài | FR-21 | UC-07, UC-12 |
+| `CN-10` | Tiện ích khách: voucher, hủy đơn, đánh giá (Đã hoàn thành Sprint 3: S3.6..S3.12) | 3 | Could | Long và Tài | FR-11 (phía khách), FR-12, FR-13 | UC-10, UC-08, UC-13, UC-09 |
+| `CN-11` | Quản lý menu, danh mục, topping (CRUD) (Đã hoàn thành Sprint 4 API: S4.2) | 4 | Could | Long và Tài | FR-18 | UC-15 |
+| `CN-12` | Kho nguyên liệu và công thức pha chế (Đã hoàn thành Sprint 4 API: S4.4, S4.5) | 4 | Could | Long và Tài | FR-15, FR-16, FR-17 | UC-14, UC-16, UC-17 |
+| `CN-13` | Quản trị nhân sự, voucher và báo cáo (Đã hoàn thành Sprint 4 API: S4.1, S4.7, S4.8, S4.9) | 4 | Could | Long và Tài | FR-11 (phía Manager), FR-14, FR-19 | UC-18, UC-21, UC-19 |
 
 ### 6.2. 21 use case (UC)
 
@@ -278,12 +278,12 @@ Các tính năng nâng cao đã được quy hoạch trong Product Backlog và s
 | `FR-11` | Voucher: áp mã khi checkout (khách) và tạo/quản lý mã (Manager) | CN-10, CN-13 | 3, 4 | Could |
 | `FR-12` | Hủy đơn trước khi pha chế, ghi lý do, hoàn tiền/kho/điểm | CN-10 | 3 | Could |
 | `FR-13` | Đánh giá 1–5 sao kèm nhận xét cho đơn `COMPLETED` | CN-10 | 3 | Could |
-| `FR-14` | Báo cáo doanh thu, số đơn, tỷ lệ hủy, Top 5 món | CN-13 | 4 | Could |
-| `FR-15` | Kho nguyên liệu: nhập kho có lưu vết, theo dõi tồn, trừ/hoàn kho tự động | CN-12 | 4 | Could |
-| `FR-16` | Công thức pha chế theo món, size và topping | CN-12 | 4 | Could |
-| `FR-17` | Cảnh báo khi nguyên liệu chạm ngưỡng tối thiểu | CN-12 | 4 | Could |
-| `FR-18` | Quản lý danh mục, món, topping, phụ thu size (CRUD) | CN-11 | 4 | Could |
-| `FR-19` | Quản lý tài khoản nhân viên: tạo, gán vai trò, khóa/mở khóa | CN-13 | 4 | Could |
+| `FR-14` | Báo cáo doanh thu, số đơn, tỷ lệ hủy, Top 5 món (S4.9 API) | CN-13 | 4 | Could |
+| `FR-15` | Kho nguyên liệu: nhập kho có lưu vết, theo dõi tồn, trừ/hoàn kho tự động (S4.4, S4.5 API) | CN-12 | 4 | Could |
+| `FR-16` | Công thức pha chế theo món, size và topping (S4.4 API) | CN-12 | 4 | Could |
+| `FR-17` | Cảnh báo khi nguyên liệu chạm ngưỡng tối thiểu (S4.5 API) | CN-12 | 4 | Could |
+| `FR-18` | Quản lý danh mục, món, topping, phụ thu size CRUD (S4.2 API) | CN-11 | 4 | Could |
+| `FR-19` | Quản lý tài khoản nhân viên: tạo, gán vai trò, khóa/mở khóa (S4.7 API) | CN-13 | 4 | Could |
 | `FR-20` | Màn hình KDS cho Barista: nhận đơn `PAID`, chuyển `PREPARING`, `READY` | CN-08 | 3 | Could |
 | `FR-21` | Sinh `pickupCode` khi `READY`; Cashier đối chiếu mã và hoàn tất `COMPLETED` | CN-09 | 3 | Could |
 
@@ -299,7 +299,7 @@ Các tính năng nâng cao đã được quy hoạch trong Product Backlog và s
 
 ### 6.5. Vòng đời đơn hàng
 
-Trạng thái: `PENDING`, `PAID`, `PAYMENT_FAILED`, `PREPARING`, `READY`, `COMPLETED`, `CANCELLED`. Mọi lần chuyển đều kiểm tra `version` (khóa lạc quan), sai thì trả 409. **Ở MVP (Sprint 2) chỉ có 3 trạng thái đầu**; 4 trạng thái sau thuộc Sprint 3, Planned.
+Trạng thái: `PENDING`, `PAID`, `PAYMENT_FAILED`, `PREPARING`, `READY`, `COMPLETED`, `CANCELLED`. Mọi lần chuyển đều kiểm tra `version` (khóa lạc quan), sai thì trả 409. **Ở MVP (Sprint 2) chỉ có 3 trạng thái đầu**; 4 trạng thái sau đã hoàn thành trong Sprint 3 (S3.1 đến S3.12).
 
 | Từ | Sang | Ai thực hiện | Sprint | Ghi chú |
 |---|---|---|:---:|---|

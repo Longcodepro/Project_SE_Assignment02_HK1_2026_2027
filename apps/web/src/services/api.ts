@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Product, Order, AuthResponse, User, LoyaltyInfo, KdsOrder } from "@/types";
+import { Product, Order, CreatedOrder, AuthResponse, User, LoyaltyInfo, KdsOrder, CashierOrder } from "@/types";
 
 // Lấy URL Backend động: ưu tiên custom URL trong localStorage (để test trên mobile / demo từ xa), sau đó đến biến môi trường
 export const getApiUrl = (): string => {
@@ -198,6 +198,7 @@ export const apiService = {
             orderId,
             status: paymentRes.data.status, // 'PAID' hoặc 'PAYMENT_FAILED'
             total: orderRes.data.total,
+            discountAmount: orderRes.data.discountAmount ?? 0,
         };
     },
 
@@ -285,6 +286,90 @@ export const apiService = {
     ): Promise<{id: string; status: string; version: number}> =>{
         const res = await axios.patch(`${getApiUrl()}/kds/orders/${orderId}/status`, {status, version});
         return res.data;
+    },
+
+    // 9. Đơn Cashier xử lý được: READY (chờ giao món) và PAID (có thể hủy), cũ nhất lên đầu
+    getCashierOrders: async (status?: 'READY' | 'PAID'): Promise<CashierOrder[]> => {
+        const res = await axios.get<CashierOrder[]>(`${getApiUrl()}/cashier/orders`, {
+            params: status ? { status } : undefined,
+        });
+        return res.data;
+    },
+
+    // 10. Cashier nhập mã khách đọc để giao món: READY -> COMPLETED
+    completeOrder: async (orderId: string, pickupCode: string): Promise<{ id: string; status: string; version: number }> => {
+        const res = await axios.post(`${getApiUrl()}/cashier/orders/${orderId}/complete`, { pickupCode });
+        return res.data;
+    },
+
+    // 11. Tạo đơn (chưa thanh toán), có thể kèm mã giảm giá: server tính số tiền giảm và tổng mới
+    createOrder: async (payload: {
+        items: { productId: string | number; size: string; quantity: number; toppings: string[] }[];
+        promoCode?: string;
+    }): Promise<CreatedOrder> => {
+        const res = await axios.post<CreatedOrder>(
+            `${getApiUrl()}/orders`,
+            {
+                items: payload.items.map((i) => ({
+                    productId: Number(i.productId),
+                    quantity: i.quantity,
+                    size: i.size,
+                    toppings: i.toppings,
+                })),
+                ...(payload.promoCode ? { promoCode: payload.promoCode } : {}),
+            },
+            { headers: { 'Idempotency-Key': `ord_${Date.now()}_${Math.random().toString(36).substring(2, 10)}` } },
+        );
+        return res.data;
+    },
+
+    // 12. Khách hủy đơn của mình (PENDING, PAYMENT_FAILED, PAID); đơn PAID bắt buộc có lý do
+    cancelOrder: async (
+        orderId: string,
+        version: number,
+        reason?: string,
+    ): Promise<{ id: string; status: string; version: number; refundedAt: string | null }> => {
+        const res = await axios.post(`${getApiUrl()}/orders/${orderId}/cancel`, {
+            version,
+            ...(reason ? { reason } : {}),
+        });
+        return res.data;
+    },
+
+    // 12a. Cashier hủy đơn đã thanh toán (PAID) tại quầy, bắt buộc có lý do
+    cancelCashierOrder: async (
+        orderId: string,
+        version: number,
+        reason: string,
+    ): Promise<{ id: string; status: string; version: number; refundedAt: string | null }> => {
+        const res = await axios.post(`${getApiUrl()}/cashier/orders/${orderId}/cancel`, { version, reason });
+        return res.data;
+    },
+
+    // 12c. Đánh giá 1-5 sao kèm nhận xét cho đơn COMPLETED của mình, mỗi đơn một lần
+    reviewOrder: async (
+        orderId: string,
+        stars: number,
+        comment?: string,
+    ): Promise<{ id: number; orderId: string; stars: number; comment: string | null; createdAt: string }> => {
+        const res = await axios.post(`${getApiUrl()}/orders/${orderId}/review`, {
+            stars,
+            ...(comment ? { comment } : {}),
+        });
+        return res.data;
+    },
+
+    // 12b. Bỏ đơn nháp (đơn chưa trả tiền) để trả lại lượt dùng mã; lỗi thì bỏ qua vì chỉ là dọn dẹp
+    discardDraftOrder: async (orderId: string): Promise<void> => {
+        try {
+            const orders = await apiService.getMyOrders();
+            const order = orders.find((o) => String(o.id) === orderId);
+            if (order && typeof order.version === 'number' && ['PENDING', 'PAYMENT_FAILED'].includes(order.status)) {
+                await apiService.cancelOrder(orderId, order.version);
+            }
+        } catch {
+            // Đơn nháp còn sót lại không ảnh hưởng người dùng
+        }
     },
 
 };

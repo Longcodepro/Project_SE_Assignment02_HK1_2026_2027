@@ -100,10 +100,34 @@ describe('PATCH /kds/orders/:id/status', () => {
     await app.close();
   });
 
-  it('PREPARING → READY', async () => {
-    const { app } = await setup({ order: { id: 'ord_1', status: 'PREPARING', version: 2 } });
+  it('PREPARING → READY: sinh pickupCode 6 số nhưng không trả mã cho Barista', async () => {
+    const { app, updateMany } = await setup({ order: { id: 'ord_1', status: 'PREPARING', version: 2 } });
     const res = await doi(app, 'ord_1', { status: 'READY', version: 2 }).expect(200);
     expect(res.body).toEqual({ id: 'ord_1', status: 'READY', version: 3 });
+    expect(updateMany.mock.calls[0][0].data.pickupCode).toMatch(/^\d{6}$/);
+    await app.close();
+  });
+
+  it('chuyển PREPARING không sinh pickupCode', async () => {
+    const { app, updateMany } = await setup({ order: { id: 'ord_1', status: 'PAID', version: 1 } });
+    await doi(app, 'ord_1', { status: 'PREPARING', version: 1 }).expect(200);
+    expect(updateMany.mock.calls[0][0].data).not.toHaveProperty('pickupCode');
+    await app.close();
+  });
+
+  it('READY: trùng mã với đơn READY khác (P2002) thì sinh mã mới và thử lại', async () => {
+    const { app, updateMany } = await setup({ order: { id: 'ord_1', status: 'PREPARING', version: 2 } });
+    updateMany.mockRejectedValueOnce({ code: 'P2002' });
+    await doi(app, 'ord_1', { status: 'READY', version: 2 }).expect(200);
+    expect(updateMany).toHaveBeenCalledTimes(2);
+    await app.close();
+  });
+
+  it('READY: trùng mã liên tục thì dừng sau 5 lần, không đổi trạng thái', async () => {
+    const { app, updateMany } = await setup({ order: { id: 'ord_1', status: 'PREPARING', version: 2 } });
+    updateMany.mockRejectedValue({ code: 'P2002' });
+    await doi(app, 'ord_1', { status: 'READY', version: 2 }).expect(500);
+    expect(updateMany).toHaveBeenCalledTimes(5);
     await app.close();
   });
 

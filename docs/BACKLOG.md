@@ -289,53 +289,60 @@ Task 1: Yêu cầu  ──>  Task 2: Sơ đồ  ──>  Task 3: Kiến trúc  �
 ---
 
 ### [Issue #24] [Mở rộng - HK1] Quản lý và áp dụng mã khuyến mãi (Promotion/Voucher) giảm giá đơn
-- **Phân loại:** **COULD HAVE** | **Sprint:** Hậu Sprint 2 (Nếu còn thời gian) | **Phụ trách:** Long & Tài
+- **Phân loại:** **COULD HAVE** | **Sprint:** Sprint 3 (Đã hoàn thành) | **Phụ trách:** Long & Tài
 - **Mô tả:** Khách hàng nhập mã giảm giá (`FIXED` hoặc `PERCENT`) khi thanh toán; hệ thống kiểm tra điều kiện đơn tối thiểu và trừ tiền.
 - **Tiêu chí chấp nhận:**
-  - [ ] Bảng `Promotion` lưu mã, mức giảm, thời hạn và số lượt dùng.
-  - [ ] API validate mã và trừ tiền vào tổng đơn.
+  - [x] Bảng `Promotion` lưu mã, mức giảm, thời hạn và số lượt dùng (S3.6).
+  - [x] API validate mã và trừ tiền vào tổng đơn (S3.6, S3.7).
 
 ---
 
 ### [Issue #25] [Mở rộng - HK1] Hủy đơn hàng trước pha chế và ghi nhận lý do hủy đơn
-- **Phân loại:** **COULD HAVE** | **Sprint:** Hậu Sprint 2 (Nếu còn thời gian) | **Phụ trách:** Long & Tài
+- **Phân loại:** **COULD HAVE** | **Sprint:** Sprint 3 (Đã hoàn thành) | **Phụ trách:** Long & Tài
 - **Mô tả:** Cho phép khách hàng hoặc nhân viên hủy đơn đang ở trạng thái `PENDING`, `PAYMENT_FAILED` hoặc `PAID` (chưa chuyển sang `PREPARING`), ghi lại lý do hủy.
 - **Tiêu chí chấp nhận:**
-  - [ ] Chuyển trạng thái đơn sang `CANCELLED`.
-  - [ ] Lưu người hủy (`cancelledBy`) và ghi chú hủy (`cancelNote`).
+  - [x] Chuyển trạng thái đơn sang `CANCELLED` (S3.8, S3.9).
+  - [x] Ghi nhận lý do hủy (`cancelReason`) và thời điểm hoàn tiền (`refundedAt`), trừ lại điểm thưởng và trả lượt voucher.
 
 ---
 
 ### [Issue #26] [Mở rộng - HK1] Đánh giá chất lượng dịch vụ và phản hồi sau khi nhận đồ uống
-- **Phân loại:** **COULD HAVE** | **Sprint:** Hậu Sprint 2 (Nếu còn thời gian) | **Phụ trách:** Long & Tài
+- **Phân loại:** **COULD HAVE** | **Sprint:** Sprint 3 (Đã hoàn thành) | **Phụ trách:** Long & Tài
 - **Mô tả:** Khách hàng đánh giá số sao (1-5 sao) và gửi bình luận sau khi đơn hàng hoàn tất.
 - **Tiêu chí chấp nhận:**
-  - [ ] Bảng `Feedback` lưu đơn hàng, số sao, nội dung nhận xét.
-  - [ ] Màn hình chi tiết đơn có form gửi đánh giá.
+  - [x] Bảng `Review` lưu đơn hàng, số sao, nội dung nhận xét (S3.10).
+  - [x] Màn hình đơn hàng có popup gửi đánh giá sau khi nhận món (S3.11).
 
 ---
 
 ### [Issue #27] [Mở rộng - HK1] Báo cáo thống kê doanh thu và sản lượng bán ra cho Quản lý
-- **Phân loại:** **COULD HAVE** | **Sprint:** Hậu Sprint 2 (Nếu còn thời gian) | **Phụ trách:** Long
+- **Phân loại:** **COULD HAVE** | **Sprint:** Sprint 4 (Đã hoàn thành) | **Phụ trách:** Long
 - **Mô tả:** API thống kê tổng doanh thu, số đơn thành công và top các món bán chạy nhất trong ngày/tuần.
 - **Tiêu chí chấp nhận:**
-  - [ ] API báo cáo tổng hợp số liệu doanh thu (tên endpoint chốt khi vào Sprint 4).
-  - [ ] Biểu đồ thống kê cơ bản.
+  - [x] API báo cáo tổng hợp số liệu doanh thu (`GET /admin/reports`, S4.9).
+  - [x] Thống kê tổng doanh thu, số đơn, tỷ lệ hủy, top 5 món bán chạy nhất.
 
 ---
 
-## 4. Phạm vi Planned (Sprint 3 và 4, Could Have)
+## 4. Phạm vi Sprint 3 (Đã hoàn thành) và Sprint 4 (Planned, Could Have)
 
-Chỉ có tài liệu và sơ đồ, chưa hiện thực trong Assignment 2. Mã chức năng (`CN`), yêu cầu (`FR`) và use case (`UC`) theo `docs/requirements/context-and-scope.md`.
+Mã chức năng (`CN`), yêu cầu (`FR`) và use case (`UC`) theo `docs/requirements/context-and-scope.md`.
 
-| Chức năng | Tên | Sprint | FR | UC |
-|:---:|---|:---:|---|---|
-| `CN-08` | Màn hình pha chế KDS cho Barista (Đã hoàn thành S3.2 API, S3.3 Web) | 3 | FR-20 | UC-11 |
-| `CN-09` | Giao nhận quầy và mã nhận hàng 6 số | 3 | FR-21 | UC-07, UC-12 |
-| `CN-10` | Voucher, hủy đơn, đánh giá (Issue #24, #25, #26) | 3 | FR-11, FR-12, FR-13 | UC-10, UC-08, UC-13, UC-09 |
-| `CN-11` | Quản lý menu, danh mục, topping (CRUD) | 4 | FR-18 | UC-15 |
-| `CN-12` | Kho nguyên liệu và công thức pha chế (thay cờ `isAvailable`) | 4 | FR-15, FR-16, FR-17 | UC-14, UC-16, UC-17 |
-| `CN-13` | Nhân sự, voucher, báo cáo (Issue #27) | 4 | FR-11, FR-14, FR-19 | UC-18, UC-21, UC-19 |
+### 4.1. Sprint 3 — Vận hành tại quầy & Tiện ích khách hàng (Đã hoàn thành / Done)
+
+| Chức năng | Tên | Sprint | FR | UC | Trạng thái |
+|:---:|---|:---:|---|---|:---:|
+| `CN-08` | Màn hình pha chế KDS cho Barista | 3 | FR-20 | UC-11 | **Done** (S3.2 API, S3.3 Web) |
+| `CN-09` | Giao nhận quầy và mã nhận hàng 6 số | 3 | FR-21 | UC-07, UC-12 | **Done** (S3.4 API, S3.5 Web) |
+| `CN-10` | Voucher, hủy đơn, đánh giá (Issue #24, #25, #26) | 3 | FR-11, FR-12, FR-13 | UC-10, UC-08, UC-13, UC-09 | **Done** (S3.6..S3.12) |
+
+### 4.2. Sprint 4 — Quản trị & Số hóa kho (Đã hoàn thành backend / Done Backend)
+
+| Chức năng | Tên | Sprint | FR | UC | Trạng thái |
+|:---:|---|:---:|---|---|:---:|
+| `CN-11` | Quản lý menu, danh mục, topping (CRUD) | 4 | FR-18 | UC-15 | **Done** (S4.2 API) |
+| `CN-12` | Kho nguyên liệu và công thức pha chế (thay cờ `isAvailable`) | 4 | FR-15, FR-16, FR-17 | UC-14, UC-16, UC-17 | **Done** (S4.4, S4.5 API) |
+| `CN-13` | Nhân sự, voucher, báo cáo (Issue #27) | 4 | FR-11, FR-14, FR-19 | UC-18, UC-21, UC-19 | **Done** (S4.1, S4.7, S4.8, S4.9 API) |
 
 ---
 

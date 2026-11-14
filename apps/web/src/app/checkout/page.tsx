@@ -1,13 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { useCartStore } from '@/store/useCartStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { apiService } from '@/services/api';
-import { ArrowLeft, CreditCard, Wallet, ShieldCheck, Loader2, AlertCircle, LogIn } from 'lucide-react';
+import { useCheckoutDraftStore } from '@/store/useCheckoutDraftStore';
+import { apiErrorMessage } from '@/lib/errors';
+import { cartKeyOf, isValidPromoCode, normalizePromoCode } from '@/lib/promo';
+import { ArrowLeft, CreditCard, Wallet, ShieldCheck, Loader2, AlertCircle, LogIn, Ticket, X } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 
 export default function CheckoutPage(){
@@ -27,9 +30,32 @@ export default function CheckoutPage(){
     const [loading, setLoading] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+    // Mã giảm giá: server tính số tiền giảm nên áp mã = tạo đơn nháp có promoCode, client chỉ hiển thị kết quả
+    const { draft, setDraft, clearDraft } = useCheckoutDraftStore();
+    const [promoInput, setPromoInput] = useState<string>('');
+    const [promoError, setPromoError] = useState<string | null>(null);
+    const [promoLoading, setPromoLoading] = useState<boolean>(false);
+    const orderItems = items.map((item) => ({
+        productId: item.product.id,
+        size: item.size,
+        quantity: item.quantity,
+        toppings: item.toppings,
+    }));
+    const cartKey = cartKeyOf(orderItems);
+
+    // Giỏ hàng đổi sau khi áp mã: đơn nháp cũ không còn khớp, hủy để trả lại lượt dùng mã
+    useEffect(() => {
+        if (draft && draft.cartKey !== cartKey) {
+            void apiService.discardDraftOrder(draft.orderId);
+            clearDraft();
+        }
+    }, [draft, cartKey, clearDraft]);
+
     if (!isClient) return null;
-    
+
     const totalPrice = getTotalPrice();
+    // Có mã: số tiền phải trả là tổng server đã tính; không có mã: tổng giỏ hàng như trước
+    const payable = draft ? draft.total : totalPrice;
 
     // Nếu giỏ hàng trống, chuyển khách về lại menu
     if (items.length === 0) {
@@ -45,6 +71,47 @@ export default function CheckoutPage(){
             </div>
         );
     }
+
+    // Áp mã: tạo đơn nháp kèm mã, server trả số tiền giảm và tổng mới (không tự tính ở client)
+    const handleApplyPromo = async () => {
+        const code = normalizePromoCode(promoInput);
+        if (!isValidPromoCode(code)) {
+            setPromoError('Mã giảm giá gồm 3-32 ký tự: chữ, số, _ hoặc -.');
+            return;
+        }
+        if (!token) {
+            openAuthModal('login');
+            setPromoError('Vui lòng đăng nhập để dùng mã giảm giá.');
+            return;
+        }
+        setPromoLoading(true);
+        setPromoError(null);
+        try {
+            const order = await apiService.createOrder({ items: orderItems, promoCode: code });
+            setDraft({
+                orderId: order.id,
+                cartKey,
+                promoCode: order.promoCode ?? code,
+                total: order.total,
+                discountAmount: order.discountAmount,
+            });
+            setPromoInput('');
+        } catch (err: unknown) {
+            // Server nêu rõ lý do: mã không tồn tại, hết hạn, chưa đủ đơn tối thiểu hoặc hết lượt
+            setPromoError(apiErrorMessage(err, 'Không áp dụng được mã giảm giá.'));
+        } finally {
+            setPromoLoading(false);
+        }
+    };
+
+    // Gỡ mã: hủy đơn nháp để trả lại lượt dùng mã
+    const handleRemovePromo = async () => {
+        if (!draft) return;
+        const orderId = draft.orderId;
+        clearDraft();
+        setPromoError(null);
+        await apiService.discardDraftOrder(orderId);
+    };
 
     // Hàm xử lý khi bấm xác nhận thanh toán
     const handlePayment = async () => {
@@ -63,13 +130,32 @@ export default function CheckoutPage(){
                 throw new Error('Mô phỏng thanh toán thất bại: số dư tài khoản không đủ hoặc thẻ bị khóa');
             }
 
+            // Đã áp mã: trả tiền chính đơn nháp, số tiền là tổng server đã tính
+            if (draft) {
+                const res = await apiService.payOrder({
+                    orderId: draft.orderId,
+                    paymentMethod,
+                    cardNumber: paymentMethod === 'CARD' ? cardNumber.trim() : undefined,
+                });
+                if (res.status !== 'PAID') {
+                    throw new Error(
+                        res.reason
+                            ? `Thanh toán đơn hàng #${draft.orderId} không thành công: ${res.reason}. Bạn có thể thử lại.`
+                            : `Thanh toán đơn hàng #${draft.orderId} không thành công (PAYMENT_FAILED). Bạn có thể thử lại.`,
+                    );
+                }
+                const paid = draft;
+                clearDraft();
+                clearCart();
+                router.push(
+                    `/order-success?orderId=${paid.orderId}&total=${res.amount ?? paid.total}&method=${paymentMethod}` +
+                        `&discount=${paid.discountAmount}&promo=${encodeURIComponent(paid.promoCode)}`,
+                );
+                return;
+            }
+
             const payload = {
-                items: items.map((item) => ({
-                    productId: item.product.id,
-                    size: item.size,
-                    quantity: item.quantity,
-                    toppings: item.toppings,
-                })),
+                items: orderItems,
                 paymentMethod,
                 cardNumber: paymentMethod === 'CARD' ? cardNumber.trim() : undefined,
             };
@@ -179,12 +265,87 @@ export default function CheckoutPage(){
                                 </div>
                             ))}
                         </div>
-                        <div className="border-t border-dashed border-gray-200 mt-3 sm:mt-4 pt-3 sm:pt-4 flex justify-between items-center">
-                            <span className="font-bold text-sm sm:text-base text-gray-800">Tổng tiền cần trả:</span>
-                            <span className="font-black text-xl sm:text-2xl text-amber-900">
-                                {totalPrice.toLocaleString('vi-VN')}đ
-                            </span>
+                        <div className="border-t border-dashed border-gray-200 mt-3 sm:mt-4 pt-3 sm:pt-4 space-y-1.5">
+                            {draft && (
+                                <>
+                                    <div className="flex justify-between items-center text-xs sm:text-sm text-gray-600">
+                                        <span>Tạm tính:</span>
+                                        <span>{(draft.total + draft.discountAmount).toLocaleString('vi-VN')}đ</span>
+                                    </div>
+                                    <div
+                                        data-testid="discount-line"
+                                        className="flex justify-between items-center text-xs sm:text-sm font-semibold text-emerald-700"
+                                    >
+                                        <span>Giảm giá ({draft.promoCode}):</span>
+                                        <span>−{draft.discountAmount.toLocaleString('vi-VN')}đ</span>
+                                    </div>
+                                </>
+                            )}
+                            <div className="flex justify-between items-center">
+                                <span className="font-bold text-sm sm:text-base text-gray-800">Tổng tiền cần trả:</span>
+                                <span data-testid="payable-total" className="font-black text-xl sm:text-2xl text-amber-900">
+                                    {payable.toLocaleString('vi-VN')}đ
+                                </span>
+                            </div>
                         </div>
+                    </div>
+
+                    {/* KHỐI MÃ GIẢM GIÁ: server tính số tiền giảm khi áp mã */}
+                    <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-amber-100/80">
+                        <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-1.5">
+                            <Ticket className="w-4 h-4" /> Mã giảm giá
+                        </h2>
+                        {draft ? (
+                            <div className="flex items-center justify-between gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5">
+                                <div className="text-xs sm:text-sm text-emerald-900">
+                                    Đã áp mã <span className="font-mono font-black">{draft.promoCode}</span>, giảm{' '}
+                                    <span className="font-bold">{draft.discountAmount.toLocaleString('vi-VN')}đ</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => void handleRemovePromo()}
+                                    aria-label="Gỡ mã giảm giá"
+                                    className="p-1.5 rounded-full text-emerald-700 hover:bg-emerald-100 transition"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ) : (
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    void handleApplyPromo();
+                                }}
+                                className="flex gap-2"
+                            >
+                                <input
+                                    type="text"
+                                    value={promoInput}
+                                    onChange={(e) => {
+                                        setPromoInput(e.target.value);
+                                        setPromoError(null);
+                                    }}
+                                    placeholder="Nhập mã giảm giá"
+                                    maxLength={32}
+                                    aria-label="Mã giảm giá"
+                                    className="flex-1 min-w-0 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-base sm:text-sm font-mono uppercase placeholder:normal-case placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-amber-800 focus:bg-white"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={promoLoading || !promoInput.trim()}
+                                    className="shrink-0 bg-amber-900 hover:bg-amber-800 disabled:opacity-40 text-white font-bold text-xs sm:text-sm px-4 rounded-xl transition active:scale-95 flex items-center gap-1.5"
+                                >
+                                    {promoLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    <span>Áp dụng</span>
+                                </button>
+                            </form>
+                        )}
+                        {promoError && (
+                            <p role="alert" className="mt-2 flex items-start gap-1.5 text-xs text-red-600">
+                                <AlertCircle className="w-4 h-4 shrink-0 mt-px" />
+                                <span>{promoError}</span>
+                            </p>
+                        )}
                     </div>
 
                     {/* KHỐI 2: CHỌN PHƯƠNG THỨC KHÔNG TIỀN MẶT */}
@@ -303,7 +464,7 @@ export default function CheckoutPage(){
                                 <span>Đang kết nối cổng thanh toán...</span>
                             </>
                         ) : (
-                            <span>Xác nhận trả · {totalPrice.toLocaleString('vi-VN')}đ</span>
+                            <span>Xác nhận trả · {payable.toLocaleString('vi-VN')}đ</span>
                         )}
                     </button>
                 </div>

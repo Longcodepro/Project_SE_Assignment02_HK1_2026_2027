@@ -7,7 +7,35 @@ import { MockPaymentGateway } from './mock-gateway.js';
 import { PaymentsController } from './payments.controller.js';
 import { PaymentsService } from './payments.service.js';
 
-async function setup(order: object | null, updatedCount = 1) {
+// Kho giả: mặc định không có công thức nào nên thanh toán không đụng tới kho
+type Kho = {
+  items?: object[];
+  recipes?: object[];
+  toppingRecipes?: object[];
+  stocks?: Record<number, number>;
+  // orderId -> các dòng đơn, dùng khi nhiều đơn thanh toán đồng thời
+  itemsByOrder?: Record<string, object[]>;
+};
+
+async function setup(order: object | null, updatedCount = 1, kho: Kho = {}) {
+  const stocks = kho.stocks ?? {};
+  const ingredientUpdateMany = vi.fn().mockImplementation(({ where, data }) => {
+    // Giống UPDATE ... WHERE stock >= cần: chỉ trừ khi đủ
+    if (stocks[where.id] >= where.stock.gte) {
+      stocks[where.id] -= data.stock.decrement;
+      return Promise.resolve({ count: 1 });
+    }
+    return Promise.resolve({ count: 0 });
+  });
+  const ingredientFindMany = vi
+    .fn()
+    .mockImplementation(({ where }) =>
+      Promise.resolve(where.id.in.map((id: number) => ({ name: TEN_NGUYEN_LIEU[id] }))),
+    );
+  const usageCreateMany = vi.fn().mockResolvedValue({ count: 0 });
+  const orderItemFindMany = vi
+    .fn()
+    .mockImplementation(({ where }) => Promise.resolve(kho.itemsByOrder?.[where.orderId] ?? kho.items ?? []));
   const orderUpdateMany = vi.fn().mockResolvedValue({ count: updatedCount });
   const paymentCreate = vi
     .fn()
@@ -19,11 +47,25 @@ async function setup(order: object | null, updatedCount = 1) {
     order: { updateMany: orderUpdateMany },
     payment: { create: paymentCreate },
     user: { update: userUpdate },
+    orderItem: { findMany: orderItemFindMany },
+    recipeItem: { findMany: vi.fn().mockResolvedValue(kho.recipes ?? []) },
+    toppingRecipeItem: { findMany: vi.fn().mockResolvedValue(kho.toppingRecipes ?? []) },
+    ingredient: { updateMany: ingredientUpdateMany, findMany: ingredientFindMany },
+    stockUsage: { createMany: usageCreateMany },
   };
   const prisma = {
     order: { findFirst: orderFindFirst },
     payment: { findUnique: paymentFindUnique },
-    $transaction: (fn: (t: typeof tx) => unknown) => fn(tx),
+    // Giống transaction thật: lỗi giữa chừng thì tồn kho trở lại như trước khi vào
+    $transaction: async (fn: (t: typeof tx) => unknown) => {
+      const snapshot = { ...stocks };
+      try {
+        return await fn(tx);
+      } catch (e) {
+        Object.assign(stocks, snapshot);
+        throw e;
+      }
+    },
   };
   const moduleRef = await Test.createTestingModule({
     controllers: [PaymentsController],
@@ -40,8 +82,22 @@ async function setup(order: object | null, updatedCount = 1) {
   const app = moduleRef.createNestApplication();
   app.useGlobalPipes(createValidationPipe());
   await app.init();
-  return { app, orderFindFirst, orderUpdateMany, paymentCreate, paymentFindUnique, userUpdate, http: () => request(app.getHttpServer()) };
+  return {
+    app,
+    orderFindFirst,
+    orderUpdateMany,
+    paymentCreate,
+    paymentFindUnique,
+    userUpdate,
+    stocks,
+    ingredientUpdateMany,
+    orderItemFindMany,
+    usageCreateMany,
+    http: () => request(app.getHttpServer()),
+  };
 }
+
+const TEN_NGUYEN_LIEU: Record<number, string> = { 1: 'Cà phê rang xay', 2: 'Sữa đặc' };
 
 const pending = { id: 'ord_1', userPhone: '0912345678', status: 'PENDING', total: 84000, version: 3 };
 
@@ -162,6 +218,138 @@ describe('POST /payments', () => {
     const { app, http, orderFindFirst } = await setup(pending);
     await http().post('/payments').send(body).expect(400);
     expect(orderFindFirst).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe('POST /payments: trừ kho', () => {
+  const dongDon = [{ productId: 1, size: 'M', quantity: 1, toppings: [] }];
+  const congThuc = [{ productId: 1, size: 'M', ingredientId: 1, quantity: 80 }];
+  const tra = (http: () => ReturnType<typeof request>, orderId = 'ord_1') =>
+    http().post('/payments').send({ orderId, method: 'WALLET' });
+
+  it('đủ kho: trừ có điều kiện, lưu số đã trừ, đơn sang PAID và cộng điểm', async () => {
+    const { app, http, stocks, ingredientUpdateMany, usageCreateMany, paymentCreate, userUpdate } = await setup(
+      pending,
+      1,
+      { items: dongDon, recipes: congThuc, stocks: { 1: 100 } },
+    );
+
+    const res = await tra(http).expect(201);
+
+    expect(res.body).toMatchObject({ status: 'PAID', pointsEarned: 84 });
+    expect(ingredientUpdateMany).toHaveBeenCalledWith({
+      where: { id: 1, stock: { gte: 80 } },
+      data: { stock: { decrement: 80 } },
+    });
+    expect(stocks[1]).toBe(20);
+    expect(usageCreateMany.mock.calls[0][0].data).toEqual([{ orderId: 'ord_1', ingredientId: 1, quantity: 80 }]);
+    expect(paymentCreate.mock.calls[0][0].data.status).toBe('SUCCESS');
+    expect(userUpdate).toHaveBeenCalledTimes(1);
+    await app.close();
+  });
+
+  it('không đủ kho: thanh toán thất bại, không tính tiền, không trừ kho, không cộng điểm, đơn PAYMENT_FAILED', async () => {
+    const { app, http, stocks, usageCreateMany, paymentCreate, userUpdate, orderUpdateMany } = await setup(
+      pending,
+      1,
+      { items: dongDon, recipes: congThuc, stocks: { 1: 50 } },
+    );
+
+    const res = await tra(http).expect(201);
+
+    expect(res.body).toMatchObject({
+      orderId: 'ord_1',
+      amount: 84000,
+      status: 'PAYMENT_FAILED',
+      pointsEarned: 0,
+      reason: 'Hết nguyên liệu: Cà phê rang xay',
+    });
+    expect(stocks[1]).toBe(50);
+    expect(usageCreateMany).not.toHaveBeenCalled();
+    expect(userUpdate).not.toHaveBeenCalled();
+    expect(paymentCreate).toHaveBeenCalledTimes(1);
+    expect(paymentCreate.mock.calls[0][0].data).toMatchObject({
+      status: 'FAILED',
+      pointsEarned: 0,
+      failureReason: 'Hết nguyên liệu: Cà phê rang xay',
+    });
+    // lần thử đầu ghi PAID (bị hoàn tác trong transaction thật), lần ghi nhận thất bại ghi PAYMENT_FAILED
+    expect(orderUpdateMany.mock.calls.map((c) => c[0].data.status)).toEqual(['PAID', 'PAYMENT_FAILED']);
+    await app.close();
+  });
+
+  it('thiếu một trong hai nguyên liệu: hoàn tác cả phần đã trừ của nguyên liệu kia', async () => {
+    const { app, http, stocks } = await setup(pending, 1, {
+      items: dongDon,
+      recipes: [...congThuc, { productId: 1, size: 'M', ingredientId: 2, quantity: 30 }],
+      stocks: { 1: 100, 2: 10 },
+    });
+    const res = await tra(http).expect(201);
+    expect(res.body).toMatchObject({ status: 'PAYMENT_FAILED', reason: 'Hết nguyên liệu: Sữa đặc' });
+    expect(stocks).toEqual({ 1: 100, 2: 10 });
+    await app.close();
+  });
+
+  it('công thức topping cũng được trừ', async () => {
+    const { app, http, stocks } = await setup(pending, 1, {
+      items: [{ productId: 1, size: 'M', quantity: 2, toppings: ['tran-chau'] }],
+      recipes: congThuc,
+      toppingRecipes: [{ toppingCode: 'tran-chau', ingredientId: 2, quantity: 30 }],
+      stocks: { 1: 200, 2: 100 },
+    });
+    await tra(http).expect(201);
+    expect(stocks).toEqual({ 1: 40, 2: 40 });
+    await app.close();
+  });
+
+  it('thất bại do cổng thanh toán (thẻ 0000) không đụng tới kho', async () => {
+    const { app, http, orderItemFindMany, ingredientUpdateMany, stocks } = await setup(pending, 1, {
+      items: dongDon,
+      recipes: congThuc,
+      stocks: { 1: 100 },
+    });
+    await http().post('/payments').send({ orderId: 'ord_1', method: 'CARD', cardNumber: '4111111111110000' }).expect(201);
+    expect(orderItemFindMany).not.toHaveBeenCalled();
+    expect(ingredientUpdateMany).not.toHaveBeenCalled();
+    expect(stocks[1]).toBe(100);
+    await app.close();
+  });
+
+  it('món chưa có công thức: không kiểm tra, không trừ kho', async () => {
+    const { app, http, ingredientUpdateMany, usageCreateMany } = await setup(pending, 1, { items: dongDon });
+    const res = await tra(http).expect(201);
+    expect(res.body.status).toBe('PAID');
+    expect(ingredientUpdateMany).not.toHaveBeenCalled();
+    expect(usageCreateMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('hai đơn thanh toán đồng thời tranh phần kho cuối: đúng một đơn PAID, tồn không âm', async () => {
+    const { app, http, orderFindFirst, stocks } = await setup(null, 1, {
+      itemsByOrder: { ord_a: dongDon, ord_b: dongDon },
+      recipes: congThuc,
+      stocks: { 1: 100 },
+    });
+    orderFindFirst.mockImplementation(({ where }: any) => Promise.resolve({ ...pending, id: where.id }));
+
+    const [a, b] = await Promise.all([tra(http, 'ord_a'), tra(http, 'ord_b')]);
+
+    const ketQua = [a.body.status, b.body.status].sort((x: string, y: string) => x.localeCompare(y));
+    expect(ketQua).toEqual(['PAID', 'PAYMENT_FAILED']);
+    expect(stocks[1]).toBe(20);
+    await app.close();
+  });
+
+  it('đơn thất bại vì thiếu kho thanh toán lại được sau khi nhập thêm kho', async () => {
+    const { app, http, stocks } = await setup({ ...pending, status: 'PAYMENT_FAILED' }, 1, {
+      items: dongDon,
+      recipes: congThuc,
+      stocks: { 1: 200 },
+    });
+    const res = await tra(http).expect(201);
+    expect(res.body.status).toBe('PAID');
+    expect(stocks[1]).toBe(120);
     await app.close();
   });
 });

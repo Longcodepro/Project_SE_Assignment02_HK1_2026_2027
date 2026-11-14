@@ -7,16 +7,10 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { Coffee, Clock, RotateCcw, CheckCircle2, ChefHat, AlertTriangle, ShieldAlert, Sparkles, Layers, } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import axios from "axios";
+import { getWaitingTime } from "@/lib/time";
 
-// Tính khoảng cách thời gian từ lúc khách đặt món (Hàm thuần túy / Pure function để pass React 19 & Next.js prerender rules)
-export function getWaitingTime(dateStr: string, currentTimestamp: number | null): string {
-  if (!currentTimestamp) return 'Đang tải...';
-  const diffMs = Math.max(0, currentTimestamp - new Date(dateStr).getTime());
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  if (diffMins < 1) return 'Vừa đặt';
-  if (diffMins >= 60) return `${Math.floor(diffMins / 60)}h ${diffMins % 60}p`;
-  return `${diffMins} phút trước`;
-}
+// Hàm tính thời gian chờ nay nằm ở lib/time.ts (dùng chung với màn Cashier); giữ export ở đây cho kds.spec.ts
+export { getWaitingTime };
 
 export default function KdsPage(){
     const [orders, setOrders] = useState<KdsOrder[]>([]);
@@ -202,6 +196,7 @@ export default function KdsPage(){
               return (
                 <div
                   key={order.id}
+                  data-testid={`kds-card-${order.id}`}
                   className={`rounded-3xl p-5 border transition flex flex-col justify-between shadow-lg ${
                     isPreparing
                       ? 'bg-[#2A2318] border-amber-500/50 ring-1 ring-amber-500/30'

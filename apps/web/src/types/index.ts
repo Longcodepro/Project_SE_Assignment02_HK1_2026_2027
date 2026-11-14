@@ -68,6 +68,27 @@ export interface Order {
     status: OrderStatus;
     createdAt: string;
     items: OrderItem[];
+    // Số phiên bản của đơn, gửi lại khi đổi trạng thái (khóa lạc quan)
+    version?: number;
+    // Mã nhận hàng 6 số, chỉ có khi đơn READY
+    pickupCode?: string | null;
+    // Mã giảm giá đã áp và số tiền được giảm (total đã là số tiền sau giảm)
+    discountAmount?: number;
+    promoCode?: string | null;
+    // Lý do hủy và thời điểm hoàn tiền mô phỏng (đơn CANCELLED)
+    cancelReason?: string | null;
+    refundedAt?: string | null;
+    // Đánh giá của khách (null nếu chưa đánh giá, mỗi đơn đánh giá một lần)
+    review?: { stars: number; comment: string | null } | null;
+}
+
+// Kết quả POST /orders: server tính tổng và số tiền giảm
+export interface CreatedOrder {
+    id: string;
+    status: OrderStatus;
+    total: number;
+    discountAmount: number;
+    promoCode: string | null;
 }
 
 export interface Payment {
@@ -93,6 +114,16 @@ export interface KdsItem{
     quantity: number;
     size: 'S' | 'M' | 'L';
     toppings: string[];
+}
+
+// Đơn trên màn hình của Cashier (GET /cashier/orders): READY chờ giao, PAID có thể hủy; không có mã nhận hàng
+export interface CashierOrder {
+    id: string;
+    status: 'READY' | 'PAID';
+    version: number;
+    total: number;
+    createdAt: string;
+    items: KdsItem[];
 }
 
 export interface KdsOrder{

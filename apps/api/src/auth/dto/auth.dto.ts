@@ -1,9 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { Role } from '../../generated/prisma/enums.js';
 
-const normalizePhone = ({ value }: { value: unknown }) => {
+export const normalizePhone = ({ value }: { value: unknown }) => {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
   if (trimmed.startsWith('+84')) {
@@ -16,10 +23,14 @@ const normalizeEmail = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim().toLowerCase() : value;
 
 export class LoginDto {
-  @ApiProperty({ example: '0901234567', description: 'Số di động VN 10 chữ số (+84 tự đổi thành 0)' })
+  @ApiProperty({
+    example: '0901234567',
+    description: 'Số di động VN 10 chữ số (+84 tự đổi thành 0)',
+  })
   @Transform(normalizePhone)
   @Matches(/^0[35789]\d{8}$/, {
-    message: 'Số điện thoại không hợp lệ (yêu cầu số di động Việt Nam 10 chữ số)',
+    message:
+      'Số điện thoại không hợp lệ (yêu cầu số di động Việt Nam 10 chữ số)',
   })
   phone!: string;
 
@@ -31,10 +42,14 @@ export class LoginDto {
 }
 
 export class RegisterDto {
-  @ApiProperty({ example: '0901234567', description: 'Số di động VN 10 chữ số (+84 tự đổi thành 0)' })
+  @ApiProperty({
+    example: '0901234567',
+    description: 'Số di động VN 10 chữ số (+84 tự đổi thành 0)',
+  })
   @Transform(normalizePhone)
   @Matches(/^0[35789]\d{8}$/, {
-    message: 'Số điện thoại không hợp lệ (yêu cầu số di động Việt Nam 10 chữ số)',
+    message:
+      'Số điện thoại không hợp lệ (yêu cầu số di động Việt Nam 10 chữ số)',
   })
   phone!: string;
 
