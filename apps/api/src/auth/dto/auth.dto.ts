@@ -3,7 +3,7 @@ import { Transform } from 'class-transformer';
 import { IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { Role } from '../../generated/prisma/enums.js';
 
-const normalizePhone = ({ value }: { value: unknown }) => {
+export const normalizePhone = ({ value }: { value: unknown }) => {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
   if (trimmed.startsWith('+84')) {
