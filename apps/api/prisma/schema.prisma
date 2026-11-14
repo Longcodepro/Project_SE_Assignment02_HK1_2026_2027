@@ -14,15 +14,16 @@ model Category {
 }
 
 model Product {
-  id          Int         @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   name        String
   // VND, size S
   price       Int
   imageUrl    String
-  isAvailable Boolean     @default(true)
+  isAvailable Boolean      @default(true)
   categoryId  Int
-  category    Category    @relation(fields: [categoryId], references: [id])
+  category    Category     @relation(fields: [categoryId], references: [id])
   orderItems  OrderItem[]
+  recipeItems RecipeItem[]
 }
 
 enum Size {
@@ -127,17 +128,20 @@ enum Role {
 }
 
 model User {
-  phone         String   @id
+  phone         String         @id
   // bcrypt hash, không bao giờ trả ra ngoài API
   passwordHash  String
   name          String?
   // Tùy chọn, không duy nhất
   email         String?
-  role          Role     @default(CUSTOMER)
+  role          Role           @default(CUSTOMER)
   // Tích lũy khi thanh toán thành công (xem payments/loyalty.ts)
-  loyaltyPoints Int      @default(0)
-  createdAt     DateTime @default(now())
+  loyaltyPoints Int            @default(0)
+  // Tài khoản bị khóa đăng nhập không được (token đã cấp vẫn dùng đến khi hết hạn)
+  isLocked      Boolean        @default(false)
+  createdAt     DateTime       @default(now())
   orders        Order[]
+  stockReceipts StockReceipt[]
 }
 
 enum PaymentMethod {
@@ -167,4 +171,78 @@ model Payment {
 
   @@unique([orderId, idempotencyKey])
   @@index([orderId])
+}
+
+// Kho nguyên liệu (Sprint 4). stock và quantity là số nguyên theo đơn vị unit.
+enum Unit {
+  G
+  ML
+  PIECE
+}
+
+model Ingredient {
+  id                 Int                 @id @default(autoincrement())
+  name               String              @unique
+  unit               Unit
+  stock              Int                 @default(0)
+  // Chạm ngưỡng này thì cảnh báo sắp hết
+  minStock           Int                 @default(0)
+  receipts           StockReceipt[]
+  recipeItems        RecipeItem[]
+  toppingRecipeItems ToppingRecipeItem[]
+}
+
+// Phiếu nhập kho, lưu người thực hiện để truy vết
+model StockReceipt {
+  id             Int        @id @default(autoincrement())
+  ingredientId   Int
+  ingredient     Ingredient @relation(fields: [ingredientId], references: [id])
+  quantity       Int
+  note           String?
+  createdByPhone String
+  createdBy      User       @relation(fields: [createdByPhone], references: [phone])
+  createdAt      DateTime   @default(now())
+
+  @@index([ingredientId])
+}
+
+// Nguyên liệu cho MỘT ly món productId ở cỡ size
+model RecipeItem {
+  id           Int        @id @default(autoincrement())
+  productId    Int
+  product      Product    @relation(fields: [productId], references: [id])
+  size         Size
+  ingredientId Int
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  quantity     Int
+
+  @@unique([productId, size, ingredientId])
+}
+
+// Bảng giá topping và phụ thu size (Sprint 4 thay cho hằng số trong pricing.ts)
+model Topping {
+  code        String              @id
+  name        String
+  // VND
+  price       Int
+  isActive    Boolean             @default(true)
+  recipeItems ToppingRecipeItem[]
+}
+
+model SizeSurcharge {
+  size  Size @id
+  // VND
+  extra Int
+}
+
+// Nguyên liệu cho MỘT phần topping
+model ToppingRecipeItem {
+  id           Int        @id @default(autoincrement())
+  toppingCode  String
+  topping      Topping    @relation(fields: [toppingCode], references: [code])
+  ingredientId Int
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  quantity     Int
+
+  @@unique([toppingCode, ingredientId])
 }

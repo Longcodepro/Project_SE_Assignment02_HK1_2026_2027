@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -47,6 +48,8 @@ export class AuthService {
     if (!user || !ok) {
       throw new UnauthorizedException('Số điện thoại hoặc mật khẩu không đúng');
     }
+    // Chỉ báo khóa sau khi mật khẩu đúng, để không lộ tài khoản nào đang bị khóa
+    if (user.isLocked) throw new ForbiddenException('Tài khoản đã bị khóa');
     const accessToken = await this.jwt.signAsync({
       sub: user.phone,
       phone: user.phone,
