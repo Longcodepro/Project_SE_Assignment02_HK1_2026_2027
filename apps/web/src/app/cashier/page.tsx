@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import {
     AlertTriangle,
+    Ban,
     CheckCircle2,
     Clock,
     Coffee,
@@ -13,6 +14,7 @@ import {
     RotateCcw,
     ShieldAlert,
 } from 'lucide-react';
+import CancelOrderModal from '@/components/CancelOrderModal';
 import Navbar from '@/components/Navbar';
 import { apiService } from '@/services/api';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -27,7 +29,13 @@ export default function CashierPage() {
     const { token, user, openAuthModal } = useAuthStore();
     const canUse = isClient && !!token && user?.role === 'CASHIER';
 
+    // orders: đơn READY chờ giao; paidOrders: đơn PAID chưa pha, Cashier có thể hủy tại quầy
     const [orders, setOrders] = useState<CashierOrder[]>([]);
+    const [paidOrders, setPaidOrders] = useState<CashierOrder[]>([]);
+    const [cancelling, setCancelling] = useState<CashierOrder | null>(null);
+    const [cancelBusy, setCancelBusy] = useState<boolean>(false);
+    const [cancelError, setCancelError] = useState<string | null>(null);
+    const [cancelNotice, setCancelNotice] = useState<string | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [forbidden, setForbidden] = useState<boolean>(false);
@@ -43,7 +51,9 @@ export default function CashierPage() {
     const fetchOrders = useCallback(async (isInitial = false) => {
         if (isInitial) setLoading(true);
         try {
-            setOrders(await apiService.getCashierOrders('READY'));
+            const all = await apiService.getCashierOrders();
+            setOrders(all.filter((o) => o.status === 'READY'));
+            setPaidOrders(all.filter((o) => o.status === 'PAID'));
             setError(null);
             setForbidden(false);
         } catch (err: unknown) {
@@ -102,6 +112,32 @@ export default function CashierPage() {
             }
         } finally {
             setBusyId(null);
+        }
+    };
+
+    // Hủy đơn đã thanh toán tại quầy: bắt buộc lý do; sai version (409) thì báo và làm mới
+    const handleCancel = async (reason: string) => {
+        if (!cancelling) return;
+        setCancelBusy(true);
+        setCancelError(null);
+        const code = cancelling.id.slice(-6).toUpperCase();
+        try {
+            await apiService.cancelCashierOrder(cancelling.id, cancelling.version, reason);
+            setCancelling(null);
+            setCancelNotice(`Đã hủy đơn #${code}, tiền được hoàn lại (mô phỏng) và kho được hoàn.`);
+            await fetchOrders(false);
+        } catch (err: unknown) {
+            if (httpStatus(err) === 409) {
+                setCancelling(null);
+                setCancelNotice(`Đơn #${code} vừa được cập nhật (Barista đã nhận pha hoặc đã bị hủy) nên không hủy được. Đã làm mới danh sách.`);
+                await fetchOrders(false);
+            } else if (httpStatus(err) === 403) {
+                setForbidden(true);
+            } else {
+                setCancelError(apiErrorMessage(err, 'Không thể hủy đơn, vui lòng thử lại.'));
+            }
+        } finally {
+            setCancelBusy(false);
         }
     };
 
@@ -304,9 +340,67 @@ export default function CashierPage() {
                                 })}
                             </div>
                         )}
+
+                        {/* Đơn đã thanh toán, chưa pha: Cashier hủy được tại quầy */}
+                        {!loading && !error && (
+                            <section className="mt-10" aria-label="Đơn đã thanh toán có thể hủy">
+                                <h2 className="text-sm font-bold uppercase tracking-wider text-[#A89284] mb-3">
+                                    Đã thanh toán, chưa pha ({paidOrders.length})
+                                </h2>
+                                {cancelNotice && (
+                                    <div role="status" className="mb-3 p-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs flex items-start justify-between gap-3">
+                                        <span>{cancelNotice}</span>
+                                        <button type="button" onClick={() => setCancelNotice(null)} aria-label="Đóng thông báo" className="shrink-0 opacity-70 hover:opacity-100">
+                                            ✕
+                                        </button>
+                                    </div>
+                                )}
+                                {paidOrders.length === 0 ? (
+                                    <p className="text-xs text-[#7A6658]">Không có đơn nào đang chờ pha.</p>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {paidOrders.map((order) => (
+                                            <div key={order.id} className="rounded-2xl p-4 border bg-[#261A13] border-[#3E291F] flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="font-mono font-bold text-sm text-white">#{order.id.slice(-6).toUpperCase()}</p>
+                                                    <p className="text-xs text-[#BFA89B] mt-0.5 truncate">
+                                                        {order.items.map((i) => `${i.quantity}x ${i.productName} (${i.size})`).join(', ')}
+                                                    </p>
+                                                    <p className="text-xs text-[#A89284] mt-0.5">
+                                                        {order.total.toLocaleString('vi-VN')}đ · {getWaitingTime(order.createdAt, currentTimestamp)}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setCancelling(order);
+                                                        setCancelError(null);
+                                                    }}
+                                                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-600/90 hover:bg-red-600 text-white text-xs font-bold transition active:scale-95"
+                                                >
+                                                    <Ban className="w-3.5 h-3.5" />
+                                                    Hủy đơn
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </section>
+                        )}
                     </>
                 )}
             </main>
+
+            {cancelling && (
+                <CancelOrderModal
+                    orderLabel={`#${cancelling.id.slice(-6).toUpperCase()}`}
+                    status="PAID"
+                    error={cancelError}
+                    busy={cancelBusy}
+                    onConfirm={(reason) => void handleCancel(reason)}
+                    onClose={() => setCancelling(null)}
+                />
+            )}
         </div>
     );
 }

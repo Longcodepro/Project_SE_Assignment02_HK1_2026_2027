@@ -75,6 +75,9 @@ export interface Order {
     // Mã giảm giá đã áp và số tiền được giảm (total đã là số tiền sau giảm)
     discountAmount?: number;
     promoCode?: string | null;
+    // Lý do hủy và thời điểm hoàn tiền mô phỏng (đơn CANCELLED)
+    cancelReason?: string | null;
+    refundedAt?: string | null;
 }
 
 // Kết quả POST /orders: server tính tổng và số tiền giảm

@@ -7,7 +7,10 @@ import { apiService } from '@/services/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Order, OrderStatus } from '@/types';
 import { formatPickupCode } from '@/lib/pickup';
-import { Clock, Coffee, CheckCircle2, AlertCircle, ChevronRight, RefreshCw, ChefHat, LogIn, CreditCard, Wallet, X, Loader2 } from 'lucide-react';
+import { canCustomerCancel } from '@/lib/cancel';
+import { apiErrorMessage, httpStatus } from '@/lib/errors';
+import CancelOrderModal from '@/components/CancelOrderModal';
+import { Clock, Coffee, CheckCircle2, AlertCircle, ChevronRight, RefreshCw, ChefHat, LogIn, CreditCard, Wallet, X, Loader2, Ban } from 'lucide-react';
 
 export default function OrderHistoryPage(){
     const isClient = useSyncExternalStore(() => () => {}, () => true, () => false);
@@ -25,6 +28,12 @@ export default function OrderHistoryPage(){
     const [retryLoading, setRetryLoading] = useState<boolean>(false);
     const [retryError, setRetryError] = useState<string | null>(null);
     const [retrySuccess, setRetrySuccess] = useState<string | null>(null);
+
+    // Hủy đơn: hộp thoại nhập lý do; sai version (409) thì báo và làm mới dữ liệu
+    const [cancelingOrder, setCancelingOrder] = useState<Order | null>(null);
+    const [cancelBusy, setCancelBusy] = useState<boolean>(false);
+    const [cancelError, setCancelError] = useState<string | null>(null);
+    const [notice, setNotice] = useState<{ kind: 'ok' | 'warn'; text: string } | null>(null);
 
     // Gọi API lấy danh sách đơn thật
     const fetchOrders = async (silent = false) => {
@@ -122,9 +131,47 @@ export default function OrderHistoryPage(){
         }
     };
 
+    const handleCancel = async (reason: string) => {
+        if (!cancelingOrder) return;
+        setCancelBusy(true);
+        setCancelError(null);
+        try {
+            const res = await apiService.cancelOrder(String(cancelingOrder.id), cancelingOrder.version ?? 0, reason || undefined);
+            setCancelingOrder(null);
+            setNotice({
+                kind: 'ok',
+                text: res.refundedAt
+                    ? `Đã hủy đơn #${cancelingOrder.id}. Tiền được hoàn lại (mô phỏng) và điểm thưởng của đơn đã bị trừ.`
+                    : `Đã hủy đơn #${cancelingOrder.id}.`,
+            });
+            void fetchOrders(true);
+        } catch (err: unknown) {
+            if (httpStatus(err) === 409) {
+                // Đơn vừa đổi trạng thái (ví dụ Barista đã nhận pha): đóng hộp thoại, báo và làm mới
+                setCancelingOrder(null);
+                setNotice({
+                    kind: 'warn',
+                    text: `Đơn #${cancelingOrder.id} vừa được cập nhật nên không thể hủy được nữa. Đã làm mới danh sách đơn.`,
+                });
+                void fetchOrders(true);
+            } else {
+                setCancelError(apiErrorMessage(err, 'Không thể hủy đơn, vui lòng thử lại.'));
+            }
+        } finally {
+            setCancelBusy(false);
+        }
+    };
+
     // Hàm hiển thị màu sắc theo trạng thái đơn
     const renderStatusBadge = (status: OrderStatus) => {
         switch (status) {
+            case 'CANCELLED': return (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[11px] sm:text-xs font-bold bg-gray-100 text-gray-600 border border-gray-300">
+                    <Ban className="w-3.5 h-3.5 text-gray-500" />
+                    Đã hủy
+                </span>
+            );
+
             case 'PREPARING': return (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[11px] sm:text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
                     <ChefHat className="w-3.5 h-3.5 text-amber-700" />
@@ -202,6 +249,23 @@ export default function OrderHistoryPage(){
                         <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${loading ? 'animate-spin' : ''}`} />
                     </button>
                 </div>
+
+                {/* THÔNG BÁO KẾT QUẢ HỦY ĐƠN */}
+                {notice && (
+                    <div
+                        role="status"
+                        className={`mb-4 p-3 rounded-xl text-xs font-medium flex items-start justify-between gap-3 border ${
+                            notice.kind === 'ok'
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                : 'bg-amber-50 border-amber-300 text-amber-900'
+                        }`}
+                    >
+                        <span>{notice.text}</span>
+                        <button type="button" onClick={() => setNotice(null)} aria-label="Đóng thông báo" className="shrink-0 opacity-60 hover:opacity-100">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
 
                 {/* 1. TRƯỜNG HỢP CHƯA ĐĂNG NHẬP */}
                 {isClient && !token && (
@@ -327,6 +391,28 @@ export default function OrderHistoryPage(){
                                     </div>
                                 )}
 
+                                {order.status === 'CANCELLED' && (
+                                    <div className="mt-2.5 sm:mt-3.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-[11px] sm:text-xs text-gray-700 space-y-0.5">
+                                        {order.cancelReason && (
+                                            <p>
+                                                <span className="font-bold">Lý do hủy:</span> {order.cancelReason}
+                                            </p>
+                                        )}
+                                        {order.refundedAt && (
+                                            <p className="text-emerald-700 font-semibold">
+                                                Đã hoàn tiền lúc{' '}
+                                                {new Date(order.refundedAt).toLocaleString('vi-VN', {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                    day: '2-digit',
+                                                    month: '2-digit',
+                                                    year: 'numeric',
+                                                })}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+
                                 {/* Danh sách món nước trong đơn */}
                                 <div className="divide-y divide-gray-50 py-1.5 sm:py-2">
                                     {order.items.map((item, idx) => (
@@ -369,6 +455,19 @@ export default function OrderHistoryPage(){
                                         <p className="text-sm sm:text-lg font-black text-amber-900">
                                             {order.total.toLocaleString('vi-VN')}đ
                                         </p>
+                                        {canCustomerCancel(order.status) && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setCancelingOrder(order);
+                                                    setCancelError(null);
+                                                }}
+                                                className="mt-1 inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-red-600 hover:text-red-700 hover:underline"
+                                            >
+                                                <Ban className="w-3 h-3" />
+                                                Hủy đơn
+                                            </button>
+                                        )}
                                     </div>
 
                                     {(order.status === 'PAYMENT_FAILED' || order.status === 'PENDING') && (
@@ -391,6 +490,18 @@ export default function OrderHistoryPage(){
                     </div>
                 )}    
             </main>
+
+            {/* MODAL HỦY ĐƠN */}
+            {cancelingOrder && (
+                <CancelOrderModal
+                    orderLabel={`#${cancelingOrder.id}`}
+                    status={cancelingOrder.status}
+                    error={cancelError}
+                    busy={cancelBusy}
+                    onConfirm={(reason) => void handleCancel(reason)}
+                    onClose={() => setCancelingOrder(null)}
+                />
+            )}
 
             {/* MODAL THANH TOÁN LẠI ĐƠN HÀNG */}
             {retryingOrder && (

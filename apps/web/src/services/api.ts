@@ -336,6 +336,16 @@ export const apiService = {
         return res.data;
     },
 
+    // 12a. Cashier hủy đơn đã thanh toán (PAID) tại quầy, bắt buộc có lý do
+    cancelCashierOrder: async (
+        orderId: string,
+        version: number,
+        reason: string,
+    ): Promise<{ id: string; status: string; version: number; refundedAt: string | null }> => {
+        const res = await axios.post(`${getApiUrl()}/cashier/orders/${orderId}/cancel`, { version, reason });
+        return res.data;
+    },
+
     // 12b. Bỏ đơn nháp (đơn chưa trả tiền) để trả lại lượt dùng mã; lỗi thì bỏ qua vì chỉ là dọn dẹp
     discardDraftOrder: async (orderId: string): Promise<void> => {
         try {
