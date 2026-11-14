@@ -704,6 +704,77 @@ Ngày tính theo **giờ Việt Nam (UTC+7)** và theo **thời điểm tạo đ
 - 400 `from` hoặc `to` không phải ngày hợp lệ dạng `YYYY-MM-DD`, `from` sau `to`, khoảng vượt 366 ngày, `groupBy` ngoài ba giá trị, hoặc có tham số lạ.
 - 401 thiếu hoặc sai token. 403 không phải `MANAGER`.
 
+## Quản lý menu và bảng giá (Manager)
+
+Issue S4.2. Manager quản lý danh mục, món, topping và phụ thu size. **Topping và phụ thu size không còn nằm cứng trong mã nguồn**: `POST /orders` đọc giá từ CSDL (bảng `Topping`, `SizeSurcharge` của S4.1). Giá seed mặc định giữ nguyên kết quả tính giá cũ: size S +0, M +5.000, L +10.000; `tran-chau` 8.000, `kem-cheese` 10.000, `thach-cafe` 6.000.
+
+Mọi route `/admin/*` dưới đây chỉ cho `MANAGER` (401 thiếu hoặc sai token, 403 sai vai trò). Không có route xóa: danh mục ẩn bằng `isActive`, topping ngừng bán bằng `isActive`, món hết hàng bằng `isAvailable`; làm vậy để đơn cũ vẫn tham chiếu được.
+
+**Đổi giá không ảnh hưởng đơn đã đặt**: mỗi dòng đơn lưu sẵn `unitPrice` tại thời điểm đặt; `GET /orders/me` và báo cáo đọc giá đã lưu, không tính lại từ bảng giá hiện tại.
+
+### Thay đổi ở API công khai
+
+`GET /products` và `GET /products/:id`:
+
+- Mỗi món có thêm trường `description` (chuỗi hoặc `null`).
+- Món thuộc danh mục đang ẩn (`isActive: false`) **không xuất hiện** ở `GET /products`; `GET /products/:id` của món đó trả 404. `POST /orders` với món đó trả 400 như món không tồn tại.
+
+`GET /menu-options` (không cần token): các lựa chọn khi gọi món, để client không phải ghi cứng giá.
+
+```json
+{
+  "sizes": [
+    { "size": "S", "extra": 0 },
+    { "size": "M", "extra": 5000 },
+    { "size": "L", "extra": 10000 }
+  ],
+  "toppings": [
+    { "code": "kem-cheese", "name": "Kem cheese", "price": 10000 },
+    { "code": "thach-cafe", "name": "Thạch cà phê", "price": 6000 },
+    { "code": "tran-chau", "name": "Trân châu đen", "price": 8000 }
+  ]
+}
+```
+
+`sizes` theo thứ tự S, M, L. `toppings` chỉ gồm topping đang bán (`isActive: true`), sắp theo `code`.
+
+`POST /orders`: giá một ly = giá món (size S) + `extra` của size + tổng `price` các topping, lấy từ CSDL lúc đặt. Topping không tồn tại hoặc đã ngừng bán trả 400 (`Topping không tồn tại hoặc đã ngừng bán: kem-cheese`). Dạng và các lỗi khác của request không đổi.
+
+### Danh mục
+
+Một danh mục: `{ "id": 1, "name": "Cà phê", "isActive": true }`.
+
+- `GET /admin/categories`: mọi danh mục (kể cả đang ẩn), theo `id` tăng dần. 200 OK.
+- `POST /admin/categories`, body `{ "name": "Trà sữa" }` (1–50 ký tự sau khi cắt khoảng trắng): 201 Created, trả danh mục mới (`isActive: true`).
+- `PATCH /admin/categories/:id`, body có ít nhất một trong `name`, `isActive`: 200 OK, trả danh mục sau khi sửa. `isActive: false` ẩn danh mục cùng các món của nó khỏi menu.
+- 400 dữ liệu không hợp lệ, body rỗng, trường lạ, `:id` không phải số nguyên. 404 không có danh mục với `id` này (chỉ ở PATCH).
+
+### Món
+
+Một món (dạng quản trị): `{ "id": 1, "name": "Cà phê sữa", "description": "Cà phê phin pha sữa đặc", "imageUrl": "/images/ca-phe-sua.svg", "price": 29000, "isAvailable": true, "category": { "id": 1, "name": "Cà phê", "isActive": true } }`.
+
+- `GET /admin/products`: mọi món (kể cả thuộc danh mục đang ẩn), theo `id` tăng dần. 200 OK.
+- `POST /admin/products`, body: `name` (1–100 ký tự), `description` (tùy chọn, tối đa 500 ký tự), `imageUrl` (bắt đầu bằng `/` hoặc `http://` hoặc `https://`, tối đa 500 ký tự), `price` (số nguyên 1 đến 10.000.000, giá size S), `categoryId` (danh mục phải tồn tại), `isAvailable` (tùy chọn, mặc định `true`). 201 Created, trả món mới.
+- `PATCH /admin/products/:id`: sửa bất kỳ trường nào ở trên; `description: null` để xóa mô tả. Phải có ít nhất một trường. 200 OK, trả món sau khi sửa.
+- 400 dữ liệu không hợp lệ, `categoryId` không tồn tại (`Danh mục không tồn tại`), body rỗng, trường lạ, `:id` không phải số nguyên. 404 không có món với `id` này (chỉ ở PATCH).
+- Đổi `price` chỉ ảnh hưởng đơn tạo sau đó.
+
+### Topping
+
+Một topping: `{ "code": "tran-chau", "name": "Trân châu đen", "price": 8000, "isActive": true }`.
+
+- `GET /admin/toppings`: mọi topping (kể cả ngừng bán), theo `code`. 200 OK.
+- `POST /admin/toppings`, body `{ "code": "pudding", "name": "Pudding", "price": 7000 }`: `code` 2–32 ký tự chữ thường, số, `-`, **không đổi được sau khi tạo**; `name` 1–50 ký tự; `price` số nguyên 0 đến 10.000.000. 201 Created. 409 `code` đã tồn tại (`Topping đã tồn tại`).
+- `PATCH /admin/toppings/:code`, body có ít nhất một trong `name`, `price`, `isActive`: 200 OK, trả topping sau khi sửa. 404 không có topping với `code` này.
+- 400 dữ liệu không hợp lệ, body rỗng, trường lạ, hoặc `:code` sai định dạng.
+
+### Phụ thu size
+
+Một dòng: `{ "size": "M", "extra": 5000 }`.
+
+- `GET /admin/sizes`: ba dòng S, M, L. 200 OK.
+- `PATCH /admin/sizes/:size`, body `{ "extra": 6000 }` (số nguyên 0 đến 10.000.000): 200 OK, trả dòng sau khi sửa. 400 `:size` ngoài `S`/`M`/`L`, `extra` sai, trường lạ. Phụ thu mới chỉ áp cho đơn tạo sau đó.
+
 ## Idempotency-Key
 
 `POST /orders` và `POST /payments` nhận thêm header tùy chọn `Idempotency-Key` (1–128 ký tự: chữ, số, `_`, `-`). Frontend nên sinh một key duy nhất (hiện dùng `ord_<thời gian>_<ngẫu nhiên>` cho đơn và `pay_<thời gian>_<ngẫu nhiên>` cho thanh toán; `crypto.randomUUID()` cũng hợp lệ, server không bắt buộc UUID) cho mỗi lần người dùng bấm đặt/thanh toán và gửi lại **đúng key đó** khi retry do mất mạng.
