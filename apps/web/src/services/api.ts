@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Product, Order, AuthResponse, User, LoyaltyInfo } from "@/types";
+import { Product, Order, AuthResponse, User, LoyaltyInfo, KdsOrder } from "@/types";
 
 // Lấy URL Backend động: ưu tiên custom URL trong localStorage (để test trên mobile / demo từ xa), sau đó đến biến môi trường
 export const getApiUrl = (): string => {
@@ -270,4 +270,21 @@ export const apiService = {
             throw new Error(msg);
         }
     },
+
+    //7.lấy danh sách sản phẩm cho Barista
+    getKdsOrders : async(): Promise<KdsOrder[]>=>{
+        const res = await axios.get<KdsOrder[]>(`${getApiUrl()}/kds/orders`);
+        return res.data;
+    },
+
+    //8.cập nhật trạng thái đơn pha chế (kèm version khóa lạc quan)
+    updateKdsStatus: async(
+        orderId: string,
+        status: 'PREPARING' | 'READY',
+        version: number
+    ): Promise<{id: string; status: string; version: number}> =>{
+        const res = await axios.patch(`${getApiUrl()}/kds/orders/${orderId}/status`, {status, version});
+        return res.data;
+    },
+
 };

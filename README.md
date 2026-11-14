@@ -75,6 +75,7 @@ docker compose up --build -d
 | Dịch vụ | URL truy cập Local | Mô tả |
 |---|---|---|
 | **Frontend Web** | [http://localhost:4004](http://localhost:4004) | Giao diện đặt món Next.js |
+| **Màn hình KDS** | [http://localhost:4004/kds](http://localhost:4004/kds) | Màn hình pha chế Barista (`0900000001` / `matkhau123`) |
 | **Backend API** | [http://localhost:4003](http://localhost:4003) | Máy chủ API NestJS |
 | **API Swagger** | [http://localhost:4003/docs](http://localhost:4003/docs) | Tài liệu tương tác API |
 | **PostgreSQL DB** | `localhost:4005` | CSDL PostgreSQL 16 Alpine |
