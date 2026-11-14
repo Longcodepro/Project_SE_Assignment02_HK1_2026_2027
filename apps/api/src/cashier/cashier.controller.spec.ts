@@ -33,11 +33,17 @@ async function setup(opts: { order?: any; updateCount?: number; orders?: any[] }
   const updateMany = vi.fn().mockResolvedValue({ count: opts.updateCount ?? 1 });
   const findFirst = vi.fn().mockResolvedValue(opts.order ?? null);
   const userUpdate = vi.fn().mockResolvedValue({});
+  const ingredientUpdate = vi.fn().mockResolvedValue({});
   const db = {
     order: { findMany, findUnique, findFirst, updateMany },
     payment: { findFirst: vi.fn().mockResolvedValue({ pointsEarned: 84 }) },
     user: { update: userUpdate },
     promotion: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    stockUsage: {
+      findMany: vi.fn().mockResolvedValue([{ ingredientId: 1, quantity: 36 }]),
+      deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
+    ingredient: { update: ingredientUpdate },
   };
   const moduleRef = await Test.createTestingModule({
     controllers: [CashierController],
@@ -53,7 +59,7 @@ async function setup(opts: { order?: any; updateCount?: number; orders?: any[] }
   const app = moduleRef.createNestApplication();
   app.useGlobalPipes(createValidationPipe());
   await app.init();
-  return { app, findMany, findUnique, findFirst, updateMany, userUpdate };
+  return { app, findMany, findUnique, findFirst, updateMany, userUpdate, ingredientUpdate };
 }
 
 describe('GET /cashier/orders', () => {
@@ -120,6 +126,13 @@ describe('POST /cashier/orders/:id/cancel', () => {
       where: { phone: '0912345678' },
       data: { loyaltyPoints: { decrement: 84 } },
     });
+    await app.close();
+  });
+
+  it('hủy đơn PAID hoàn lại kho đúng số đã trừ', async () => {
+    const { app, ingredientUpdate } = await setup({ order: donPaid });
+    await huy(app, 'ord_1', { version: 2, reason: 'Hết nguyên liệu' }).expect(200);
+    expect(ingredientUpdate).toHaveBeenCalledWith({ where: { id: 1 }, data: { stock: { increment: 36 } } });
     await app.close();
   });
 

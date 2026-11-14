@@ -44,6 +44,14 @@ export class InventoryController {
     return this.inventory.listIngredients();
   }
 
+  @Get('alerts')
+  @Roles('BARISTA', 'MANAGER')
+  @ApiOperation({ summary: 'Nguyên liệu sắp hết (stock <= minStock), thiếu nhiều nhất lên đầu (BARISTA, MANAGER)' })
+  @ApiOkResponse({ type: IngredientDto, isArray: true })
+  alerts() {
+    return this.inventory.listAlerts();
+  }
+
   @Post()
   @ApiOperation({ summary: 'Thêm nguyên liệu (MANAGER); tồn ban đầu bằng 0, nhập kho qua phiếu' })
   @ApiCreatedResponse({ type: IngredientDto })

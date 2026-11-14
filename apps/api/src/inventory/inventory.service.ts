@@ -27,6 +27,11 @@ const RECEIPT = {
 const SIZE_ORDER: readonly string[] = ['S', 'M', 'L'];
 const DUPLICATE_NAME = 'Nguyên liệu đã tồn tại';
 
+const withLowFlag = <T extends { stock: number; minStock: number }>(i: T) => ({
+  ...i,
+  isLow: i.stock <= i.minStock,
+});
+
 function assertNotEmpty(dto: object) {
   if (Object.values(dto).every((v) => v === undefined)) {
     throw new BadRequestException('Cần gửi ít nhất một trường để sửa');
@@ -42,8 +47,17 @@ export class InventoryService {
   constructor(private readonly prisma: PrismaService) {}
 
   // ---- Nguyên liệu ----
-  listIngredients() {
-    return this.prisma.ingredient.findMany({ orderBy: { id: 'asc' }, select: INGREDIENT });
+  async listIngredients() {
+    const rows = await this.prisma.ingredient.findMany({ orderBy: { id: 'asc' }, select: INGREDIENT });
+    return rows.map(withLowFlag);
+  }
+
+  // Sắp hết (stock <= minStock), thiếu nhiều nhất lên đầu. Prisma không so hai cột với nhau
+  // nên lọc ở đây; số nguyên liệu của một quán nhỏ.
+  async listAlerts() {
+    return (await this.listIngredients())
+      .filter((i) => i.isLow)
+      .sort((a, b) => a.stock - a.minStock - (b.stock - b.minStock) || a.id - b.id);
   }
 
   async createIngredient(dto: CreateIngredientDto) {

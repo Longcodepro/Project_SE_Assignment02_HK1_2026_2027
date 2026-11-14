@@ -71,13 +71,64 @@ describe('GET /admin/ingredients', () => {
   it.each(['MANAGER', 'BARISTA'])('%s xem được kho', async (role) => {
     const { app } = await setup();
     const res = await as(app, role).get('/admin/ingredients').expect(200);
-    expect(res.body).toEqual([{ id: 1, name: 'Cà phê rang xay', unit: 'G', stock: 5000, minStock: 1000 }]);
+    expect(res.body).toEqual([
+      { id: 1, name: 'Cà phê rang xay', unit: 'G', stock: 5000, minStock: 1000, isLow: false },
+    ]);
+    await app.close();
+  });
+
+  it('isLow đúng ở ranh giới: stock bằng minStock là sắp hết, hơn 1 thì chưa', async () => {
+    const { app, ingredient } = await setup();
+    ingredient.findMany.mockResolvedValue([
+      { id: 1, name: 'A', unit: 'G', stock: 1000, minStock: 1000 },
+      { id: 2, name: 'B', unit: 'G', stock: 1001, minStock: 1000 },
+      { id: 3, name: 'C', unit: 'ML', stock: 0, minStock: 0 },
+    ]);
+    const res = await as(app).get('/admin/ingredients').expect(200);
+    expect(res.body.map((i: any) => i.isLow)).toEqual([true, false, true]);
     await app.close();
   });
 
   it.each(['CUSTOMER', 'CASHIER'])('403 với vai trò %s', async (role) => {
     const { app, ingredient } = await setup();
     await as(app, role).get('/admin/ingredients').expect(403);
+    expect(ingredient.findMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe('GET /admin/ingredients/alerts (cảnh báo sắp hết)', () => {
+  const kho = [
+    { id: 1, name: 'Cà phê', unit: 'G', stock: 900, minStock: 1000 },
+    { id: 2, name: 'Sữa đặc', unit: 'ML', stock: 5000, minStock: 500 },
+    { id: 3, name: 'Ly nhựa', unit: 'PIECE', stock: 0, minStock: 200 },
+    { id: 4, name: 'Ống hút', unit: 'PIECE', stock: 100, minStock: 100 },
+    { id: 5, name: 'Siro', unit: 'ML', stock: 0, minStock: 0 },
+  ];
+
+  it.each(['BARISTA', 'MANAGER'])('%s: chỉ nguyên liệu stock <= minStock, thiếu nhiều nhất lên đầu', async (role) => {
+    const { app, ingredient } = await setup();
+    ingredient.findMany.mockResolvedValue(kho);
+
+    const res = await as(app, role).get('/admin/ingredients/alerts').expect(200);
+
+    // thiếu: Ly nhựa -200, Cà phê -100, Ống hút 0 và Siro 0 (bằng nhau theo id)
+    expect(res.body.map((i: any) => i.id)).toEqual([3, 1, 4, 5]);
+    expect(res.body.every((i: any) => i.isLow === true)).toBe(true);
+    await app.close();
+  });
+
+  it('không có nguyên liệu nào sắp hết thì trả mảng rỗng', async () => {
+    const { app, ingredient } = await setup();
+    ingredient.findMany.mockResolvedValue([kho[1]]);
+    const res = await as(app).get('/admin/ingredients/alerts').expect(200);
+    expect(res.body).toEqual([]);
+    await app.close();
+  });
+
+  it.each(['CASHIER', 'CUSTOMER'])('403 với vai trò %s', async (role) => {
+    const { app, ingredient } = await setup();
+    await as(app, role).get('/admin/ingredients/alerts').expect(403);
     expect(ingredient.findMany).not.toHaveBeenCalled();
     await app.close();
   });

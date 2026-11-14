@@ -15,7 +15,12 @@ const donCuaToi = (over: Record<string, unknown> = {}) => ({
 });
 
 async function setup(
-  opts: { order?: Record<string, unknown> | null; updateCount?: number; pointsEarned?: number | null } = {},
+  opts: {
+    order?: Record<string, unknown> | null;
+    updateCount?: number;
+    pointsEarned?: number | null;
+    usages?: { ingredientId: number; quantity: number }[];
+  } = {},
 ) {
   const order = opts.order === undefined ? donCuaToi() : opts.order;
   const db = {
@@ -30,6 +35,11 @@ async function setup(
     },
     user: { update: vi.fn().mockResolvedValue({}) },
     promotion: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    stockUsage: {
+      findMany: vi.fn().mockResolvedValue(opts.usages ?? []),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    ingredient: { update: vi.fn().mockResolvedValue({}) },
   };
   const moduleRef = await Test.createTestingModule({
     controllers: [OrdersController],
@@ -122,6 +132,49 @@ describe('POST /orders/:id/cancel (khách)', () => {
       where: { id: 7, usedCount: { gt: 0 } },
       data: { usedCount: { decrement: 1 } },
     });
+    await app.close();
+  });
+
+  it('PAID: hoàn kho đúng số đã trừ (theo StockUsage) rồi xóa dòng sử dụng', async () => {
+    const usages = [
+      { ingredientId: 1, quantity: 36 },
+      { ingredientId: 2, quantity: 10 },
+    ];
+    const { app, stockUsage, ingredient } = await setup({ usages });
+
+    await huy(app, { version: 2, reason: 'Đổi ý' }).expect(200);
+
+    expect(stockUsage.findMany.mock.calls[0][0].where).toEqual({ orderId: 'ord_1' });
+    expect(ingredient.update.mock.calls.map((c) => c[0])).toEqual([
+      { where: { id: 1 }, data: { stock: { increment: 36 } } },
+      { where: { id: 2 }, data: { stock: { increment: 10 } } },
+    ]);
+    expect(stockUsage.deleteMany).toHaveBeenCalledWith({ where: { orderId: 'ord_1' } });
+    await app.close();
+  });
+
+  it('PAID mà món không có công thức (không có StockUsage): không đụng tới kho', async () => {
+    const { app, ingredient } = await setup();
+    await huy(app, { version: 2, reason: 'Đổi ý' }).expect(200);
+    expect(ingredient.update).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it.each(['PENDING', 'PAYMENT_FAILED'])('đơn %s chưa trừ kho nên hủy không hoàn kho', async (status) => {
+    const { app, stockUsage, ingredient } = await setup({
+      order: donCuaToi({ status }),
+      usages: [{ ingredientId: 1, quantity: 36 }],
+    });
+    await huy(app, { version: 2 }).expect(200);
+    expect(stockUsage.findMany).not.toHaveBeenCalled();
+    expect(ingredient.update).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('tranh chấp version (updateMany không khớp): không hoàn kho', async () => {
+    const { app, ingredient } = await setup({ updateCount: 0, usages: [{ ingredientId: 1, quantity: 36 }] });
+    await huy(app, { version: 2, reason: 'Đổi ý' }).expect(409);
+    expect(ingredient.update).not.toHaveBeenCalled();
     await app.close();
   });
 

@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import { isUniqueViolation } from '../common/idempotency.js';
+import { assertStockAvailable, loadNeeds, OutOfStockError, refundStock } from '../inventory/stock.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CancelOrderDto } from './dto/cancel-order.dto.js';
 import type { CreateOrderDto } from './dto/create-order.dto.js';
@@ -117,6 +118,16 @@ export class OrdersService {
     }
     const discountAmount = promo ? discountFor(promo, subtotal) : 0;
 
+    // Kiểm tra sớm đủ nguyên liệu (kể cả topping); không giữ chỗ, bước trừ kho thật ở lúc thanh toán
+    try {
+      await assertStockAvailable(this.prisma, await loadNeeds(this.prisma, items));
+    } catch (e) {
+      if (e instanceof OutOfStockError) {
+        throw new ConflictException(`Không đủ nguyên liệu cho đơn này: ${e.ingredientNames.join(', ')}`);
+      }
+      throw e;
+    }
+
     const data = {
       id: `ord_${randomBytes(5).toString('hex')}`,
       userPhone,
@@ -206,6 +217,7 @@ export class OrdersService {
             data: { loyaltyPoints: { decrement: payment.pointsEarned } },
           });
         }
+        await refundStock(tx, id);
       }
       if (order.promotionId !== null) {
         await tx.promotion.updateMany({

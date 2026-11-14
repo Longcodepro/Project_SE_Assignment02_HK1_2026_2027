@@ -21,6 +21,7 @@ async function setup() {
     user,
     product: { findMany: vi.fn().mockResolvedValue([{ id: 1, price: 29000, isAvailable: true }]) },
     sizeSurcharge: { findMany: vi.fn().mockResolvedValue([{ size: 'S', extra: 0 }]) },
+    recipeItem: { findMany: vi.fn().mockResolvedValue([]) },
     order: {
       create: vi.fn().mockResolvedValue({ id: 'ord_1', status: 'PENDING', total: 29000 }),
     },

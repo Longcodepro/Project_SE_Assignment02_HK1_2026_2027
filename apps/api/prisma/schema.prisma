@@ -46,30 +46,31 @@ enum OrderStatus {
 }
 
 model Order {
-  id             String      @id
+  id             String       @id
   userPhone      String
-  user           User        @relation(fields: [userPhone], references: [phone])
+  user           User         @relation(fields: [userPhone], references: [phone])
   // Client gửi lại cùng key thì trả đơn cũ thay vì tạo đơn mới
   idempotencyKey String?
-  status         OrderStatus @default(PENDING)
+  status         OrderStatus  @default(PENDING)
   // VND, tính ở server từ giá sản phẩm + size + topping
   total          Int
-  createdAt      DateTime    @default(now())
+  createdAt      DateTime     @default(now())
   // Khoá lạc quan: mỗi lần cập nhật đơn phải khớp version đã đọc, rồi tăng thêm 1
-  version        Int         @default(0)
+  version        Int          @default(0)
   // Mã nhận hàng 6 số, chỉ khác null khi đơn READY (xóa khi COMPLETED) nên @unique
   // cũng chính là "duy nhất trong số đơn đang READY"
-  pickupCode     String?     @unique
+  pickupCode     String?      @unique
   // Lý do hủy và thời điểm hoàn tiền mô phỏng (dùng ở S3.8)
   cancelReason   String?
   refundedAt     DateTime?
   // Mã giảm giá đã áp; total là số tiền sau giảm, discountAmount là phần được giảm (VND)
   promotionId    Int?
-  promotion      Promotion?  @relation(fields: [promotionId], references: [id])
-  discountAmount Int         @default(0)
+  promotion      Promotion?   @relation(fields: [promotionId], references: [id])
+  discountAmount Int          @default(0)
   items          OrderItem[]
   payments       Payment[]
   review         Review?
+  stockUsages    StockUsage[]
 
   @@unique([userPhone, idempotencyKey])
   @@index([userPhone])
@@ -191,6 +192,7 @@ model Ingredient {
   // Chạm ngưỡng này thì cảnh báo sắp hết
   minStock           Int                 @default(0)
   receipts           StockReceipt[]
+  stockUsages        StockUsage[]
   recipeItems        RecipeItem[]
   toppingRecipeItems ToppingRecipeItem[]
 }
@@ -248,4 +250,16 @@ model ToppingRecipeItem {
   quantity     Int
 
   @@unique([toppingCode, ingredientId])
+}
+
+// Nguyên liệu đã trừ cho từng đơn PAID; hoàn kho khi hủy theo đúng số này (kể cả khi công thức đã đổi)
+model StockUsage {
+  id           Int        @id @default(autoincrement())
+  orderId      String
+  order        Order      @relation(fields: [orderId], references: [id])
+  ingredientId Int
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  quantity     Int
+
+  @@unique([orderId, ingredientId])
 }

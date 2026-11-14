@@ -75,6 +75,9 @@ export class IngredientDto {
 
   @ApiProperty({ example: 1000 })
   minStock!: number;
+
+  @ApiProperty({ example: false, description: 'true khi stock <= minStock (sắp hết)' })
+  isLow!: boolean;
 }
 
 // ---- Phiếu nhập kho ----
