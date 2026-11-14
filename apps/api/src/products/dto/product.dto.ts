@@ -15,6 +15,9 @@ export class ProductDto {
   @ApiProperty({ example: 'Cà phê sữa' })
   name!: string;
 
+  @ApiProperty({ type: String, nullable: true, example: 'Cà phê phin pha sữa đặc' })
+  description!: string | null;
+
   @ApiProperty({ example: 29000, description: 'VND, giá size S' })
   price!: number;
 

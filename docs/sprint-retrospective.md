@@ -87,7 +87,69 @@ Dự án BrewLite được tổ chức thực hiện nghiêm ngặt theo khung l
 
 ---
 
-## 4. Đánh Giá Hiệu Suất & Đóng Góp Thành Viên
+## 4. Sprint 3: Vận Hành Tại Quầy & Tiện Ích Khách Hàng (Store Operations & Customer Utilities)
+
+* **Thời gian thực hiện:** Tuần 3 (Từ 11/11/2026 đến 14/11/2026)
+* **Sprint Goal (Mục tiêu Sprint):** Hoàn thiện quy trình vận hành khép kín tại quầy cửa hàng (màn hình KDS cho Barista, cơ chế mã nhận hàng 6 số và bàn giao món của Cashier) cùng các tiện ích khách hàng mở rộng (mã giảm giá Voucher, hủy đơn trước pha chế và đánh giá dịch vụ 5 sao).
+
+### 4.1. Sprint 3 Review (Nghiệm thu kết quả)
+* **Những gì đã hoàn thành (Done):**
+  - **Màn hình pha chế KDS cho Barista (CN-08 / FR-20):**
+    - Phía Backend (S3.2): API `GET /kds/orders` danh sách đơn cần pha, `PATCH /kds/orders/:id/status` chuyển trạng thái `PAID` → `PREPARING` → `READY`, phân quyền nghiêm ngặt `@Roles('BARISTA')` và kiểm tra khóa lạc quan `version`.
+    - Phía Frontend (S3.3): Giao diện KDS tại `/kds`, hiển thị chi tiết size/topping, nút nhận pha và báo xong, phân loại màu theo thời gian chờ.
+  - **Giao nhận tại quầy & Mã nhận hàng 6 số (CN-09 / FR-21):**
+    - Phía Backend (S3.4): Tự động sinh `pickupCode` ngẫu nhiên 6 chữ số duy nhất trong số đơn đang `READY`, API `GET /cashier/orders` và `POST /cashier/orders/:id/complete` cho Cashier xác nhận mã để chuyển đơn sang `COMPLETED`.
+    - Phía Frontend (S3.5): Hiển thị mã nhận hàng lớn, dễ nhìn trên trang `/orders` của khách; giao diện `/cashier` cho thu ngân nhập mã đối chiếu và bàn giao đồ uống.
+  - **Tiện ích khách hàng (CN-10 / FR-11, FR-12, FR-13):**
+    - **Voucher giảm giá (FR-11):** Backend (S3.6) kiểm tra mã `PERCENT` / `FIXED`, server tính tiền giảm chống gian lận; Frontend (S3.7) ô nhập mã tại `/checkout` và hiển thị số tiền tiết kiệm.
+    - **Hủy đơn hàng (FR-12):** Backend (S3.8) cho phép khách hoặc Cashier hủy đơn trước khi pha chế, khóa lạc quan chống xung đột đồng thời với Barista, tự động hoàn tiền mô phỏng, hoàn điểm thưởng và hoàn lượt voucher; Frontend (S3.9) hộp thoại xác nhận hủy đơn tại `/orders` và `/cashier`.
+    - **Đánh giá dịch vụ (FR-13):** Backend (S3.10) lưu đánh giá 1–5 sao kèm nhận xét cho đơn `COMPLETED`; Frontend (S3.11) popup đánh giá ngay sau khi nhận món.
+  - **Kiểm thử tự động & E2E (S3.12):** Bộ kiểm thử E2E Playwright `tests/e2e/sprint3.spec.ts` kiểm chứng toàn diện 5 kịch bản luồng Sprint 3 từ pha chế, giao nhận mã 6 số, hủy đơn, voucher đến đánh giá.
+
+### 4.2. Sprint 3 Retrospective (Rút kinh nghiệm)
+
+| Khía cạnh | Nội dung đánh giá thực tế của nhóm |
+|---|---|
+| **Làm tốt (What went well)** | • Vòng đời đơn hàng khép kín từ lúc khách đặt đến lúc Barista pha xong và Cashier giao món hoạt động trơn tru.<br>• Kiểm tra khóa lạc quan `version` giải quyết triệt để xung đột khi Barista bấm nhận pha đồng thời với khách bấm hủy đơn.<br>• Phân quyền theo vai trò (`RolesGuard`) ngăn chặn truy cập trái phép vào các màn hình nhân viên. |
+| **Chưa tốt / Khó khăn (What didn't go well)** | • Cơ chế sinh mã nhận hàng 6 số ngẫu nhiên cần vòng lặp thử lại (retry) để tránh trùng lặp trong các đơn cùng ở trạng thái `READY`.<br>• Đồng bộ trạng thái đa màn hình (Khách - Barista - Cashier) qua Polling 5s có độ trễ nhỏ so với WebSocket, nhưng bù lại rất ổn định và đơn giản hóa kiến trúc. |
+| **Kế hoạch hành động (Action Items)** | • Triển khai Sprint 4: Portal quản trị Quản lý (Menu, Bảng giá, Kho nguyên liệu, Công thức và Báo cáo doanh thu). |
+
+---
+
+## 5. Sprint 4: Quản Trị Hệ Thống & Số Hóa Kho (Store Management & Inventory Operations)
+
+* **Thời gian thực hiện:** Tuần 4 (Từ 14/11/2026)
+* **Sprint Goal (Mục tiêu Sprint):** Xây dựng toàn bộ hệ thống API quản trị dành cho Quản lý cửa hàng (Store Manager) gồm quản trị nhân sự, quản lý menu & bảng giá động, quản lý kho nguyên liệu theo công thức pha chế, cảnh báo tồn kho, quản lý mã giảm giá voucher và báo cáo thống kê doanh thu thực tế.
+
+### 5.1. Sprint 4 Review (Nghiệm thu kết quả)
+* **Những gì đã hoàn thành (Done):**
+  - **Quản lý menu & Bảng giá động (CN-11 / FR-18 - S4.2):**
+    - Chuyển toàn bộ dữ liệu bảng giá cố định sang CSDL: model `Category` (cột `isActive`), `Product` (cột `description`), `Topping` (bảng riêng) và `SizeSurcharge`.
+    - Bộ API CRUD `/admin/categories`, `/admin/products`, `/admin/toppings`, `/admin/sizes` chỉ dành cho `MANAGER`.
+    - Endpoint công khai `GET /menu-options` cung cấp danh sách size và topping kèm giá động; `POST /orders` đọc giá trực tiếp từ CSDL tại thời điểm tạo đơn.
+  - **Kho nguyên liệu, Công thức & Cảnh báo tồn kho (CN-12 / FR-15, FR-16, FR-17 - S4.4, S4.5):**
+    - Model `Ingredient` (tồn kho `stock`, ngưỡng tối thiểu `minStock`, đơn vị `unit`), `StockReceipt` (phiếu nhập kho lưu người nhập để truy vết), `RecipeItem` (định lượng cho từng món theo size), `ToppingRecipeItem` (định lượng cho topping).
+    - Bộ API `/admin/ingredients`, `/admin/recipes`, `/admin/toppings/:code/recipe` quản lý nguyên liệu và công thức.
+    - Cơ chế kiểm tra tồn kho khi tạo đơn, trừ kho tự động khi thanh toán `PAID`, lưu vết trừ kho trong `StockUsage`, hoàn kho tự động theo đúng lượng đã trừ khi hủy đơn.
+    - Cảnh báo tồn kho: endpoint `GET /admin/ingredients/alerts` liệt kê các nguyên liệu sắp hết (`stock <= minStock`), ưu tiên thiếu nhiều nhất lên đầu.
+  - **Quản trị nhân sự & Voucher phía Manager (CN-13 / FR-19, FR-11 Manager - S4.1, S4.7, S4.8):**
+    - API `/admin/staff` cho phép Manager tạo tài khoản nhân viên (Barista, Cashier), đổi vai trò, khóa và mở khóa tài khoản (`User.isLocked`). Tài khoản bị khóa bị từ chối đăng nhập (403).
+    - API `/admin/promotions` cho phép Manager tạo mới, cập nhật hạn mức và vô hiệu hóa mã giảm giá.
+  - **Báo cáo doanh thu & sản lượng (CN-13 / FR-14 - S4.9):**
+    - API `GET /admin/reports` tổng hợp doanh thu thực tế (chỉ tính đơn `PAID`, `PREPARING`, `READY`, `COMPLETED`), số đơn hoàn tất, tỷ lệ hủy đơn và Top 5 món bán chạy nhất theo khoảng thời gian.
+  - **Kiểm thử tự động:** Toàn bộ 526 tests Vitest của backend (`apps/api`) PASS 100%, kiểm chứng mọi tình huống phân quyền `@Roles('MANAGER')`, ràng buộc nghiệp vụ, trừ/hoàn kho và tính toán báo cáo.
+
+### 5.2. Sprint 4 Retrospective (Rút kinh nghiệm)
+
+| Khía cạnh | Nội dung đánh giá thực tế của nhóm |
+|---|---|
+| **Làm tốt (What went well)** | • Hệ thống phân quyền chặt chẽ: Các API nhạy cảm trong phân hệ `/admin` được bảo vệ nghiêm ngặt qua `JwtAuthGuard` và `RolesGuard` với vai trò `MANAGER`.<br>• Cơ chế trừ kho và hoàn kho xử lý an toàn trong transaction CSDL, đối soát chuẩn xác với bảng `StockUsage`.<br>• Bảng giá chuyển hoàn toàn sang CSDL giúp cửa hàng linh hoạt thay đổi giá bán, thêm topping mà không phải sửa mã nguồn hay khởi động lại server. |
+| **Chưa tốt / Khó khăn (What didn't go well)** | • Công thức định lượng pha chế có nhiều cấu trúc phụ thuộc (món x size + topping) đòi hỏi xử lý nhiều truy vấn quan hệ; giải pháp tối ưu là tải trước toàn bộ công thức và kiểm tra bộ nhớ đệm trước khi ghi DB.<br>• Các giao diện quản trị Admin Portal (S4.3, S4.6, S4.10) phía Web chưa được xây dựng đầy đủ do tập trung vào độ tin cậy và an toàn nghiệp vụ phía Backend. |
+| **Bài học kinh nghiệm (Lessons Learned)** | • Việc hoàn thành trọn vẹn cả 4 Sprint từ Nền tảng Core MVP (S1-S2), Vận hành tại quầy (S3) đến Quản trị số hóa (S4) mang lại một hệ thống hoàn chỉnh, đáp ứng mọi tiêu chí thực tế của một chuỗi đồ uống số hóa. |
+
+---
+
+## 6. Đánh Giá Hiệu Suất & Đóng Góp Thành Viên
 
 Mô hình nhóm 2 người đòi hỏi sự phối hợp chặt chẽ, chủ động và minh bạch thông qua các công cụ cộng tác Git/GitHub:
 
@@ -111,15 +173,9 @@ Mô hình nhóm 2 người đòi hỏi sự phối hợp chặt chẽ, chủ đ�
 
 ---
 
-## 5. Lộ Trình Chuyển Tiếp (Post-Assignment Roadmap — Sprint 3 & 4)
+## 7. Lộ Trình Phát Triển Tương Lai (Future Enhancements)
 
-Dù phạm vi Assignment 2 kết thúc ở Sprint 2 (Core MVP), nhóm đã chuẩn bị sẵn tài liệu thiết kế để tiếp tục phát triển hệ thống trong các học kỳ tiếp theo:
-
-1. **Sprint 3 (Vận hành tại quầy — Store Operations):**
-   - Xây dựng màn hình pha chế KDS (`FR-20`) cho Barista theo dõi và nhận đơn pha.
-   - Hiện thực cơ chế mã nhận hàng 6 chữ số `pickupCode` (`FR-21`) hiển thị trên app khách và màn hình xác nhận của Cashier.
-   - Tính năng khách hủy đơn trước pha chế (`FR-12`) và đánh giá dịch vụ 5 sao (`FR-13`).
-2. **Sprint 4 (Quản trị & Số hóa kho — Store Management):**
-   - Portal quản trị cho Quản lý cửa hàng (Store Manager): Quản lý menu món và topping (`FR-18`).
-   - Quản lý định lượng kho nguyên liệu theo công thức pha chế (`FR-15`, `FR-16`, `FR-17`), tự động trừ kho khi đơn sang `PAID` và cảnh báo nguyên liệu chạm ngưỡng tối thiểu.
-   - Dashboard báo cáo doanh thu thực tế, số lượng ly bán ra và Top 5 món bán chạy (`FR-14`).
+Hệ thống BrewLite đã hoàn thiện trọn vẹn cả 4 Sprint, các hướng phát triển mở rộng trong tương lai bao gồm:
+1. **Admin Portal UI trên Web:** Xây dựng giao diện trực quan cho Manager để thao tác nhập kho, chỉnh sửa menu, xem biểu đồ doanh thu thay vì qua API.
+2. **Tích hợp cổng thanh toán trực tuyến thật:** Kết nối VNPay, MoMo, ZaloPay sandbox để thay thế cho cổng thanh toán mô phỏng.
+3. **Ứng dụng di động đa nền tảng (React Native / Flutter):** Đưa trải nghiệm khách hàng lên App Store và Google Play.

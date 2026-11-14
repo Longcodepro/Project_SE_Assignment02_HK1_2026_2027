@@ -10,19 +10,23 @@ datasource db {
 model Category {
   id       Int       @id @default(autoincrement())
   name     String
+  // false: ẩn danh mục cùng các món của nó khỏi menu
+  isActive Boolean   @default(true)
   products Product[]
 }
 
 model Product {
-  id          Int         @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   name        String
+  description String?
   // VND, size S
   price       Int
   imageUrl    String
-  isAvailable Boolean     @default(true)
+  isAvailable Boolean      @default(true)
   categoryId  Int
-  category    Category    @relation(fields: [categoryId], references: [id])
+  category    Category     @relation(fields: [categoryId], references: [id])
   orderItems  OrderItem[]
+  recipeItems RecipeItem[]
 }
 
 enum Size {
@@ -42,27 +46,67 @@ enum OrderStatus {
 }
 
 model Order {
-  id             String      @id
+  id             String       @id
   userPhone      String
-  user           User        @relation(fields: [userPhone], references: [phone])
+  user           User         @relation(fields: [userPhone], references: [phone])
   // Client gửi lại cùng key thì trả đơn cũ thay vì tạo đơn mới
   idempotencyKey String?
-  status         OrderStatus @default(PENDING)
+  status         OrderStatus  @default(PENDING)
   // VND, tính ở server từ giá sản phẩm + size + topping
   total          Int
-  createdAt      DateTime    @default(now())
+  createdAt      DateTime     @default(now())
   // Khoá lạc quan: mỗi lần cập nhật đơn phải khớp version đã đọc, rồi tăng thêm 1
-  version        Int         @default(0)
-  // Mã nhận hàng 6 số, chỉ có khi đơn READY (sinh ở S3.4)
-  pickupCode     String?
+  version        Int          @default(0)
+  // Mã nhận hàng 6 số, chỉ khác null khi đơn READY (xóa khi COMPLETED) nên @unique
+  // cũng chính là "duy nhất trong số đơn đang READY"
+  pickupCode     String?      @unique
   // Lý do hủy và thời điểm hoàn tiền mô phỏng (dùng ở S3.8)
   cancelReason   String?
   refundedAt     DateTime?
+  // Mã giảm giá đã áp; total là số tiền sau giảm, discountAmount là phần được giảm (VND)
+  promotionId    Int?
+  promotion      Promotion?   @relation(fields: [promotionId], references: [id])
+  discountAmount Int          @default(0)
   items          OrderItem[]
   payments       Payment[]
+  review         Review?
+  stockUsages    StockUsage[]
 
   @@unique([userPhone, idempotencyKey])
   @@index([userPhone])
+}
+
+// Mỗi đơn COMPLETED được đánh giá một lần (orderId @unique); chủ đơn lấy qua order.userPhone
+model Review {
+  id        Int      @id @default(autoincrement())
+  orderId   String   @unique
+  order     Order    @relation(fields: [orderId], references: [id])
+  // 1 đến 5 (có CHECK trong migration)
+  stars     Int
+  comment   String?
+  createdAt DateTime @default(now())
+}
+
+enum DiscountType {
+  FIXED
+  PERCENT
+}
+
+model Promotion {
+  id             Int          @id @default(autoincrement())
+  // Viết hoa; khách nhập không phân biệt hoa thường
+  code           String       @unique
+  discountType   DiscountType
+  // FIXED: VND; PERCENT: 1 đến 100
+  discountValue  Int
+  // VND, tính trước giảm
+  minOrderAmount Int          @default(0)
+  isActive       Boolean      @default(true)
+  expiryDate     DateTime?
+  // null là không giới hạn; usedCount tăng khi tạo đơn và giảm khi đơn bị hủy
+  maxUses        Int?
+  usedCount      Int          @default(0)
+  orders         Order[]
 }
 
 model OrderItem {
@@ -88,17 +132,20 @@ enum Role {
 }
 
 model User {
-  phone         String   @id
+  phone         String         @id
   // bcrypt hash, không bao giờ trả ra ngoài API
   passwordHash  String
   name          String?
   // Tùy chọn, không duy nhất
   email         String?
-  role          Role     @default(CUSTOMER)
+  role          Role           @default(CUSTOMER)
   // Tích lũy khi thanh toán thành công (xem payments/loyalty.ts)
-  loyaltyPoints Int      @default(0)
-  createdAt     DateTime @default(now())
+  loyaltyPoints Int            @default(0)
+  // Tài khoản bị khóa đăng nhập không được (token đã cấp vẫn dùng đến khi hết hạn)
+  isLocked      Boolean        @default(false)
+  createdAt     DateTime       @default(now())
   orders        Order[]
+  stockReceipts StockReceipt[]
 }
 
 enum PaymentMethod {
@@ -128,4 +175,91 @@ model Payment {
 
   @@unique([orderId, idempotencyKey])
   @@index([orderId])
+}
+
+// Kho nguyên liệu (Sprint 4). stock và quantity là số nguyên theo đơn vị unit.
+enum Unit {
+  G
+  ML
+  PIECE
+}
+
+model Ingredient {
+  id                 Int                 @id @default(autoincrement())
+  name               String              @unique
+  unit               Unit
+  stock              Int                 @default(0)
+  // Chạm ngưỡng này thì cảnh báo sắp hết
+  minStock           Int                 @default(0)
+  receipts           StockReceipt[]
+  stockUsages        StockUsage[]
+  recipeItems        RecipeItem[]
+  toppingRecipeItems ToppingRecipeItem[]
+}
+
+// Phiếu nhập kho, lưu người thực hiện để truy vết
+model StockReceipt {
+  id             Int        @id @default(autoincrement())
+  ingredientId   Int
+  ingredient     Ingredient @relation(fields: [ingredientId], references: [id])
+  quantity       Int
+  note           String?
+  createdByPhone String
+  createdBy      User       @relation(fields: [createdByPhone], references: [phone])
+  createdAt      DateTime   @default(now())
+
+  @@index([ingredientId])
+}
+
+// Nguyên liệu cho MỘT ly món productId ở cỡ size
+model RecipeItem {
+  id           Int        @id @default(autoincrement())
+  productId    Int
+  product      Product    @relation(fields: [productId], references: [id])
+  size         Size
+  ingredientId Int
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  quantity     Int
+
+  @@unique([productId, size, ingredientId])
+}
+
+// Bảng giá topping và phụ thu size (Sprint 4 thay cho hằng số trong pricing.ts)
+model Topping {
+  code        String              @id
+  name        String
+  // VND
+  price       Int
+  isActive    Boolean             @default(true)
+  recipeItems ToppingRecipeItem[]
+}
+
+model SizeSurcharge {
+  size  Size @id
+  // VND
+  extra Int
+}
+
+// Nguyên liệu cho MỘT phần topping
+model ToppingRecipeItem {
+  id           Int        @id @default(autoincrement())
+  toppingCode  String
+  topping      Topping    @relation(fields: [toppingCode], references: [code])
+  ingredientId Int
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  quantity     Int
+
+  @@unique([toppingCode, ingredientId])
+}
+
+// Nguyên liệu đã trừ cho từng đơn PAID; hoàn kho khi hủy theo đúng số này (kể cả khi công thức đã đổi)
+model StockUsage {
+  id           Int        @id @default(autoincrement())
+  orderId      String
+  order        Order      @relation(fields: [orderId], references: [id])
+  ingredientId Int
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  quantity     Int
+
+  @@unique([orderId, ingredientId])
 }

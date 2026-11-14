@@ -14,7 +14,8 @@ export class LoyaltyService {
 
     const payments = await this.prisma.payment.findMany({
       where: {
-        order: { userPhone },
+        // Đơn đã hủy được trừ lại điểm nên không liệt kê, để tổng lịch sử khớp số dư
+        order: { userPhone, status: { not: 'CANCELLED' } },
         status: 'SUCCESS',
         pointsEarned: { gt: 0 },
       },

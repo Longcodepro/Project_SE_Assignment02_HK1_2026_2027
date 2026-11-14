@@ -6,7 +6,13 @@ import Navbar from '@/components/Navbar';
 import { apiService } from '@/services/api';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Order, OrderStatus } from '@/types';
-import { Clock, Coffee, CheckCircle2, AlertCircle, ChevronRight, RefreshCw, ChefHat, LogIn, CreditCard, Wallet, X, Loader2 } from 'lucide-react';
+import { formatPickupCode } from '@/lib/pickup';
+import { canCustomerCancel } from '@/lib/cancel';
+import { apiErrorMessage, httpStatus } from '@/lib/errors';
+import CancelOrderModal from '@/components/CancelOrderModal';
+import ReviewModal from '@/components/ReviewModal';
+import { loadDismissedReviews, pickOrderToReview, saveDismissedReviews } from '@/lib/review';
+import { Clock, Coffee, CheckCircle2, AlertCircle, ChevronRight, RefreshCw, ChefHat, LogIn, CreditCard, Wallet, X, Loader2, Ban, Star } from 'lucide-react';
 
 export default function OrderHistoryPage(){
     const isClient = useSyncExternalStore(() => () => {}, () => true, () => false);
@@ -24,6 +30,20 @@ export default function OrderHistoryPage(){
     const [retryLoading, setRetryLoading] = useState<boolean>(false);
     const [retryError, setRetryError] = useState<string | null>(null);
     const [retrySuccess, setRetrySuccess] = useState<string | null>(null);
+
+    // Hủy đơn: hộp thoại nhập lý do; sai version (409) thì báo và làm mới dữ liệu
+    const [cancelingOrder, setCancelingOrder] = useState<Order | null>(null);
+    const [cancelBusy, setCancelBusy] = useState<boolean>(false);
+    const [cancelError, setCancelError] = useState<string | null>(null);
+    const [notice, setNotice] = useState<{ kind: 'ok' | 'warn'; text: string } | null>(null);
+
+    // Đánh giá: popup tự bật cho đơn COMPLETED chưa đánh giá; "Để sau" thì nhớ trên máy, vẫn đánh giá được bằng nút trên đơn
+    const [dismissedReviews, setDismissedReviews] = useState<string[]>(() => loadDismissedReviews());
+    const [manualReview, setManualReview] = useState<Order | null>(null);
+    const [reviewBusy, setReviewBusy] = useState<boolean>(false);
+    const [reviewError, setReviewError] = useState<string | null>(null);
+    const autoReview = pickOrderToReview(orders, dismissedReviews);
+    const reviewTarget = manualReview ?? autoReview ?? null;
 
     // Gọi API lấy danh sách đơn thật
     const fetchOrders = async (silent = false) => {
@@ -76,10 +96,10 @@ export default function OrderHistoryPage(){
 
         void load(false);
 
-        // Polling cập nhật mỗi 10 giây
+        // Polling cập nhật mỗi 5 giây để khách thấy mã nhận hàng ngay khi đơn READY
         const interval = setInterval(() => {
             void load(true);
-        }, 10000);
+        }, 5000);
 
         return () => {
             isMounted = false;
@@ -121,9 +141,80 @@ export default function OrderHistoryPage(){
         }
     };
 
+    const closeReview = () => {
+        if (reviewTarget && !manualReview) {
+            const next = [...dismissedReviews, String(reviewTarget.id)];
+            setDismissedReviews(next);
+            saveDismissedReviews(next);
+        }
+        setManualReview(null);
+        setReviewError(null);
+    };
+
+    const handleReview = async (stars: number, comment: string) => {
+        if (!reviewTarget) return;
+        setReviewBusy(true);
+        setReviewError(null);
+        try {
+            await apiService.reviewOrder(String(reviewTarget.id), stars, comment || undefined);
+            setManualReview(null);
+            setNotice({ kind: 'ok', text: 'Cảm ơn bạn đã đánh giá! BrewLite sẽ tiếp tục cải thiện.' });
+            await fetchOrders(true);
+        } catch (err: unknown) {
+            if (httpStatus(err) === 409) {
+                // Đơn đã được đánh giá (hoặc chưa hoàn tất): làm mới để popup tự tắt, không đánh giá lần hai
+                setManualReview(null);
+                setNotice({ kind: 'warn', text: 'Đơn này đã được đánh giá rồi.' });
+                await fetchOrders(true);
+            } else {
+                setReviewError(apiErrorMessage(err, 'Không thể gửi đánh giá, vui lòng thử lại.'));
+            }
+        } finally {
+            setReviewBusy(false);
+        }
+    };
+
+    const handleCancel = async (reason: string) => {
+        if (!cancelingOrder) return;
+        setCancelBusy(true);
+        setCancelError(null);
+        try {
+            const res = await apiService.cancelOrder(String(cancelingOrder.id), cancelingOrder.version ?? 0, reason || undefined);
+            setCancelingOrder(null);
+            setNotice({
+                kind: 'ok',
+                text: res.refundedAt
+                    ? `Đã hủy đơn #${cancelingOrder.id}. Tiền được hoàn lại (mô phỏng) và điểm thưởng của đơn đã bị trừ.`
+                    : `Đã hủy đơn #${cancelingOrder.id}.`,
+            });
+            void fetchOrders(true);
+        } catch (err: unknown) {
+            if (httpStatus(err) === 409) {
+                // Đơn vừa đổi trạng thái (ví dụ Barista đã nhận pha): đóng hộp thoại, báo và làm mới
+                setCancelingOrder(null);
+                setNotice({
+                    kind: 'warn',
+                    text: `Đơn #${cancelingOrder.id} vừa được cập nhật nên không thể hủy được nữa. Đã làm mới danh sách đơn.`,
+                });
+                void fetchOrders(true);
+            } else {
+                setCancelError(apiErrorMessage(err, 'Không thể hủy đơn, vui lòng thử lại.'));
+            }
+        } finally {
+            setCancelBusy(false);
+        }
+    };
+
     // Hàm hiển thị màu sắc theo trạng thái đơn
     const renderStatusBadge = (status: OrderStatus) => {
         switch (status) {
+            case 'CANCELLED': return (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[11px] sm:text-xs font-bold bg-gray-100 text-gray-600 border border-gray-300">
+                    <Ban className="w-3.5 h-3.5 text-gray-500" />
+                    Đã hủy
+                </span>
+            );
+
             case 'PREPARING': return (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[11px] sm:text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
                     <ChefHat className="w-3.5 h-3.5 text-amber-700" />
@@ -201,6 +292,23 @@ export default function OrderHistoryPage(){
                         <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${loading ? 'animate-spin' : ''}`} />
                     </button>
                 </div>
+
+                {/* THÔNG BÁO KẾT QUẢ HỦY ĐƠN */}
+                {notice && (
+                    <div
+                        role="status"
+                        className={`mb-4 p-3 rounded-xl text-xs font-medium flex items-start justify-between gap-3 border ${
+                            notice.kind === 'ok'
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                : 'bg-amber-50 border-amber-300 text-amber-900'
+                        }`}
+                    >
+                        <span>{notice.text}</span>
+                        <button type="button" onClick={() => setNotice(null)} aria-label="Đóng thông báo" className="shrink-0 opacity-60 hover:opacity-100">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
 
                 {/* 1. TRƯỜNG HỢP CHƯA ĐĂNG NHẬP */}
                 {isClient && !token && (
@@ -304,9 +412,73 @@ export default function OrderHistoryPage(){
                                     </div>
                                 )}
                                 {order.status === 'READY' && (
-                                    <div className="mt-2.5 sm:mt-3.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 sm:px-3.5 sm:py-2 text-[11px] sm:text-xs font-bold text-emerald-800 flex items-center gap-2">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                                        <span>Cà phê của bạn đã sẵn sàng! Mời bạn tới quầy nhận nước.</span>
+                                    <div className="mt-2.5 sm:mt-3.5 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 sm:px-4 sm:py-3 text-emerald-800">
+                                        <div className="flex items-center gap-2 text-[11px] sm:text-xs font-bold">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                                            <span>Cà phê của bạn đã sẵn sàng! Mời bạn tới quầy nhận nước.</span>
+                                        </div>
+                                        {order.pickupCode && (
+                                            <div className="mt-2.5 flex items-center justify-between gap-3 bg-white border border-emerald-300 rounded-xl px-3.5 py-2.5">
+                                                <span className="text-[11px] sm:text-xs font-semibold text-emerald-900">
+                                                    Đọc mã này cho nhân viên quầy:
+                                                </span>
+                                                <span
+                                                    data-testid="pickup-code"
+                                                    aria-label={`Mã nhận hàng ${order.pickupCode}`}
+                                                    className="font-mono text-2xl sm:text-3xl font-black tracking-[0.25em] text-emerald-900"
+                                                >
+                                                    {formatPickupCode(order.pickupCode)}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {order.status === 'COMPLETED' && order.review && (
+                                    <div data-testid="review-done" className="mt-2.5 sm:mt-3.5 bg-amber-50/70 border border-amber-200/70 rounded-xl px-3 py-2 text-[11px] sm:text-xs text-amber-900">
+                                        <p className="flex items-center gap-1 font-bold">
+                                            Bạn đã đánh giá
+                                            <span className="inline-flex" aria-label={`${order.review.stars} sao`}>
+                                                {[1, 2, 3, 4, 5].map((n) => (
+                                                    <Star key={n} className={`w-3.5 h-3.5 ${n <= order.review!.stars ? 'fill-amber-400 text-amber-400' : 'text-amber-200'}`} />
+                                                ))}
+                                            </span>
+                                        </p>
+                                        {order.review.comment && <p className="mt-0.5 text-amber-800">“{order.review.comment}”</p>}
+                                    </div>
+                                )}
+                                {order.status === 'COMPLETED' && order.review === null && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setManualReview(order);
+                                            setReviewError(null);
+                                        }}
+                                        className="mt-2.5 sm:mt-3.5 inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-xl px-3 py-1.5 transition"
+                                    >
+                                        <Star className="w-3.5 h-3.5" />
+                                        Đánh giá đơn này
+                                    </button>
+                                )}
+                                {order.status === 'CANCELLED' && (
+                                    <div className="mt-2.5 sm:mt-3.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-[11px] sm:text-xs text-gray-700 space-y-0.5">
+                                        {order.cancelReason && (
+                                            <p>
+                                                <span className="font-bold">Lý do hủy:</span> {order.cancelReason}
+                                            </p>
+                                        )}
+                                        {order.refundedAt && (
+                                            <p className="text-emerald-700 font-semibold">
+                                                Đã hoàn tiền lúc{' '}
+                                                {new Date(order.refundedAt).toLocaleString('vi-VN', {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                    day: '2-digit',
+                                                    month: '2-digit',
+                                                    year: 'numeric',
+                                                })}
+                                            </p>
+                                        )}
                                     </div>
                                 )}
 
@@ -342,10 +514,29 @@ export default function OrderHistoryPage(){
                                 {/* Footer thẻ đơn: Tổng tiền và Nút thanh toán lại nếu cần */}
                                 <div className="pt-2.5 sm:pt-3 border-t border-dashed border-amber-200/80 flex items-center justify-between gap-3">
                                     <div>
+                                        {(order.discountAmount ?? 0) > 0 && (
+                                            <span className="block text-[11px] sm:text-xs font-semibold text-emerald-700">
+                                                Đã giảm {(order.discountAmount ?? 0).toLocaleString('vi-VN')}đ
+                                                {order.promoCode ? ` (mã ${order.promoCode})` : ''}
+                                            </span>
+                                        )}
                                         <span className="text-xs font-medium text-gray-500">Tổng thanh toán:</span>
                                         <p className="text-sm sm:text-lg font-black text-amber-900">
                                             {order.total.toLocaleString('vi-VN')}đ
                                         </p>
+                                        {canCustomerCancel(order.status) && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setCancelingOrder(order);
+                                                    setCancelError(null);
+                                                }}
+                                                className="mt-1 inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-red-600 hover:text-red-700 hover:underline"
+                                            >
+                                                <Ban className="w-3 h-3" />
+                                                Hủy đơn
+                                            </button>
+                                        )}
                                     </div>
 
                                     {(order.status === 'PAYMENT_FAILED' || order.status === 'PENDING') && (
@@ -368,6 +559,30 @@ export default function OrderHistoryPage(){
                     </div>
                 )}    
             </main>
+
+            {/* POPUP ĐÁNH GIÁ SAU KHI NHẬN MÓN */}
+            {reviewTarget && !cancelingOrder && !retryingOrder && (
+                <ReviewModal
+                    key={String(reviewTarget.id)}
+                    orderLabel={`#${reviewTarget.id}`}
+                    error={reviewError}
+                    busy={reviewBusy}
+                    onSubmit={(stars, comment) => void handleReview(stars, comment)}
+                    onClose={closeReview}
+                />
+            )}
+
+            {/* MODAL HỦY ĐƠN */}
+            {cancelingOrder && (
+                <CancelOrderModal
+                    orderLabel={`#${cancelingOrder.id}`}
+                    status={cancelingOrder.status}
+                    error={cancelError}
+                    busy={cancelBusy}
+                    onConfirm={(reason) => void handleCancel(reason)}
+                    onClose={() => setCancelingOrder(null)}
+                />
+            )}
 
             {/* MODAL THANH TOÁN LẠI ĐƠN HÀNG */}
             {retryingOrder && (

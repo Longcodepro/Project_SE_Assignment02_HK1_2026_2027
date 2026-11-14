@@ -195,7 +195,7 @@ jobs:
       - name: Chờ API và Web sẵn sàng, làm nóng các trang (web chạy chế độ dev)
         run: |
           curl --fail --silent --show-error --retry 60 --retry-delay 2 --retry-all-errors http://localhost:4003/health
-          for p in / /cart /checkout /orders /order-success; do
+          for p in / /cart /checkout /orders /order-success /kds /cashier; do
             curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors -o /dev/null "http://localhost:4004$p"
           done
 

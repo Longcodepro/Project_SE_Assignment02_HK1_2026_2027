@@ -3,12 +3,19 @@ import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
+import { CashierModule } from './cashier/cashier.module.js';
+import { InventoryModule } from './inventory/inventory.module.js';
 import { KdsModule } from './kds/kds.module.js';
 import { LoyaltyModule } from './loyalty/loyalty.module.js';
+import { MenuModule } from './menu/menu.module.js';
 import { OrdersModule } from './orders/orders.module.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ProductsModule } from './products/products.module.js';
+import { PromotionsModule } from './promotions/promotions.module.js';
+import { ReportsModule } from './reports/reports.module.js';
+import { ReviewsModule } from './reviews/reviews.module.js';
+import { StaffModule } from './staff/staff.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -21,6 +28,13 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     PaymentsModule,
     LoyaltyModule,
     KdsModule,
+    CashierModule,
+    ReviewsModule,
+    StaffModule,
+    PromotionsModule,
+    ReportsModule,
+    MenuModule,
+    InventoryModule,
     // Distributed tracing, auto-correlated logs, request/job metrics, error
     // telemetry, alarms, and more — out of the box. Sign up at https://observe.nestjs.com,
     // then run `npx @nestjs/observe link` to write your key pair into .env.

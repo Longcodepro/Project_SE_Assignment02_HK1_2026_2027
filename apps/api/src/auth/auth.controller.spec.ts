@@ -20,6 +20,8 @@ async function setup() {
   const prisma = {
     user,
     product: { findMany: vi.fn().mockResolvedValue([{ id: 1, price: 29000, isAvailable: true }]) },
+    sizeSurcharge: { findMany: vi.fn().mockResolvedValue([{ size: 'S', extra: 0 }]) },
+    recipeItem: { findMany: vi.fn().mockResolvedValue([]) },
     order: {
       create: vi.fn().mockResolvedValue({ id: 'ord_1', status: 'PENDING', total: 29000 }),
     },
@@ -116,6 +118,40 @@ describe('POST /auth/login', () => {
     prisma.user.findUnique.mockResolvedValueOnce(null);
     const none = await login(http, { phone: '0987654321', password: 'secret123' }).expect(401);
     expect(none.body.message).toBe(wrong.body.message);
+    await app.close();
+  });
+});
+
+describe('POST /auth/login với tài khoản bị khóa', () => {
+  const khoa = async (isLocked: boolean) => ({
+    phone: '0900000001',
+    role: 'BARISTA',
+    isLocked,
+    passwordHash: await bcrypt.hash('secret123', 4),
+  });
+
+  it('đúng mật khẩu nhưng bị khóa: 403, không phát token', async () => {
+    const { app, prisma, http } = await setup();
+    prisma.user.findUnique.mockResolvedValue(await khoa(true));
+    const res = await http().post('/auth/login').send({ phone: '0900000001', password: 'secret123' }).expect(403);
+    expect(res.body.message).toBe('Tài khoản đã bị khóa');
+    expect(res.body.accessToken).toBeUndefined();
+    await app.close();
+  });
+
+  it('sai mật khẩu trên tài khoản bị khóa vẫn 401, không lộ việc bị khóa', async () => {
+    const { app, prisma, http } = await setup();
+    prisma.user.findUnique.mockResolvedValue(await khoa(true));
+    const res = await http().post('/auth/login').send({ phone: '0900000001', password: 'sai-mat-khau' }).expect(401);
+    expect(res.body.message).toBe('Số điện thoại hoặc mật khẩu không đúng');
+    await app.close();
+  });
+
+  it('mở khóa rồi thì đăng nhập lại được', async () => {
+    const { app, prisma, http } = await setup();
+    prisma.user.findUnique.mockResolvedValue(await khoa(false));
+    const res = await http().post('/auth/login').send({ phone: '0900000001', password: 'secret123' }).expect(200);
+    expect(res.body.accessToken.split('.')).toHaveLength(3);
     await app.close();
   });
 });

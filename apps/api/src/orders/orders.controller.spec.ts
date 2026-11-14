@@ -12,18 +12,74 @@ async function setup(
   findManyOrders = vi.fn().mockResolvedValue([]),
   findUnique = vi.fn().mockResolvedValue(null),
   products = [{ id: 1, price: 29000, isAvailable: true }],
+  promo: Record<string, unknown> | null = null,
 ) {
   const create = vi.fn().mockImplementation(({ data }) =>
-    Promise.resolve({ id: data.id, status: 'PENDING', total: data.total }),
+    Promise.resolve({
+      id: data.id,
+      status: 'PENDING',
+      total: data.total,
+      discountAmount: data.discountAmount,
+      promotion: data.promotionId ? { code: promo?.code } : null,
+    }),
   );
   const findMany = vi.fn().mockResolvedValue(products);
+  const promoFindUnique = vi.fn().mockResolvedValue(promo);
+  const promoUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
+  // Bảng giá trong CSDL; test đổi giá bằng cách sửa các mảng này
+  const sizeRows = [
+    { size: 'S', extra: 0 },
+    { size: 'M', extra: 5000 },
+    { size: 'L', extra: 10000 },
+  ];
+  const toppingRows = [
+    { code: 'tran-chau', price: 8000, isActive: true },
+    { code: 'kem-cheese', price: 10000, isActive: true },
+    { code: 'thach-cafe', price: 6000, isActive: true },
+    { code: 'pudding', price: 7000, isActive: false },
+  ];
+  const sizeFindMany = vi.fn().mockImplementation(() => Promise.resolve(sizeRows));
+  const toppingFindMany = vi
+    .fn()
+    .mockImplementation(({ where }) =>
+      Promise.resolve(toppingRows.filter((t) => where.code.in.includes(t.code) && t.isActive === where.isActive)),
+    );
+  // Kho và công thức: mặc định trống nên đơn không bị kiểm tra kho
+  const recipeRows: { productId: number; size: string; ingredientId: number; quantity: number }[] = [];
+  const toppingRecipeRows: { toppingCode: string; ingredientId: number; quantity: number }[] = [];
+  const ingredientRows: { id: number; name: string; stock: number }[] = [];
+  const ingredientFindMany = vi
+    .fn()
+    .mockImplementation(({ where }) => Promise.resolve(ingredientRows.filter((i) => where.id.in.includes(i.id))));
+  const db = {
+    product: { findMany },
+    order: { create, findMany: findManyOrders, findUnique },
+    promotion: { findUnique: promoFindUnique, updateMany: promoUpdateMany },
+    sizeSurcharge: { findMany: sizeFindMany },
+    topping: { findMany: toppingFindMany },
+    recipeItem: {
+      findMany: vi
+        .fn()
+        .mockImplementation(({ where }) =>
+          Promise.resolve(recipeRows.filter((r) => where.productId.in.includes(r.productId))),
+        ),
+    },
+    toppingRecipeItem: {
+      findMany: vi
+        .fn()
+        .mockImplementation(({ where }) =>
+          Promise.resolve(toppingRecipeRows.filter((r) => where.toppingCode.in.includes(r.toppingCode))),
+        ),
+    },
+    ingredient: { findMany: ingredientFindMany },
+  };
   const moduleRef = await Test.createTestingModule({
     controllers: [OrdersController],
     providers: [
       OrdersService,
       {
         provide: PrismaService,
-        useValue: { product: { findMany }, order: { create, findMany: findManyOrders, findUnique } },
+        useValue: { ...db, $transaction: (fn: (tx: typeof db) => unknown) => fn(db) },
       },
     ],
   })
@@ -39,7 +95,23 @@ async function setup(
   const app = moduleRef.createNestApplication();
   app.useGlobalPipes(createValidationPipe());
   await app.init();
-  return { app, create, findManyOrders, findUnique };
+  return {
+    app,
+    create,
+    findMany,
+    findManyOrders,
+    findUnique,
+    promoFindUnique,
+    promoUpdateMany,
+    sizeRows,
+    toppingRows,
+    sizeFindMany,
+    toppingFindMany,
+    recipeRows,
+    toppingRecipeRows,
+    ingredientRows,
+    ingredientFindMany,
+  };
 }
 
 describe('POST /orders', () => {
@@ -64,7 +136,7 @@ describe('POST /orders', () => {
     ['thiếu items', {}],
     ['số lượng 0', { items: [{ ...item, quantity: 0 }] }],
     ['size lạ', { items: [{ ...item, size: 'XL' }] }],
-    ['topping lạ', { items: [{ ...item, toppings: ['la'] }] }],
+    ['topping sai định dạng', { items: [{ ...item, toppings: ['La La'] }] }],
     ['trường thừa (giá do client gửi)', { items: [{ ...item, price: 1 }] }],
   ])('400 khi %s', async (_name, body) => {
     const { app, create } = await setup();
@@ -105,6 +177,163 @@ describe('POST /orders', () => {
   });
 });
 
+describe('POST /orders: bảng giá lấy từ CSDL', () => {
+  const dat = (app: any, body: object) => request(app.getHttpServer()).post('/orders').send(body);
+
+  it('giá seed cho kết quả như bảng giá cũ: 29000 + M 5000 + trân châu 8000, đủ ba size và ba topping', async () => {
+    const { app, create } = await setup();
+    await dat(app, { items: [{ productId: 1, quantity: 1, size: 'S' }] }).expect(201);
+    await dat(app, { items: [{ productId: 1, quantity: 1, size: 'L', toppings: ['kem-cheese', 'thach-cafe'] }] }).expect(201);
+    expect(create.mock.calls[0][0].data.total).toBe(29000);
+    // 29000 + 10000 (L) + 10000 + 6000
+    expect(create.mock.calls[1][0].data.total).toBe(55000);
+    await app.close();
+  });
+
+  it('Manager đổi phụ thu size và giá topping thì đơn tạo sau tính theo giá mới', async () => {
+    const { app, create, sizeRows, toppingRows } = await setup();
+    sizeRows.find((s) => s.size === 'M')!.extra = 7000;
+    toppingRows.find((t) => t.code === 'tran-chau')!.price = 9000;
+
+    await dat(app, { items: [item] }).expect(201);
+
+    // 2 × (29000 + 7000 + 9000)
+    expect(create.mock.calls[0][0].data.total).toBe(90000);
+    expect(create.mock.calls[0][0].data.items.create[0].unitPrice).toBe(45000);
+    await app.close();
+  });
+
+  it('chỉ tra topping đang bán trong các mã khách chọn; không có topping thì không tra bảng topping', async () => {
+    const { app, toppingFindMany } = await setup();
+    await dat(app, { items: [{ productId: 1, quantity: 1, size: 'M' }] }).expect(201);
+    expect(toppingFindMany).not.toHaveBeenCalled();
+    await dat(app, { items: [item, item] }).expect(201);
+    expect(toppingFindMany.mock.calls[0][0].where).toEqual({ code: { in: ['tran-chau'] }, isActive: true });
+    await app.close();
+  });
+
+  it.each([
+    ['topping không tồn tại', ['khong-co'], /không tồn tại hoặc đã ngừng bán: khong-co/],
+    ['topping đã ngừng bán', ['pudding'], /đã ngừng bán: pudding/],
+    ['nhiều topping lạ', ['khong-co', 'cung-khong'], /khong-co, cung-khong/],
+  ])('400 khi %s, không tạo đơn', async (_ten, toppings, message) => {
+    const { app, create } = await setup();
+    const res = await dat(app, { items: [{ productId: 1, quantity: 1, size: 'M', toppings }] }).expect(400);
+    expect(res.body.message).toMatch(message);
+    expect(create).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('400 khi mã topping sai định dạng; size ngoài S, M, L', async () => {
+    const { app, toppingFindMany } = await setup();
+    await dat(app, { items: [{ productId: 1, quantity: 1, size: 'M', toppings: ['Tran Chau'] }] }).expect(400);
+    await dat(app, { items: [{ productId: 1, quantity: 1, size: 'XL' }] }).expect(400);
+    expect(toppingFindMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('500 khi bảng phụ thu thiếu size (cấu hình sai), không tạo đơn với giá sai', async () => {
+    const { app, create, sizeRows } = await setup();
+    sizeRows.splice(sizeRows.findIndex((s) => s.size === 'M'), 1);
+    await dat(app, { items: [item] }).expect(500);
+    expect(create).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('món của danh mục đang ẩn coi như không tồn tại', async () => {
+    const { app, findMany, create } = await setup(undefined, undefined, []);
+    const res = await dat(app, { items: [item] }).expect(400);
+    expect(findMany.mock.calls[0][0].where).toEqual({ id: { in: [1] }, category: { isActive: true } });
+    expect(res.body.message).toMatch(/Sản phẩm không tồn tại: 1/);
+    expect(create).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('đổi giá không ảnh hưởng đơn đã đặt: lịch sử đọc unitPrice đã lưu, không tra bảng giá', async () => {
+    const stored = {
+      id: 'ord_1', status: 'PAID', total: 84000, createdAt: new Date('2026-11-01T00:00:00Z'),
+      items: [{ productId: 1, quantity: 2, size: 'M', toppings: ['tran-chau'], unitPrice: 42000, product: { name: 'Cà phê sữa' } }],
+    };
+    const { app, toppingRows, sizeRows, sizeFindMany, toppingFindMany } = await setup(vi.fn().mockResolvedValue([stored]));
+    toppingRows.find((t) => t.code === 'tran-chau')!.price = 20000;
+    sizeRows.find((s) => s.size === 'M')!.extra = 20000;
+
+    const res = await request(app.getHttpServer()).get('/orders/me').expect(200);
+
+    expect(res.body[0].total).toBe(84000);
+    expect(res.body[0].items[0].unitPrice).toBe(42000);
+    expect(sizeFindMany).not.toHaveBeenCalled();
+    expect(toppingFindMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe('POST /orders: kiểm tra đủ nguyên liệu', () => {
+  const dat = (app: any, body: object = { items: [item] }) => request(app.getHttpServer()).post('/orders').send(body);
+  // item mẫu: món 1, size M, 2 ly, topping trân châu
+  const caPhe = { productId: 1, size: 'M', ingredientId: 1, quantity: 18 };
+  const suaTraiChau = { toppingCode: 'tran-chau', ingredientId: 2, quantity: 5 };
+
+  it('món chưa có công thức: không tra kho, đơn được tạo', async () => {
+    const { app, ingredientFindMany, create } = await setup();
+    await dat(app).expect(201);
+    expect(ingredientFindMany).not.toHaveBeenCalled();
+    expect(create).toHaveBeenCalledTimes(1);
+    await app.close();
+  });
+
+  it('đủ nguyên liệu (kể cả đúng bằng) thì tạo đơn', async () => {
+    const { app, recipeRows, toppingRecipeRows, ingredientRows, create } = await setup();
+    recipeRows.push(caPhe);
+    toppingRecipeRows.push(suaTraiChau);
+    // 2 ly: cà phê 2 × 18 = 36, sữa 2 × 5 = 10
+    ingredientRows.push({ id: 1, name: 'Cà phê', stock: 36 }, { id: 2, name: 'Sữa đặc', stock: 10 });
+    await dat(app).expect(201);
+    expect(create).toHaveBeenCalledTimes(1);
+    await app.close();
+  });
+
+  it('thiếu nguyên liệu (kể cả của topping): 409 nêu tên, không tạo đơn', async () => {
+    const { app, recipeRows, toppingRecipeRows, ingredientRows, create } = await setup();
+    recipeRows.push(caPhe);
+    toppingRecipeRows.push(suaTraiChau);
+    ingredientRows.push({ id: 1, name: 'Cà phê', stock: 35 }, { id: 2, name: 'Sữa đặc', stock: 9 });
+
+    const res = await dat(app).expect(409);
+
+    expect(res.body.message).toBe('Không đủ nguyên liệu cho đơn này: Cà phê, Sữa đặc');
+    expect(create).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('chỉ nguyên liệu của size đã đặt mới tính; size chưa có công thức không bị chặn', async () => {
+    const { app, recipeRows, ingredientRows } = await setup();
+    recipeRows.push(caPhe);
+    ingredientRows.push({ id: 1, name: 'Cà phê', stock: 0 });
+    await dat(app, { items: [{ productId: 1, quantity: 1, size: 'L' }] }).expect(201);
+    await dat(app, { items: [{ productId: 1, quantity: 1, size: 'M' }] }).expect(409);
+    await app.close();
+  });
+
+  it('nhiều dòng đơn cùng nguyên liệu được cộng dồn trước khi so với tồn', async () => {
+    const { app, recipeRows, ingredientRows } = await setup();
+    recipeRows.push(caPhe);
+    ingredientRows.push({ id: 1, name: 'Cà phê', stock: 40 });
+    // 2 ly + 1 ly = 54 > 40 dù từng dòng đều đủ
+    await dat(app, { items: [item, { productId: 1, quantity: 1, size: 'M' }] }).expect(409);
+    await app.close();
+  });
+
+  it('mã giảm giá sai được báo trước lỗi thiếu kho', async () => {
+    const { app, recipeRows, ingredientRows } = await setup(undefined, undefined, undefined, null);
+    recipeRows.push(caPhe);
+    ingredientRows.push({ id: 1, name: 'Cà phê', stock: 0 });
+    const res = await dat(app, { items: [item], promoCode: 'KHONGCO' }).expect(400);
+    expect(res.body.message).toMatch(/Mã giảm giá/);
+    await app.close();
+  });
+});
+
 describe('GET /orders/me', () => {
   it('trả lịch sử đơn của người dùng đang đăng nhập, đơn mới nhất trước', async () => {
     const createdAt = new Date('2026-10-26T03:00:00.000Z');
@@ -113,6 +342,8 @@ describe('GET /orders/me', () => {
         id: 'ord_1',
         status: 'PAID',
         total: 84000,
+        discountAmount: 8400,
+        promotion: { code: 'WELCOME10' },
         createdAt,
         items: [
           {
@@ -139,6 +370,8 @@ describe('GET /orders/me', () => {
         id: 'ord_1',
         status: 'PAID',
         total: 84000,
+        discountAmount: 8400,
+        promoCode: 'WELCOME10',
         createdAt: createdAt.toISOString(),
         items: [
           {
@@ -155,6 +388,36 @@ describe('GET /orders/me', () => {
     await app.close();
   });
 
+  it('đơn READY trả pickupCode, đơn khác trả null', async () => {
+    const createdAt = new Date('2026-11-14T03:00:00.000Z');
+    const don = (id: string, status: string, pickupCode: string | null) => ({
+      id, status, total: 29000, pickupCode, createdAt, items: [],
+    });
+    const findManyOrders = vi.fn().mockResolvedValue([don('ord_2', 'READY', '038417'), don('ord_1', 'PAID', null)]);
+    const { app } = await setup(findManyOrders);
+
+    const res = await request(app.getHttpServer()).get('/orders/me').expect(200);
+
+    expect(findManyOrders.mock.calls[0][0].select.pickupCode).toBe(true);
+    expect(res.body.map((o: any) => o.pickupCode)).toEqual(['038417', null]);
+    await app.close();
+  });
+
+  it('trả review của đơn đã đánh giá, null nếu chưa', async () => {
+    const createdAt = new Date('2026-11-14T03:00:00.000Z');
+    const don = (id: string, review: unknown) => ({ id, status: 'COMPLETED', total: 29000, review, createdAt, items: [] });
+    const findManyOrders = vi
+      .fn()
+      .mockResolvedValue([don('ord_2', { stars: 5, comment: 'Ngon' }), don('ord_1', null)]);
+    const { app } = await setup(findManyOrders);
+
+    const res = await request(app.getHttpServer()).get('/orders/me').expect(200);
+
+    expect(findManyOrders.mock.calls[0][0].select.review).toEqual({ select: { stars: true, comment: true } });
+    expect(res.body.map((o: any) => o.review)).toEqual([{ stars: 5, comment: 'Ngon' }, null]);
+    await app.close();
+  });
+
   it('chưa có đơn thì trả mảng rỗng', async () => {
     const { app } = await setup();
     const res = await request(app.getHttpServer()).get('/orders/me').expect(200);
@@ -163,9 +426,142 @@ describe('GET /orders/me', () => {
   });
 });
 
+describe('POST /orders với mã giảm giá', () => {
+  // subtotal của giỏ mẫu: 2 × (29000 + size M 5000 + trân châu 8000) = 84000
+  const products = [{ id: 1, price: 29000, isAvailable: true }];
+  const rule = {
+    id: 1,
+    code: 'WELCOME10',
+    discountType: 'PERCENT',
+    discountValue: 10,
+    minOrderAmount: 50000,
+    isActive: true,
+    expiryDate: null,
+    maxUses: 1000,
+    usedCount: 3,
+  };
+  const dat = (app: any, promoCode?: unknown) =>
+    request(app.getHttpServer()).post('/orders').send({ items: [item], promoCode });
+
+  it('PERCENT: giảm 10%, total sau giảm, giữ một lượt dùng, lưu promotionId', async () => {
+    const { app, create, promoUpdateMany } = await setup(undefined, undefined, products, rule);
+
+    const res = await dat(app, 'WELCOME10').expect(201);
+
+    expect(res.body).toMatchObject({ status: 'PENDING', total: 75600, discountAmount: 8400, promoCode: 'WELCOME10' });
+    const data = create.mock.calls[0][0].data;
+    expect(data).toMatchObject({ total: 75600, discountAmount: 8400, promotionId: 1 });
+    expect(promoUpdateMany).toHaveBeenCalledWith({
+      where: { id: 1, usedCount: { lt: 1000 } },
+      data: { usedCount: { increment: 1 } },
+    });
+    await app.close();
+  });
+
+  it('FIXED: giảm đúng số tiền; mã không giới hạn lượt thì không điều kiện usedCount', async () => {
+    const fixed = { ...rule, id: 2, code: 'GIAM15K', discountType: 'FIXED', discountValue: 15000, minOrderAmount: 80000, maxUses: null };
+    const { app, promoUpdateMany } = await setup(undefined, undefined, products, fixed);
+    const res = await dat(app, 'GIAM15K').expect(201);
+    expect(res.body).toMatchObject({ total: 69000, discountAmount: 15000 });
+    expect(promoUpdateMany.mock.calls[0][0].where).toEqual({ id: 2 });
+    await app.close();
+  });
+
+  it('FIXED lớn hơn giá trị đơn: chỉ giảm tối đa bằng subtotal, total không âm', async () => {
+    const big = { ...rule, discountType: 'FIXED', discountValue: 500000, minOrderAmount: 0 };
+    const { app } = await setup(undefined, undefined, products, big);
+    const res = await dat(app, 'WELCOME10').expect(201);
+    expect(res.body).toMatchObject({ total: 0, discountAmount: 84000 });
+    await app.close();
+  });
+
+  it('PERCENT làm tròn xuống', async () => {
+    const third = { ...rule, discountValue: 33, minOrderAmount: 0 };
+    const { app } = await setup(undefined, undefined, products, third);
+    const res = await dat(app, 'WELCOME10').expect(201);
+    // 84000 × 33% = 27720
+    expect(res.body).toMatchObject({ discountAmount: 27720, total: 56280 });
+    await app.close();
+  });
+
+  it('mã không phân biệt hoa thường: tra theo chữ hoa', async () => {
+    const { app, promoFindUnique } = await setup(undefined, undefined, products, rule);
+    await dat(app, 'welcome10').expect(201);
+    expect(promoFindUnique.mock.calls[0][0].where).toEqual({ code: 'WELCOME10' });
+    await app.close();
+  });
+
+  it('không có mã: không tra Promotion, discountAmount 0, promoCode null', async () => {
+    const { app, promoFindUnique, promoUpdateMany, create } = await setup();
+    const res = await dat(app).expect(201);
+    expect(res.body).toMatchObject({ total: 84000, discountAmount: 0, promoCode: null });
+    expect(promoFindUnique).not.toHaveBeenCalled();
+    expect(promoUpdateMany).not.toHaveBeenCalled();
+    expect(create.mock.calls[0][0].data.promotionId).toBeUndefined();
+    await app.close();
+  });
+
+  it.each([
+    ['mã không tồn tại', null, 400, /không tồn tại/],
+    ['mã bị vô hiệu', { ...rule, isActive: false }, 400, /vô hiệu/],
+    ['mã đã hết hạn', { ...rule, expiryDate: new Date('2020-01-01T00:00:00Z') }, 400, /hết hạn/],
+    ['đơn chưa đạt tối thiểu', { ...rule, minOrderAmount: 100000 }, 400, /tối thiểu 100000đ/],
+    ['mã hết lượt', { ...rule, maxUses: 3, usedCount: 3 }, 409, /hết lượt/],
+  ])('từ chối: %s, không tạo đơn và không giữ lượt', async (_ten, found, status, message) => {
+    const { app, create, promoUpdateMany } = await setup(undefined, undefined, products, found);
+    const res = await dat(app, 'WELCOME10').expect(status);
+    expect(res.body.message).toMatch(message);
+    expect(create).not.toHaveBeenCalled();
+    expect(promoUpdateMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('hai khách tranh lượt cuối: bên thua (updateMany không khớp dòng nào) nhận 409, không tạo đơn', async () => {
+    const { app, create, promoUpdateMany } = await setup(undefined, undefined, products, rule);
+    promoUpdateMany.mockResolvedValue({ count: 0 });
+    const res = await dat(app, 'WELCOME10').expect(409);
+    expect(res.body.message).toMatch(/hết lượt/);
+    expect(create).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it.each([
+    ['quá ngắn', 'ab'],
+    ['có khoảng trắng', 'WELCOME 10'],
+    ['ký tự đặc biệt', 'WELCOME10!'],
+    ['là số', 123],
+  ])('400 khi promoCode %s, không tra CSDL', async (_ten, code) => {
+    const { app, promoFindUnique } = await setup(undefined, undefined, products, rule);
+    await dat(app, code).expect(400);
+    expect(promoFindUnique).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('gửi lại cùng Idempotency-Key: trả đơn cũ, không giữ thêm lượt', async () => {
+    const existing = { id: 'ord_old', status: 'PENDING', total: 75600, discountAmount: 8400, promotion: { code: 'WELCOME10' } };
+    const { app, create, promoUpdateMany } = await setup(undefined, vi.fn().mockResolvedValue(existing), products, rule);
+    const res = await dat(app, 'WELCOME10').set('Idempotency-Key', 'k-1').expect(201);
+    expect(res.body).toEqual({ id: 'ord_old', status: 'PENDING', total: 75600, discountAmount: 8400, promoCode: 'WELCOME10' });
+    expect(create).not.toHaveBeenCalled();
+    expect(promoUpdateMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('trùng key đồng thời: đơn thua bị hoàn tác trong transaction và trả đơn của bên thắng', async () => {
+    const existing = { id: 'ord_old', status: 'PENDING', total: 75600, discountAmount: 8400, promotion: { code: 'WELCOME10' } };
+    const findUnique = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(existing);
+    const { app, create } = await setup(undefined, findUnique, products, rule);
+    create.mockRejectedValueOnce({ code: 'P2002' });
+    const res = await dat(app, 'WELCOME10').set('Idempotency-Key', 'k-1').expect(201);
+    expect(res.body.id).toBe('ord_old');
+    await app.close();
+  });
+});
+
 describe('POST /orders với Idempotency-Key', () => {
   const body = { items: [item] };
-  const existing = { id: 'ord_old', status: 'PENDING', total: 84000 };
+  const existing = { id: 'ord_old', status: 'PENDING', total: 84000, discountAmount: 0, promotion: null };
+  const existingBody = { id: 'ord_old', status: 'PENDING', total: 84000, discountAmount: 0, promoCode: null };
 
   it('lần đầu: lưu key cùng đơn', async () => {
     const { app, create, findUnique } = await setup();
@@ -180,7 +576,7 @@ describe('POST /orders với Idempotency-Key', () => {
   it('gửi lại cùng key: trả đơn cũ, không tạo đơn mới', async () => {
     const { app, create } = await setup(undefined, vi.fn().mockResolvedValue(existing));
     const res = await request(app.getHttpServer()).post('/orders').set('Idempotency-Key', 'k-1').send(body).expect(201);
-    expect(res.body).toEqual(existing);
+    expect(res.body).toEqual(existingBody);
     expect(create).not.toHaveBeenCalled();
     await app.close();
   });
@@ -190,7 +586,7 @@ describe('POST /orders với Idempotency-Key', () => {
     const { app, create } = await setup(undefined, findUnique);
     create.mockRejectedValueOnce({ code: 'P2002' });
     const res = await request(app.getHttpServer()).post('/orders').set('Idempotency-Key', 'k-1').send(body).expect(201);
-    expect(res.body).toEqual(existing);
+    expect(res.body).toEqual(existingBody);
     await app.close();
   });
 

@@ -121,3 +121,56 @@ Trong trường hợp phiên bản Production gặp sự cố nghiêm trọng, n
 - **Frontend Vercel:** Truy cập Dashboard → Deployments → Chọn bản deploy trước → Bấm **Instant Rollback** (thao tác dưới 10 giây).
 - **Backend Render:** Truy cập Render Service → Deploy History → Chọn commit SHA an toàn → Bấm **Rollback to this deploy** (thao tác dưới 2 phút).
 - **Cơ sở dữ liệu:** Sử dụng tính năng Point-in-Time Recovery (PITR) trên Neon Cloud để hoàn tác trạng thái bảng.
+
+---
+
+# Bản Ghi Chú Phát Hành — Release Notes v1.1.0 (Sprint 3)
+
+> **Phiên bản phát hành:** `v1.1.0` (Mốc hoàn thành Sprint 3 — Vận hành tại quầy & Tiện ích khách hàng)  
+> **Ngày phát hành:** 14/11/2026  
+> **Nhóm thực hiện:** Nguyễn Thành Long (`Longcodepro`), Trần Quốc Tài (`TaiTran263`)
+
+---
+
+## 1. Tổng Quan Phiên Bản v1.1.0
+
+Phiên bản **BrewLite v1.1.0** mở rộng hệ thống sang quy trình vận hành trực tiếp tại cửa hàng và gia tăng trải nghiệm khách hàng:
+- **Barista KDS (`/kds`):** Nhân viên pha chế theo dõi danh sách đơn hàng đã thanh toán (`PAID`), nhận pha (`PREPARING`) và hoàn tất pha chế (`READY`).
+- **Giao nhận quầy & Mã 6 số (`/cashier`):** Tự động sinh `pickupCode` ngẫu nhiên 6 số duy nhất khi đơn sẵn sàng; Cashier đối chiếu mã với khách hàng để bàn giao món và chuyển trạng thái đơn sang `COMPLETED`.
+- **Mã giảm giá Voucher:** Khách áp dụng mã ưu đãi (`WELCOME10`, `GIAM15K`, `BREW20`) tại trang thanh toán; server tính số tiền giảm giá và trừ trực tiếp vào đơn hàng.
+- **Hủy đơn hàng an toàn:** Khách hàng hoặc Cashier có thể hủy đơn trước khi pha chế, khóa lạc quan ngăn chặn xung đột đồng thời, tự động hoàn tiền mô phỏng, trừ lại điểm thưởng và trả lại lượt dùng voucher.
+- **Đánh giá dịch vụ 5 sao:** Khách hàng đánh giá chất lượng phục vụ từ 1 đến 5 sao và để lại nhận xét sau khi nhận đồ uống.
+
+## 2. Thống Kê Thay Đổi Kỹ Thuật & Kiểm Thử
+- **Mã nguồn:** Bổ sung các module `kds`, `cashier`, `promotions`, `reviews` ở backend (`apps/api`) và các trang `/kds`, `/cashier`, components đánh giá, hủy đơn ở frontend (`apps/web`).
+- **Kiểm thử tự động:**
+  - Backend: 112 unit/integration tests bao phủ trạng thái đơn, tính tiền voucher, đối chiếu mã nhận hàng, hủy đơn và đánh giá.
+  - Frontend: 91 unit tests cho các hàm xử lý mã giảm giá, mã nhận hàng, hủy đơn và đánh giá.
+  - E2E Playwright: 5 kịch bản tự động kiểm tra toàn vẹn luồng Sprint 3 trong file `tests/e2e/sprint3.spec.ts`.
+
+---
+
+# Bản Ghi Chú Phát Hành — Release Notes v1.2.0 (Sprint 4)
+
+> **Phiên bản phát hành:** `v1.2.0` (Mốc hoàn thành Sprint 4 — Quản trị hệ thống & Số hóa kho)  
+> **Ngày phát hành:** 14/11/2026  
+> **Nhóm thực hiện:** Nguyễn Thành Long (`Longcodepro`), Trần Quốc Tài (`TaiTran263`)
+
+---
+
+## 1. Tổng Quan Phiên Bản v1.2.0
+
+Phiên bản **BrewLite v1.2.0** hoàn thiện toàn diện phân hệ quản trị dành cho Quản lý cửa hàng (Store Manager):
+- **Quản lý Menu & Bảng giá động (`/admin/categories`, `/admin/products`, `/admin/toppings`, `/admin/sizes`):** Toàn bộ bảng giá chuyển sang CSDL, cung cấp API CRUD cho Quản lý thay đổi giá bán, thêm topping, ẩn/hiện danh mục linh hoạt.
+- **Kho nguyên liệu & Định lượng công thức (`/admin/ingredients`, `/admin/recipes`):** Quản lý tồn kho nguyên liệu, phiếu nhập kho lưu vết nhân viên, công thức pha chế theo size và topping.
+- **Trừ kho & Hoàn kho tự động:** Kiểm tra tồn kho trước khi đặt đơn, tự động trừ kho khi đơn sang `PAID`, lưu vết trừ kho trong `StockUsage`, hoàn kho chính xác khi hủy đơn.
+- **Cảnh báo tồn kho tối thiểu (`/admin/ingredients/alerts`):** Tự động phát hiện nguyên liệu chạm hoặc dưới ngưỡng an toàn, sắp xếp theo mức độ thiếu hụt.
+- **Quản trị nhân sự (`/admin/staff`):** Tạo tài khoản nhân viên (Barista, Cashier), phân quyền, khóa và mở khóa tài khoản tức thời.
+- **Quản lý Voucher phía Manager (`/admin/promotions`):** Tạo mới, chỉnh sửa điều kiện và vô hiệu hóa các mã khuyến mãi.
+- **Báo cáo doanh thu & sản lượng (`/admin/reports`):** Thống kê doanh thu thực thu, số đơn hoàn tất, tỷ lệ hủy đơn và Top 5 món bán chạy nhất theo khoảng thời gian tùy chọn.
+
+## 2. Thống Kê Thay Đổi Kỹ Thuật & Kiểm Thử
+- **Mã nguồn:** Bổ sung các module `menu` (admin CRUD), `inventory` (nguyên liệu, phiếu nhập, công thức, trừ/hoàn kho, cảnh báo), `staff` (nhân sự, khóa tài khoản), `promotions` (quản trị voucher), `reports` (báo cáo doanh thu).
+- **Kiểm thử tự động:**
+  - Backend: Toàn bộ **526 tests Vitest (24 test suites)** chạy tự động và PASS 100%, bao phủ đầy đủ tất cả các trường hợp biên, phân quyền `@Roles('MANAGER')`, khóa tài khoản, khóa lạc quan và giao dịch CSDL.
+  - Frontend: 91 tests Vitest PASS 100%.

@@ -35,6 +35,7 @@ describe('Swagger', () => {
     expect(Object.keys((doc.components!.schemas!.ProductDto as any).properties)).toEqual([
       'id',
       'name',
+      'description',
       'price',
       'imageUrl',
       'category',

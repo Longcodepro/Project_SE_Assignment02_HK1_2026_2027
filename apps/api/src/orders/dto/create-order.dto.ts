@@ -7,11 +7,13 @@ import {
   IsIn,
   IsInt,
   IsOptional,
+  IsString,
+  Matches,
   Max,
   Min,
   ValidateNested,
 } from 'class-validator';
-import { SIZE_EXTRA, TOPPING_PRICE, type SizeId, type ToppingId } from '../pricing.js';
+import { Size } from '../../generated/prisma/enums.js';
 
 export class OrderItemDto {
   @ApiProperty({ example: 1, minimum: 1 })
@@ -25,21 +27,21 @@ export class OrderItemDto {
   @Max(99)
   quantity!: number;
 
-  @ApiProperty({ enum: Object.keys(SIZE_EXTRA), example: 'M', description: 'Phụ thu S +0, M +5.000, L +10.000đ' })
-  @IsIn(Object.keys(SIZE_EXTRA))
-  size!: SizeId;
+  @ApiProperty({ enum: Size, example: 'M', description: 'Phụ thu theo bảng giá hiện hành (GET /menu-options)' })
+  @IsIn(Object.values(Size))
+  size!: Size;
 
   @ApiPropertyOptional({
-    enum: Object.keys(TOPPING_PRICE),
+    type: String,
     isArray: true,
     example: ['tran-chau'],
-    description: 'tran-chau +8.000, kem-cheese +10.000, thach-cafe +6.000đ; không trùng nhau',
+    description: 'Mã topping đang bán (GET /menu-options); không trùng nhau; mã lạ trả 400',
   })
   @IsOptional()
   @IsArray()
   @ArrayUnique()
-  @IsIn(Object.keys(TOPPING_PRICE), { each: true })
-  toppings?: ToppingId[];
+  @Matches(/^[a-z0-9-]{2,32}$/, { each: true, message: 'mỗi topping phải là mã topping hợp lệ' })
+  toppings?: string[];
 }
 
 export class CreateOrderDto {
@@ -49,4 +51,13 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => OrderItemDto)
   items!: OrderItemDto[];
+
+  @ApiPropertyOptional({
+    example: 'WELCOME10',
+    description: 'Mã giảm giá, tối đa một mã mỗi đơn; server tính số tiền giảm',
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^[A-Za-z0-9_-]{3,32}$/, { message: 'promoCode must be 3-32 characters: letters, digits, _ or -' })
+  promoCode?: string;
 }
