@@ -352,7 +352,7 @@ Issue S3.6. Khách nhập mã khi đặt đơn; **server tính giảm giá**, cl
 
 | Trường | Ý nghĩa |
 |---|---|
-| `code` | mã duy nhất, viết hoa (`WELCOME10`); khi khách nhập, server cắt khoảng trắng đầu cuối và so không phân biệt hoa thường |
+| `code` | mã duy nhất, lưu viết hoa (`WELCOME10`); khách nhập không phân biệt hoa thường (client nên tự cắt khoảng trắng đầu cuối, khoảng trắng trong mã bị từ chối) |
 | `discountType` | `FIXED` (giảm số tiền cố định) hoặc `PERCENT` (giảm theo phần trăm) |
 | `discountValue` | `FIXED`: số VND; `PERCENT`: 1 đến 100 |
 | `minOrderAmount` | giá trị đơn tối thiểu (VND, tính trước giảm), 0 là không yêu cầu |
