@@ -330,7 +330,7 @@ Chỉ có tài liệu và sơ đồ, chưa hiện thực trong Assignment 2. Mã
 
 | Chức năng | Tên | Sprint | FR | UC |
 |:---:|---|:---:|---|---|
-| `CN-08` | Màn hình pha chế KDS cho Barista | 3 | FR-20 | UC-11 |
+| `CN-08` | Màn hình pha chế KDS cho Barista (Đã hoàn thành S3.2 API, S3.3 Web) | 3 | FR-20 | UC-11 |
 | `CN-09` | Giao nhận quầy và mã nhận hàng 6 số | 3 | FR-21 | UC-07, UC-12 |
 | `CN-10` | Voucher, hủy đơn, đánh giá (Issue #24, #25, #26) | 3 | FR-11, FR-12, FR-13 | UC-10, UC-08, UC-13, UC-09 |
 | `CN-11` | Quản lý menu, danh mục, topping (CRUD) | 4 | FR-18 | UC-15 |
