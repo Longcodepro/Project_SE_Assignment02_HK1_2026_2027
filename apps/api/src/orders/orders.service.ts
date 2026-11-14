@@ -8,7 +8,12 @@ import {
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import { isUniqueViolation } from '../common/idempotency.js';
-import { assertStockAvailable, loadNeeds, OutOfStockError, refundStock } from '../inventory/stock.js';
+import {
+  assertStockAvailable,
+  loadNeeds,
+  OutOfStockError,
+  refundStock,
+} from '../inventory/stock.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CancelOrderDto } from './dto/cancel-order.dto.js';
 import type { CreateOrderDto } from './dto/create-order.dto.js';
@@ -26,9 +31,13 @@ const SUMMARY = {
 
 const STALE_ORDER = 'Đơn vừa được cập nhật bởi yêu cầu khác, vui lòng tải lại';
 
-export type CancelActor = { kind: 'customer'; phone: string } | { kind: 'cashier' };
+export type CancelActor =
+  { kind: 'customer'; phone: string } | { kind: 'cashier' };
 
-const toSummary =<T extends { promotion: { code: string } | null }>({ promotion, ...order }: T) => ({
+const toSummary = <T extends { promotion: { code: string } | null }>({
+  promotion,
+  ...order
+}: T) => ({
   ...order,
   promoCode: promotion?.code ?? null,
 });
@@ -37,10 +46,19 @@ const toSummary =<T extends { promotion: { code: string } | null }>({ promotion,
 export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(userPhone: string, dto: CreateOrderDto, idempotencyKey?: string) {
+  async create(
+    userPhone: string,
+    dto: CreateOrderDto,
+    idempotencyKey?: string,
+  ) {
     const findExisting = async () => {
       const existing = await this.prisma.order.findUnique({
-        where: { userPhone_idempotencyKey: { userPhone, idempotencyKey: idempotencyKey! } },
+        where: {
+          userPhone_idempotencyKey: {
+            userPhone,
+            idempotencyKey: idempotencyKey!,
+          },
+        },
         select: SUMMARY,
       });
       return existing && toSummary(existing);
@@ -71,11 +89,15 @@ export class OrdersService {
     }
 
     // Bảng giá lấy từ CSDL lúc đặt: đổi giá chỉ ảnh hưởng đơn tạo sau đó
-    const toppingCodes = [...new Set(dto.items.flatMap((i) => i.toppings ?? []))];
+    const toppingCodes = [
+      ...new Set(dto.items.flatMap((i) => i.toppings ?? [])),
+    ];
     const [sizeRows, toppingRows] = await Promise.all([
       this.prisma.sizeSurcharge.findMany(),
       toppingCodes.length
-        ? this.prisma.topping.findMany({ where: { code: { in: toppingCodes }, isActive: true } })
+        ? this.prisma.topping.findMany({
+            where: { code: { in: toppingCodes }, isActive: true },
+          })
         : [],
     ]);
     const extraBySize = new Map(sizeRows.map((s) => [s.size, s.extra]));
@@ -90,7 +112,9 @@ export class OrdersService {
     const items = dto.items.map((i) => {
       const sizeExtra = extraBySize.get(i.size);
       if (sizeExtra === undefined) {
-        throw new InternalServerErrorException(`Chưa cấu hình phụ thu cho size ${i.size}`);
+        throw new InternalServerErrorException(
+          `Chưa cấu hình phụ thu cho size ${i.size}`,
+        );
       }
       const toppings = i.toppings ?? [];
       return {
@@ -105,7 +129,10 @@ export class OrdersService {
         ),
       };
     });
-    const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+    const subtotal = items.reduce(
+      (sum, i) => sum + i.unitPrice * i.quantity,
+      0,
+    );
 
     const promo = dto.promoCode
       ? await this.prisma.promotion.findUnique({
@@ -113,17 +140,25 @@ export class OrdersService {
         })
       : null;
     if (dto.promoCode) {
-      if (!promo) throw new BadRequestException('Mã giảm giá không tồn tại hoặc đã bị vô hiệu');
+      if (!promo)
+        throw new BadRequestException(
+          'Mã giảm giá không tồn tại hoặc đã bị vô hiệu',
+        );
       assertPromotionUsable(promo, subtotal);
     }
     const discountAmount = promo ? discountFor(promo, subtotal) : 0;
 
     // Kiểm tra sớm đủ nguyên liệu (kể cả topping); không giữ chỗ, bước trừ kho thật ở lúc thanh toán
     try {
-      await assertStockAvailable(this.prisma, await loadNeeds(this.prisma, items));
+      await assertStockAvailable(
+        this.prisma,
+        await loadNeeds(this.prisma, items),
+      );
     } catch (e) {
       if (e instanceof OutOfStockError) {
-        throw new ConflictException(`Không đủ nguyên liệu cho đơn này: ${e.ingredientNames.join(', ')}`);
+        throw new ConflictException(
+          `Không đủ nguyên liệu cho đơn này: ${e.ingredientNames.join(', ')}`,
+        );
       }
       throw e;
     }
@@ -140,7 +175,9 @@ export class OrdersService {
 
     try {
       if (!promo) {
-        return toSummary(await this.prisma.order.create({ data, select: SUMMARY }));
+        return toSummary(
+          await this.prisma.order.create({ data, select: SUMMARY }),
+        );
       }
       // Giữ lượt dùng cùng transaction với việc tạo đơn: hai khách tranh lượt cuối chỉ một người được,
       // và lỗi trùng Idempotency-Key làm hoàn tác luôn việc giữ lượt
@@ -149,7 +186,9 @@ export class OrdersService {
           const reserved = await tx.promotion.updateMany({
             where: {
               id: promo.id,
-              ...(promo.maxUses !== null && { usedCount: { lt: promo.maxUses } }),
+              ...(promo.maxUses !== null && {
+                usedCount: { lt: promo.maxUses },
+              }),
             },
             data: { usedCount: { increment: 1 } },
           });
@@ -173,8 +212,16 @@ export class OrdersService {
   async cancel(id: string, dto: CancelOrderDto, actor: CancelActor) {
     // Đơn của người khác cũng báo 404 để không lộ đơn có tồn tại
     const order = await this.prisma.order.findFirst({
-      where: { id, ...(actor.kind === 'customer' && { userPhone: actor.phone }) },
-      select: { status: true, version: true, userPhone: true, promotionId: true },
+      where: {
+        id,
+        ...(actor.kind === 'customer' && { userPhone: actor.phone }),
+      },
+      select: {
+        status: true,
+        version: true,
+        userPhone: true,
+        promotionId: true,
+      },
     });
     if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
 
@@ -226,7 +273,12 @@ export class OrdersService {
         });
       }
     });
-    return { id, status: 'CANCELLED' as const, version: dto.version + 1, refundedAt };
+    return {
+      id,
+      status: 'CANCELLED' as const,
+      version: dto.version + 1,
+      refundedAt,
+    };
   }
 
   async findMine(userPhone: string) {

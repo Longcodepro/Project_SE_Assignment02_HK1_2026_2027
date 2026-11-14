@@ -1,4 +1,8 @@
-import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  type CanActivate,
+  type ExecutionContext,
+  Injectable,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
@@ -12,39 +16,93 @@ import { InventoryService } from './inventory.service.js';
 class FakeJwtGuard implements CanActivate {
   canActivate(ctx: ExecutionContext) {
     const req = ctx.switchToHttp().getRequest();
-    req.user = { phone: req.headers['x-phone'] ?? '0900000003', role: req.headers['x-role'] ?? 'MANAGER' };
+    req.user = {
+      phone: req.headers['x-phone'] ?? '0900000003',
+      role: req.headers['x-role'] ?? 'MANAGER',
+    };
     return true;
   }
 }
 
 const createdAt = new Date('2026-11-15T03:00:00Z');
 
-async function setup(opts: { notFound?: boolean; createError?: unknown; updateError?: unknown } = {}) {
+async function setup(
+  opts: {
+    notFound?: boolean;
+    createError?: unknown;
+    updateError?: unknown;
+  } = {},
+) {
   const ingredient = {
-    findMany: vi.fn().mockResolvedValue([{ id: 1, name: 'Cà phê rang xay', unit: 'G', stock: 5000, minStock: 1000 }]),
+    findMany: vi
+      .fn()
+      .mockResolvedValue([
+        {
+          id: 1,
+          name: 'Cà phê rang xay',
+          unit: 'G',
+          stock: 5000,
+          minStock: 1000,
+        },
+      ]),
     findUnique: vi.fn().mockResolvedValue(opts.notFound ? null : { id: 1 }),
-    create: vi.fn().mockImplementation(({ data }) =>
-      opts.createError
-        ? Promise.reject(opts.createError)
-        : Promise.resolve({ id: 5, stock: 0, minStock: 0, ...stripUndefined(data) }),
-    ),
+    create: vi
+      .fn()
+      .mockImplementation(({ data }) =>
+        opts.createError
+          ? Promise.reject(opts.createError)
+          : Promise.resolve({
+              id: 5,
+              stock: 0,
+              minStock: 0,
+              ...stripUndefined(data),
+            }),
+      ),
     update: vi.fn().mockImplementation(({ where, data }) => {
       if (opts.notFound) return Promise.reject({ code: 'P2025' });
       if (opts.updateError) return Promise.reject(opts.updateError);
       // dùng cho cả đổi tên (PATCH) lẫn cộng tồn (nhập kho)
-      return Promise.resolve({ id: where.id, name: 'Cà phê', unit: 'G', minStock: 1000, ...stripUndefined(data), stock: 7000 });
+      return Promise.resolve({
+        id: where.id,
+        name: 'Cà phê',
+        unit: 'G',
+        minStock: 1000,
+        ...stripUndefined(data),
+        stock: 7000,
+      });
     }),
   };
   const stockReceipt = {
-    create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: 7, createdAt, ...data })),
-    findMany: vi.fn().mockResolvedValue([{ id: 7, ingredientId: 1, quantity: 2000, note: null, createdByPhone: '0900000001', createdAt }]),
+    create: vi
+      .fn()
+      .mockImplementation(({ data }) =>
+        Promise.resolve({ id: 7, createdAt, ...data }),
+      ),
+    findMany: vi
+      .fn()
+      .mockResolvedValue([
+        {
+          id: 7,
+          ingredientId: 1,
+          quantity: 2000,
+          note: null,
+          createdByPhone: '0900000001',
+          createdAt,
+        },
+      ]),
   };
   const db = { ingredient, stockReceipt };
   const moduleRef = await Test.createTestingModule({
     controllers: [InventoryController],
     providers: [
       InventoryService,
-      { provide: PrismaService, useValue: { ...db, $transaction: (fn: (tx: typeof db) => unknown) => fn(db) } },
+      {
+        provide: PrismaService,
+        useValue: {
+          ...db,
+          $transaction: (fn: (tx: typeof db) => unknown) => fn(db),
+        },
+      },
     ],
   })
     .overrideGuard(JwtAuthGuard)
@@ -60,11 +118,23 @@ const stripUndefined = (o: Record<string, unknown>) =>
   Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
 
 const as = (app: any, role = 'MANAGER', phone = '0900000003') => ({
-  get: (url: string) => request(app.getHttpServer()).get(url).set('x-role', role).set('x-phone', phone),
+  get: (url: string) =>
+    request(app.getHttpServer())
+      .get(url)
+      .set('x-role', role)
+      .set('x-phone', phone),
   post: (url: string, body: object) =>
-    request(app.getHttpServer()).post(url).set('x-role', role).set('x-phone', phone).send(body),
+    request(app.getHttpServer())
+      .post(url)
+      .set('x-role', role)
+      .set('x-phone', phone)
+      .send(body),
   patch: (url: string, body: object) =>
-    request(app.getHttpServer()).patch(url).set('x-role', role).set('x-phone', phone).send(body),
+    request(app.getHttpServer())
+      .patch(url)
+      .set('x-role', role)
+      .set('x-phone', phone)
+      .send(body),
 });
 
 describe('GET /admin/ingredients', () => {
@@ -72,7 +142,14 @@ describe('GET /admin/ingredients', () => {
     const { app } = await setup();
     const res = await as(app, role).get('/admin/ingredients').expect(200);
     expect(res.body).toEqual([
-      { id: 1, name: 'Cà phê rang xay', unit: 'G', stock: 5000, minStock: 1000, isLow: false },
+      {
+        id: 1,
+        name: 'Cà phê rang xay',
+        unit: 'G',
+        stock: 5000,
+        minStock: 1000,
+        isLow: false,
+      },
     ]);
     await app.close();
   });
@@ -106,17 +183,22 @@ describe('GET /admin/ingredients/alerts (cảnh báo sắp hết)', () => {
     { id: 5, name: 'Siro', unit: 'ML', stock: 0, minStock: 0 },
   ];
 
-  it.each(['BARISTA', 'MANAGER'])('%s: chỉ nguyên liệu stock <= minStock, thiếu nhiều nhất lên đầu', async (role) => {
-    const { app, ingredient } = await setup();
-    ingredient.findMany.mockResolvedValue(kho);
+  it.each(['BARISTA', 'MANAGER'])(
+    '%s: chỉ nguyên liệu stock <= minStock, thiếu nhiều nhất lên đầu',
+    async (role) => {
+      const { app, ingredient } = await setup();
+      ingredient.findMany.mockResolvedValue(kho);
 
-    const res = await as(app, role).get('/admin/ingredients/alerts').expect(200);
+      const res = await as(app, role)
+        .get('/admin/ingredients/alerts')
+        .expect(200);
 
-    // thiếu: Ly nhựa -200, Cà phê -100, Ống hút 0 và Siro 0 (bằng nhau theo id)
-    expect(res.body.map((i: any) => i.id)).toEqual([3, 1, 4, 5]);
-    expect(res.body.every((i: any) => i.isLow === true)).toBe(true);
-    await app.close();
-  });
+      // thiếu: Ly nhựa -200, Cà phê -100, Ống hút 0 và Siro 0 (bằng nhau theo id)
+      expect(res.body.map((i: any) => i.id)).toEqual([3, 1, 4, 5]);
+      expect(res.body.every((i: any) => i.isLow === true)).toBe(true);
+      await app.close();
+    },
+  );
 
   it('không có nguyên liệu nào sắp hết thì trả mảng rỗng', async () => {
     const { app, ingredient } = await setup();
@@ -137,15 +219,27 @@ describe('GET /admin/ingredients/alerts (cảnh báo sắp hết)', () => {
 describe('POST /admin/ingredients (MANAGER)', () => {
   it('tạo nguyên liệu mới, tồn mặc định 0, minStock mặc định 0', async () => {
     const { app, ingredient } = await setup();
-    const res = await as(app).post('/admin/ingredients', { name: '  Sữa đặc ', unit: 'ML' }).expect(201);
-    expect(res.body).toMatchObject({ name: 'Sữa đặc', unit: 'ML', stock: 0, minStock: 0 });
-    expect(ingredient.create.mock.calls[0][0].data).toEqual({ name: 'Sữa đặc', unit: 'ML' });
+    const res = await as(app)
+      .post('/admin/ingredients', { name: '  Sữa đặc ', unit: 'ML' })
+      .expect(201);
+    expect(res.body).toMatchObject({
+      name: 'Sữa đặc',
+      unit: 'ML',
+      stock: 0,
+      minStock: 0,
+    });
+    expect(ingredient.create.mock.calls[0][0].data).toEqual({
+      name: 'Sữa đặc',
+      unit: 'ML',
+    });
     await app.close();
   });
 
   it('409 khi tên trùng (P2002)', async () => {
     const { app } = await setup({ createError: { code: 'P2002' } });
-    const res = await as(app).post('/admin/ingredients', { name: 'Sữa đặc', unit: 'ML' }).expect(409);
+    const res = await as(app)
+      .post('/admin/ingredients', { name: 'Sữa đặc', unit: 'ML' })
+      .expect(409);
     expect(res.body.message).toBe('Nguyên liệu đã tồn tại');
     await app.close();
   });
@@ -155,7 +249,10 @@ describe('POST /admin/ingredients (MANAGER)', () => {
     ['unit lạ', { name: 'Đường', unit: 'KG' }],
     ['tên rỗng', { name: ' ', unit: 'G' }],
     ['minStock âm', { name: 'Đường', unit: 'G', minStock: -1 }],
-    ['không cho đặt tồn ban đầu (stock)', { name: 'Đường', unit: 'G', stock: 100 }],
+    [
+      'không cho đặt tồn ban đầu (stock)',
+      { name: 'Đường', unit: 'G', stock: 100 },
+    ],
   ])('400 khi %s', async (_ten, body) => {
     const { app, ingredient } = await setup();
     await as(app).post('/admin/ingredients', body).expect(400);
@@ -163,12 +260,17 @@ describe('POST /admin/ingredients (MANAGER)', () => {
     await app.close();
   });
 
-  it.each(['BARISTA', 'CASHIER', 'CUSTOMER'])('403 với vai trò %s (Barista chỉ nhập kho, không tạo nguyên liệu)', async (role) => {
-    const { app, ingredient } = await setup();
-    await as(app, role).post('/admin/ingredients', { name: 'Đường', unit: 'G' }).expect(403);
-    expect(ingredient.create).not.toHaveBeenCalled();
-    await app.close();
-  });
+  it.each(['BARISTA', 'CASHIER', 'CUSTOMER'])(
+    '403 với vai trò %s (Barista chỉ nhập kho, không tạo nguyên liệu)',
+    async (role) => {
+      const { app, ingredient } = await setup();
+      await as(app, role)
+        .post('/admin/ingredients', { name: 'Đường', unit: 'G' })
+        .expect(403);
+      expect(ingredient.create).not.toHaveBeenCalled();
+      await app.close();
+    },
+  );
 });
 
 describe('PATCH /admin/ingredients/:id (MANAGER)', () => {
@@ -186,7 +288,9 @@ describe('PATCH /admin/ingredients/:id (MANAGER)', () => {
     await as(a.app).patch('/admin/ingredients/9', { name: 'x' }).expect(404);
     await a.app.close();
     const b = await setup({ updateError: { code: 'P2002' } });
-    await as(b.app).patch('/admin/ingredients/1', { name: 'Sữa đặc' }).expect(409);
+    await as(b.app)
+      .patch('/admin/ingredients/1', { name: 'Sữa đặc' })
+      .expect(409);
     await b.app.close();
   });
 
@@ -204,7 +308,9 @@ describe('PATCH /admin/ingredients/:id (MANAGER)', () => {
 
   it('403 với BARISTA', async () => {
     const { app, ingredient } = await setup();
-    await as(app, 'BARISTA').patch('/admin/ingredients/1', { minStock: 1 }).expect(403);
+    await as(app, 'BARISTA')
+      .patch('/admin/ingredients/1', { minStock: 1 })
+      .expect(403);
     expect(ingredient.update).not.toHaveBeenCalled();
     await app.close();
   });
@@ -214,37 +320,53 @@ describe('POST /admin/ingredients/:id/receipts (nhập kho)', () => {
   it.each([
     ['BARISTA', '0900000001'],
     ['MANAGER', '0900000003'],
-  ])('%s nhập kho: cộng tồn, ghi người thực hiện là người trong token', async (role, phone) => {
-    const { app, ingredient, stockReceipt } = await setup();
+  ])(
+    '%s nhập kho: cộng tồn, ghi người thực hiện là người trong token',
+    async (role, phone) => {
+      const { app, ingredient, stockReceipt } = await setup();
 
-    const res = await as(app, role, phone)
-      .post('/admin/ingredients/1/receipts', { quantity: 2000, note: ' Nhập hàng NCC A ' })
-      .expect(201);
+      const res = await as(app, role, phone)
+        .post('/admin/ingredients/1/receipts', {
+          quantity: 2000,
+          note: ' Nhập hàng NCC A ',
+        })
+        .expect(201);
 
-    expect(ingredient.update.mock.calls[0][0]).toMatchObject({
-      where: { id: 1 },
-      data: { stock: { increment: 2000 } },
-    });
-    expect(stockReceipt.create.mock.calls[0][0].data).toEqual({
-      ingredientId: 1,
-      quantity: 2000,
-      note: 'Nhập hàng NCC A',
-      createdByPhone: phone,
-    });
-    expect(res.body).toMatchObject({ id: 7, ingredientId: 1, quantity: 2000, createdByPhone: phone, stock: 7000 });
-    await app.close();
-  });
+      expect(ingredient.update.mock.calls[0][0]).toMatchObject({
+        where: { id: 1 },
+        data: { stock: { increment: 2000 } },
+      });
+      expect(stockReceipt.create.mock.calls[0][0].data).toEqual({
+        ingredientId: 1,
+        quantity: 2000,
+        note: 'Nhập hàng NCC A',
+        createdByPhone: phone,
+      });
+      expect(res.body).toMatchObject({
+        id: 7,
+        ingredientId: 1,
+        quantity: 2000,
+        createdByPhone: phone,
+        stock: 7000,
+      });
+      await app.close();
+    },
+  );
 
   it('không có ghi chú thì lưu null', async () => {
     const { app, stockReceipt } = await setup();
-    await as(app).post('/admin/ingredients/1/receipts', { quantity: 5 }).expect(201);
+    await as(app)
+      .post('/admin/ingredients/1/receipts', { quantity: 5 })
+      .expect(201);
     expect(stockReceipt.create.mock.calls[0][0].data.note).toBeNull();
     await app.close();
   });
 
   it('404 khi không có nguyên liệu, không ghi phiếu', async () => {
     const { app, stockReceipt } = await setup({ notFound: true });
-    await as(app).post('/admin/ingredients/9/receipts', { quantity: 5 }).expect(404);
+    await as(app)
+      .post('/admin/ingredients/9/receipts', { quantity: 5 })
+      .expect(404);
     expect(stockReceipt.create).not.toHaveBeenCalled();
     await app.close();
   });
@@ -256,7 +378,10 @@ describe('POST /admin/ingredients/:id/receipts (nhập kho)', () => {
     ['số lượng quá lớn', { quantity: 100_000_001 }],
     ['thiếu số lượng', {}],
     ['ghi chú quá 200 ký tự', { quantity: 1, note: 'a'.repeat(201) }],
-    ['trường thừa (createdByPhone)', { quantity: 1, createdByPhone: '0911111111' }],
+    [
+      'trường thừa (createdByPhone)',
+      { quantity: 1, createdByPhone: '0911111111' },
+    ],
   ])('400 khi %s, không ghi gì', async (_ten, body) => {
     const { app, ingredient, stockReceipt } = await setup();
     await as(app).post('/admin/ingredients/1/receipts', body).expect(400);
@@ -267,7 +392,9 @@ describe('POST /admin/ingredients/:id/receipts (nhập kho)', () => {
 
   it.each(['CASHIER', 'CUSTOMER'])('403 với vai trò %s', async (role) => {
     const { app, ingredient } = await setup();
-    await as(app, role).post('/admin/ingredients/1/receipts', { quantity: 5 }).expect(403);
+    await as(app, role)
+      .post('/admin/ingredients/1/receipts', { quantity: 5 })
+      .expect(403);
     expect(ingredient.update).not.toHaveBeenCalled();
     await app.close();
   });
@@ -276,13 +403,19 @@ describe('POST /admin/ingredients/:id/receipts (nhập kho)', () => {
 describe('GET /admin/ingredients/:id/receipts (lịch sử)', () => {
   it('mặc định 50 phiếu mới nhất trước; BARISTA xem được', async () => {
     const { app, stockReceipt } = await setup();
-    const res = await as(app, 'BARISTA').get('/admin/ingredients/1/receipts').expect(200);
+    const res = await as(app, 'BARISTA')
+      .get('/admin/ingredients/1/receipts')
+      .expect(200);
     expect(stockReceipt.findMany.mock.calls[0][0]).toMatchObject({
       where: { ingredientId: 1 },
       orderBy: { id: 'desc' },
       take: 50,
     });
-    expect(res.body[0]).toMatchObject({ id: 7, quantity: 2000, createdByPhone: '0900000001' });
+    expect(res.body[0]).toMatchObject({
+      id: 7,
+      quantity: 2000,
+      createdByPhone: '0900000001',
+    });
     await app.close();
   });
 
@@ -295,7 +428,9 @@ describe('GET /admin/ingredients/:id/receipts (lịch sử)', () => {
 
   it.each(['0', '201', 'abc'])('400 khi limit=%s', async (limit) => {
     const { app, stockReceipt } = await setup();
-    await as(app).get(`/admin/ingredients/1/receipts?limit=${limit}`).expect(400);
+    await as(app)
+      .get(`/admin/ingredients/1/receipts?limit=${limit}`)
+      .expect(400);
     expect(stockReceipt.findMany).not.toHaveBeenCalled();
     await app.close();
   });

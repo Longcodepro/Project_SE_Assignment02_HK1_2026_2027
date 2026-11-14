@@ -16,7 +16,13 @@ export class ReportsService {
         createdAt: true,
         status: true,
         total: true,
-        items: { select: { productId: true, quantity: true, product: { select: { name: true } } } },
+        items: {
+          select: {
+            productId: true,
+            quantity: true,
+            product: { select: { name: true } },
+          },
+        },
       },
     });
     return buildReport({ from, to, groupBy: query.groupBy ?? 'day', orders });

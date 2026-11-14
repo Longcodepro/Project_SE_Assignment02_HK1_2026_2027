@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -13,7 +22,11 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { Roles, RolesGuard } from '../auth/roles.guard.js';
-import { CreatePromotionDto, PromotionDto, UpdatePromotionDto } from './dto/promotion.dto.js';
+import {
+  CreatePromotionDto,
+  PromotionDto,
+  UpdatePromotionDto,
+} from './dto/promotion.dto.js';
 import { PromotionsService } from './promotions.service.js';
 
 @ApiTags('admin-promotions')
@@ -27,7 +40,9 @@ export class PromotionsController {
   constructor(private readonly promotions: PromotionsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Mọi mã giảm giá (kể cả đã vô hiệu), mới tạo nhất lên đầu' })
+  @ApiOperation({
+    summary: 'Mọi mã giảm giá (kể cả đã vô hiệu), mới tạo nhất lên đầu',
+  })
   @ApiOkResponse({ type: PromotionDto, isArray: true })
   list() {
     return this.promotions.list();
@@ -45,9 +60,14 @@ export class PromotionsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Sửa, vô hiệu hoặc kích hoạt lại mã giảm giá' })
   @ApiOkResponse({ type: PromotionDto })
-  @ApiBadRequestResponse({ description: 'Body rỗng, sai kiểu hoặc vi phạm ràng buộc' })
+  @ApiBadRequestResponse({
+    description: 'Body rỗng, sai kiểu hoặc vi phạm ràng buộc',
+  })
   @ApiNotFoundResponse({ description: 'Không tìm thấy mã giảm giá' })
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePromotionDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdatePromotionDto,
+  ) {
     return this.promotions.update(id, dto);
   }
 }

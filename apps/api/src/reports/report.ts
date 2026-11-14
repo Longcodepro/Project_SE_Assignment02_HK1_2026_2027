@@ -11,7 +11,12 @@ export type ReportOrder = {
 };
 
 // Doanh thu thực thu: đơn đã trả tiền và không bị hủy (context-and-scope.md §6.6, mục 7)
-export const REVENUE_STATUSES: readonly string[] = ['PAID', 'PREPARING', 'READY', 'COMPLETED'];
+export const REVENUE_STATUSES: readonly string[] = [
+  'PAID',
+  'PREPARING',
+  'READY',
+  'COMPLETED',
+];
 
 const DAY_MS = 86_400_000;
 // Việt Nam không có giờ mùa hè nên cố định UTC+7
@@ -20,8 +25,10 @@ const MAX_DAYS = 366;
 const TOP_PRODUCTS = 5;
 
 const dayNumber = (day: string) => Date.parse(`${day}T00:00:00Z`) / DAY_MS;
-const dayString = (n: number) => new Date(n * DAY_MS).toISOString().slice(0, 10);
-const vnDay = (d: Date) => new Date(d.getTime() + VN_OFFSET_MS).toISOString().slice(0, 10);
+const dayString = (n: number) =>
+  new Date(n * DAY_MS).toISOString().slice(0, 10);
+const vnDay = (d: Date) =>
+  new Date(d.getTime() + VN_OFFSET_MS).toISOString().slice(0, 10);
 
 // Chuỗi đúng định dạng và là ngày có thật (loại 2026-02-30)
 const isRealDay = (day: string) => {
@@ -38,11 +45,16 @@ function periodKey(day: string, groupBy: GroupBy) {
   return dayString(mondayOf(dayNumber(day)));
 }
 
-export function resolveRange(q: { from?: string; to?: string }, now = new Date()) {
+export function resolveRange(
+  q: { from?: string; to?: string },
+  now = new Date(),
+) {
   const to = q.to ?? vnDay(now);
   const from = q.from ?? (isRealDay(to) ? dayString(dayNumber(to) - 6) : to);
   if (!isRealDay(from) || !isRealDay(to)) {
-    throw new BadRequestException('from và to phải là ngày hợp lệ dạng YYYY-MM-DD');
+    throw new BadRequestException(
+      'from và to phải là ngày hợp lệ dạng YYYY-MM-DD',
+    );
   }
   if (dayNumber(from) > dayNumber(to)) {
     throw new BadRequestException('from không được sau to');
@@ -59,11 +71,25 @@ export function resolveRange(q: { from?: string; to?: string }, now = new Date()
 }
 
 const round4 = (x: number) => Math.round(x * 10_000) / 10_000;
-const rate = (cancelled: number, total: number) => (total === 0 ? 0 : round4(cancelled / total));
+const rate = (cancelled: number, total: number) =>
+  total === 0 ? 0 : round4(cancelled / total);
 
-type Bucket = { revenue: number; completedOrders: number; totalOrders: number; cancelledOrders: number };
-const emptyBucket = (): Bucket => ({ revenue: 0, completedOrders: 0, totalOrders: 0, cancelledOrders: 0 });
-const withRate = (b: Bucket) => ({ ...b, cancelRate: rate(b.cancelledOrders, b.totalOrders) });
+type Bucket = {
+  revenue: number;
+  completedOrders: number;
+  totalOrders: number;
+  cancelledOrders: number;
+};
+const emptyBucket = (): Bucket => ({
+  revenue: 0,
+  completedOrders: 0,
+  totalOrders: 0,
+  cancelledOrders: 0,
+});
+const withRate = (b: Bucket) => ({
+  ...b,
+  cancelRate: rate(b.cancelledOrders, b.totalOrders),
+});
 
 export function buildReport(input: {
   from: string;
@@ -93,7 +119,10 @@ export function buildReport(input: {
     }
     if (!REVENUE_STATUSES.includes(order.status)) continue;
     for (const item of order.items) {
-      const entry = sold.get(item.productId) ?? { productName: item.product.name, quantity: 0 };
+      const entry = sold.get(item.productId) ?? {
+        productName: item.product.name,
+        quantity: 0,
+      };
       entry.quantity += item.quantity;
       sold.set(item.productId, entry);
     }
@@ -109,7 +138,10 @@ export function buildReport(input: {
     to,
     groupBy,
     totals: withRate(totals),
-    series: [...buckets.entries()].map(([period, b]) => ({ period, ...withRate(b) })),
+    series: [...buckets.entries()].map(([period, b]) => ({
+      period,
+      ...withRate(b),
+    })),
     topProducts,
   };
 }

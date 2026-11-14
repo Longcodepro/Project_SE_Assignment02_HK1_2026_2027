@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { isUniqueViolation } from '../common/idempotency.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import type { CreatePromotionDto, UpdatePromotionDto } from './dto/promotion.dto.js';
+import type {
+  CreatePromotionDto,
+  UpdatePromotionDto,
+} from './dto/promotion.dto.js';
 
 const SELECT = {
   id: true,
@@ -23,7 +26,9 @@ const SELECT = {
 // Ràng buộc chéo giữa kiểu giảm và giá trị: DTO chỉ biết từng trường riêng lẻ
 function assertValue(type: string, value: number) {
   if (type === 'PERCENT' && value > 100) {
-    throw new BadRequestException('discountValue của mã PERCENT phải từ 1 đến 100');
+    throw new BadRequestException(
+      'discountValue của mã PERCENT phải từ 1 đến 100',
+    );
   }
 }
 
@@ -34,7 +39,10 @@ export class PromotionsService {
   constructor(private readonly prisma: PrismaService) {}
 
   list() {
-    return this.prisma.promotion.findMany({ orderBy: { id: 'desc' }, select: SELECT });
+    return this.prisma.promotion.findMany({
+      orderBy: { id: 'desc' },
+      select: SELECT,
+    });
   }
 
   async create(dto: CreatePromotionDto) {
@@ -52,7 +60,8 @@ export class PromotionsService {
         select: SELECT,
       });
     } catch (e) {
-      if (isUniqueViolation(e)) throw new ConflictException('Mã giảm giá đã tồn tại');
+      if (isUniqueViolation(e))
+        throw new ConflictException('Mã giảm giá đã tồn tại');
       throw e;
     }
   }
@@ -61,13 +70,21 @@ export class PromotionsService {
     if (Object.values(dto).every((v) => v === undefined)) {
       throw new BadRequestException('Cần gửi ít nhất một trường để sửa');
     }
-    const current = await this.prisma.promotion.findUnique({ where: { id }, select: SELECT });
+    const current = await this.prisma.promotion.findUnique({
+      where: { id },
+      select: SELECT,
+    });
     if (!current) throw new NotFoundException('Không tìm thấy mã giảm giá');
 
-    assertValue(dto.discountType ?? current.discountType, dto.discountValue ?? current.discountValue);
+    assertValue(
+      dto.discountType ?? current.discountType,
+      dto.discountValue ?? current.discountValue,
+    );
     const maxUses = dto.maxUses === undefined ? current.maxUses : dto.maxUses;
     if (maxUses !== null && maxUses < current.usedCount) {
-      throw new BadRequestException('Tổng lượt tối đa không được nhỏ hơn số lượt đã dùng');
+      throw new BadRequestException(
+        'Tổng lượt tối đa không được nhỏ hơn số lượt đã dùng',
+      );
     }
 
     return this.prisma.promotion.update({

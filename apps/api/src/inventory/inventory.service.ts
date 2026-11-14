@@ -15,7 +15,13 @@ import type {
   UpdateIngredientDto,
 } from './dto/inventory.dto.js';
 
-const INGREDIENT = { id: true, name: true, unit: true, stock: true, minStock: true } as const;
+const INGREDIENT = {
+  id: true,
+  name: true,
+  unit: true,
+  stock: true,
+  minStock: true,
+} as const;
 const RECEIPT = {
   id: true,
   ingredientId: true,
@@ -39,7 +45,8 @@ function assertNotEmpty(dto: object) {
 }
 
 function assertNoDuplicates(keys: string[], message: string) {
-  if (new Set(keys).size !== keys.length) throw new BadRequestException(message);
+  if (new Set(keys).size !== keys.length)
+    throw new BadRequestException(message);
 }
 
 @Injectable()
@@ -48,7 +55,10 @@ export class InventoryService {
 
   // ---- Nguyên liệu ----
   async listIngredients() {
-    const rows = await this.prisma.ingredient.findMany({ orderBy: { id: 'asc' }, select: INGREDIENT });
+    const rows = await this.prisma.ingredient.findMany({
+      orderBy: { id: 'asc' },
+      select: INGREDIENT,
+    });
     return rows.map(withLowFlag);
   }
 
@@ -57,7 +67,9 @@ export class InventoryService {
   async listAlerts() {
     return (await this.listIngredients())
       .filter((i) => i.isLow)
-      .sort((a, b) => a.stock - a.minStock - (b.stock - b.minStock) || a.id - b.id);
+      .sort(
+        (a, b) => a.stock - a.minStock - (b.stock - b.minStock) || a.id - b.id,
+      );
   }
 
   async createIngredient(dto: CreateIngredientDto) {
@@ -81,7 +93,8 @@ export class InventoryService {
         select: INGREDIENT,
       });
     } catch (e) {
-      if (isRecordNotFound(e)) throw new NotFoundException('Không tìm thấy nguyên liệu');
+      if (isRecordNotFound(e))
+        throw new NotFoundException('Không tìm thấy nguyên liệu');
       if (isUniqueViolation(e)) throw new ConflictException(DUPLICATE_NAME);
       throw e;
     }
@@ -99,7 +112,8 @@ export class InventoryService {
           select: { stock: true },
         });
       } catch (e) {
-        if (isRecordNotFound(e)) throw new NotFoundException('Không tìm thấy nguyên liệu');
+        if (isRecordNotFound(e))
+          throw new NotFoundException('Không tìm thấy nguyên liệu');
         throw e;
       }
       const receipt = await tx.stockReceipt.create({
@@ -140,12 +154,17 @@ export class InventoryService {
     const have = new Set(found.map((f) => f.id));
     const missing = unique.filter((id) => !have.has(id));
     if (missing.length) {
-      throw new BadRequestException(`Nguyên liệu không tồn tại: ${missing.join(', ')}`);
+      throw new BadRequestException(
+        `Nguyên liệu không tồn tại: ${missing.join(', ')}`,
+      );
     }
   }
 
   async getProductRecipe(productId: number) {
-    const product = await this.prisma.product.findUnique({ where: { id: productId }, select: { id: true } });
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true },
+    });
     if (!product) throw new NotFoundException('Không tìm thấy món');
     const rows = await this.prisma.recipeItem.findMany({
       where: { productId },
@@ -157,16 +176,24 @@ export class InventoryService {
       },
     });
     const items = rows
-      .map(({ ingredient, ...r }) => ({ ...r, ingredientName: ingredient.name, unit: ingredient.unit }))
+      .map(({ ingredient, ...r }) => ({
+        ...r,
+        ingredientName: ingredient.name,
+        unit: ingredient.unit,
+      }))
       .sort(
         (a, b) =>
-          SIZE_ORDER.indexOf(a.size) - SIZE_ORDER.indexOf(b.size) || a.ingredientId - b.ingredientId,
+          SIZE_ORDER.indexOf(a.size) - SIZE_ORDER.indexOf(b.size) ||
+          a.ingredientId - b.ingredientId,
       );
     return { productId, items };
   }
 
   async replaceProductRecipe(productId: number, dto: ReplaceRecipeDto) {
-    const product = await this.prisma.product.findUnique({ where: { id: productId }, select: { id: true } });
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true },
+    });
     if (!product) throw new NotFoundException('Không tìm thấy món');
     assertNoDuplicates(
       dto.items.map((i) => `${i.size}:${i.ingredientId}`),
@@ -178,7 +205,12 @@ export class InventoryService {
       await tx.recipeItem.deleteMany({ where: { productId } });
       if (dto.items.length) {
         await tx.recipeItem.createMany({
-          data: dto.items.map((i) => ({ productId, size: i.size, ingredientId: i.ingredientId, quantity: i.quantity })),
+          data: dto.items.map((i) => ({
+            productId,
+            size: i.size,
+            ingredientId: i.ingredientId,
+            quantity: i.quantity,
+          })),
         });
       }
     });
@@ -186,21 +218,38 @@ export class InventoryService {
   }
 
   async getToppingRecipe(toppingCode: string) {
-    const topping = await this.prisma.topping.findUnique({ where: { code: toppingCode }, select: { code: true } });
+    const topping = await this.prisma.topping.findUnique({
+      where: { code: toppingCode },
+      select: { code: true },
+    });
     if (!topping) throw new NotFoundException('Không tìm thấy topping');
     const rows = await this.prisma.toppingRecipeItem.findMany({
       where: { toppingCode },
       orderBy: { ingredientId: 'asc' },
-      select: { ingredientId: true, quantity: true, ingredient: { select: { name: true, unit: true } } },
+      select: {
+        ingredientId: true,
+        quantity: true,
+        ingredient: { select: { name: true, unit: true } },
+      },
     });
     return {
       toppingCode,
-      items: rows.map(({ ingredient, ...r }) => ({ ...r, ingredientName: ingredient.name, unit: ingredient.unit })),
+      items: rows.map(({ ingredient, ...r }) => ({
+        ...r,
+        ingredientName: ingredient.name,
+        unit: ingredient.unit,
+      })),
     };
   }
 
-  async replaceToppingRecipe(toppingCode: string, dto: ReplaceToppingRecipeDto) {
-    const topping = await this.prisma.topping.findUnique({ where: { code: toppingCode }, select: { code: true } });
+  async replaceToppingRecipe(
+    toppingCode: string,
+    dto: ReplaceToppingRecipeDto,
+  ) {
+    const topping = await this.prisma.topping.findUnique({
+      where: { code: toppingCode },
+      select: { code: true },
+    });
     if (!topping) throw new NotFoundException('Không tìm thấy topping');
     assertNoDuplicates(
       dto.items.map((i) => String(i.ingredientId)),
@@ -212,7 +261,11 @@ export class InventoryService {
       await tx.toppingRecipeItem.deleteMany({ where: { toppingCode } });
       if (dto.items.length) {
         await tx.toppingRecipeItem.createMany({
-          data: dto.items.map((i) => ({ toppingCode, ingredientId: i.ingredientId, quantity: i.quantity })),
+          data: dto.items.map((i) => ({
+            toppingCode,
+            ingredientId: i.ingredientId,
+            quantity: i.quantity,
+          })),
         });
       }
     });

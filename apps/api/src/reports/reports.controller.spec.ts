@@ -1,4 +1,8 @@
-import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  type CanActivate,
+  type ExecutionContext,
+  Injectable,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
@@ -12,7 +16,10 @@ import { ReportsService } from './reports.service.js';
 class FakeJwtGuard implements CanActivate {
   canActivate(ctx: ExecutionContext) {
     const req = ctx.switchToHttp().getRequest();
-    req.user = { phone: '0900000003', role: req.headers['x-role'] ?? 'MANAGER' };
+    req.user = {
+      phone: '0900000003',
+      role: req.headers['x-role'] ?? 'MANAGER',
+    };
     return true;
   }
 }
@@ -21,7 +28,10 @@ async function setup(orders: unknown[] = []) {
   const findMany = vi.fn().mockResolvedValue(orders);
   const moduleRef = await Test.createTestingModule({
     controllers: [ReportsController],
-    providers: [ReportsService, { provide: PrismaService, useValue: { order: { findMany } } }],
+    providers: [
+      ReportsService,
+      { provide: PrismaService, useValue: { order: { findMany } } },
+    ],
   })
     .overrideGuard(JwtAuthGuard)
     .useClass(FakeJwtGuard)
@@ -54,11 +64,38 @@ describe('GET /admin/reports', () => {
       from: '2026-11-12',
       to: '2026-11-14',
       groupBy: 'day',
-      totals: { revenue: 84000, completedOrders: 1, totalOrders: 1, cancelledOrders: 0, cancelRate: 0 },
+      totals: {
+        revenue: 84000,
+        completedOrders: 1,
+        totalOrders: 1,
+        cancelledOrders: 0,
+        cancelRate: 0,
+      },
       series: [
-        { period: '2026-11-12', revenue: 0, completedOrders: 0, totalOrders: 0, cancelledOrders: 0, cancelRate: 0 },
-        { period: '2026-11-13', revenue: 84000, completedOrders: 1, totalOrders: 1, cancelledOrders: 0, cancelRate: 0 },
-        { period: '2026-11-14', revenue: 0, completedOrders: 0, totalOrders: 0, cancelledOrders: 0, cancelRate: 0 },
+        {
+          period: '2026-11-12',
+          revenue: 0,
+          completedOrders: 0,
+          totalOrders: 0,
+          cancelledOrders: 0,
+          cancelRate: 0,
+        },
+        {
+          period: '2026-11-13',
+          revenue: 84000,
+          completedOrders: 1,
+          totalOrders: 1,
+          cancelledOrders: 0,
+          cancelRate: 0,
+        },
+        {
+          period: '2026-11-14',
+          revenue: 0,
+          completedOrders: 0,
+          totalOrders: 0,
+          cancelledOrders: 0,
+          cancelRate: 0,
+        },
       ],
       topProducts: [{ productId: 1, productName: 'Cà phê sữa', quantity: 2 }],
     });
@@ -70,7 +107,9 @@ describe('GET /admin/reports', () => {
     vi.setSystemTime(new Date('2026-11-14T05:00:00Z'));
     try {
       const { app } = await setup();
-      const res = await request(app.getHttpServer()).get('/admin/reports').expect(200);
+      const res = await request(app.getHttpServer())
+        .get('/admin/reports')
+        .expect(200);
       expect(res.body.from).toBe('2026-11-08');
       expect(res.body.to).toBe('2026-11-14');
       expect(res.body.groupBy).toBe('day');
@@ -83,7 +122,9 @@ describe('GET /admin/reports', () => {
 
   it.each(['week', 'month'])('groupBy=%s được chấp nhận', async (groupBy) => {
     const { app } = await setup();
-    const res = await request(app.getHttpServer()).get(`/admin/reports?from=2026-11-01&to=2026-11-14&groupBy=${groupBy}`).expect(200);
+    const res = await request(app.getHttpServer())
+      .get(`/admin/reports?from=2026-11-01&to=2026-11-14&groupBy=${groupBy}`)
+      .expect(200);
     expect(res.body.groupBy).toBe(groupBy);
     await app.close();
   });
@@ -102,11 +143,17 @@ describe('GET /admin/reports', () => {
     await app.close();
   });
 
-  it.each(['CUSTOMER', 'BARISTA', 'CASHIER'])('403 với vai trò %s và không truy vấn CSDL', async (role) => {
-    const { app, findMany } = await setup();
-    const res = await request(app.getHttpServer()).get('/admin/reports').set('x-role', role).expect(403);
-    expect(res.body.message).toBe('Không đủ quyền truy cập');
-    expect(findMany).not.toHaveBeenCalled();
-    await app.close();
-  });
+  it.each(['CUSTOMER', 'BARISTA', 'CASHIER'])(
+    '403 với vai trò %s và không truy vấn CSDL',
+    async (role) => {
+      const { app, findMany } = await setup();
+      const res = await request(app.getHttpServer())
+        .get('/admin/reports')
+        .set('x-role', role)
+        .expect(403);
+      expect(res.body.message).toBe('Không đủ quyền truy cập');
+      expect(findMany).not.toHaveBeenCalled();
+      await app.close();
+    },
+  );
 });

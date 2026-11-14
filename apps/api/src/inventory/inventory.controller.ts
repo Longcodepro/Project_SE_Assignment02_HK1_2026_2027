@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -11,7 +21,11 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { CurrentUser, JwtAuthGuard, type AuthUser } from '../auth/jwt-auth.guard.js';
+import {
+  CurrentUser,
+  JwtAuthGuard,
+  type AuthUser,
+} from '../auth/jwt-auth.guard.js';
 import { Roles, RolesGuard } from '../auth/roles.guard.js';
 import {
   CreateIngredientDto,
@@ -28,7 +42,9 @@ import { InventoryService } from './inventory.service.js';
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Thiếu hoặc sai token' })
 @ApiForbiddenResponse({ description: 'Vai trò không đủ quyền' })
-@ApiBadRequestResponse({ description: 'Dữ liệu không hợp lệ, body rỗng hoặc có trường lạ' })
+@ApiBadRequestResponse({
+  description: 'Dữ liệu không hợp lệ, body rỗng hoặc có trường lạ',
+})
 @Controller('admin/ingredients')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('MANAGER')
@@ -46,14 +62,20 @@ export class InventoryController {
 
   @Get('alerts')
   @Roles('BARISTA', 'MANAGER')
-  @ApiOperation({ summary: 'Nguyên liệu sắp hết (stock <= minStock), thiếu nhiều nhất lên đầu (BARISTA, MANAGER)' })
+  @ApiOperation({
+    summary:
+      'Nguyên liệu sắp hết (stock <= minStock), thiếu nhiều nhất lên đầu (BARISTA, MANAGER)',
+  })
   @ApiOkResponse({ type: IngredientDto, isArray: true })
   alerts() {
     return this.inventory.listAlerts();
   }
 
   @Post()
-  @ApiOperation({ summary: 'Thêm nguyên liệu (MANAGER); tồn ban đầu bằng 0, nhập kho qua phiếu' })
+  @ApiOperation({
+    summary:
+      'Thêm nguyên liệu (MANAGER); tồn ban đầu bằng 0, nhập kho qua phiếu',
+  })
   @ApiCreatedResponse({ type: IngredientDto })
   @ApiConflictResponse({ description: 'Tên nguyên liệu đã tồn tại' })
   create(@Body() dto: CreateIngredientDto) {
@@ -61,17 +83,26 @@ export class InventoryController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Đổi tên hoặc ngưỡng cảnh báo (MANAGER); không sửa trực tiếp tồn kho' })
+  @ApiOperation({
+    summary:
+      'Đổi tên hoặc ngưỡng cảnh báo (MANAGER); không sửa trực tiếp tồn kho',
+  })
   @ApiOkResponse({ type: IngredientDto })
   @ApiNotFoundResponse({ description: 'Không tìm thấy nguyên liệu' })
   @ApiConflictResponse({ description: 'Tên nguyên liệu đã tồn tại' })
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateIngredientDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateIngredientDto,
+  ) {
     return this.inventory.updateIngredient(id, dto);
   }
 
   @Post(':id/receipts')
   @Roles('BARISTA', 'MANAGER')
-  @ApiOperation({ summary: 'Nhập kho: ghi phiếu có người thực hiện và cộng tồn (BARISTA, MANAGER)' })
+  @ApiOperation({
+    summary:
+      'Nhập kho: ghi phiếu có người thực hiện và cộng tồn (BARISTA, MANAGER)',
+  })
   @ApiCreatedResponse({ type: ReceiptResultDto })
   @ApiNotFoundResponse({ description: 'Không tìm thấy nguyên liệu' })
   receive(
@@ -84,10 +115,16 @@ export class InventoryController {
 
   @Get(':id/receipts')
   @Roles('BARISTA', 'MANAGER')
-  @ApiOperation({ summary: 'Lịch sử nhập kho của một nguyên liệu, mới nhất trước (BARISTA, MANAGER)' })
+  @ApiOperation({
+    summary:
+      'Lịch sử nhập kho của một nguyên liệu, mới nhất trước (BARISTA, MANAGER)',
+  })
   @ApiOkResponse({ type: ReceiptDto, isArray: true })
   @ApiNotFoundResponse({ description: 'Không tìm thấy nguyên liệu' })
-  receipts(@Param('id', ParseIntPipe) id: number, @Query() { limit }: ReceiptsQueryDto) {
+  receipts(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() { limit }: ReceiptsQueryDto,
+  ) {
     return this.inventory.listReceipts(id, limit);
   }
 }

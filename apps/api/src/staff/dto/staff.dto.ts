@@ -1,6 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { normalizePhone } from '../../auth/dto/auth.dto.js';
 import { Role } from '../../generated/prisma/enums.js';
 
@@ -9,7 +17,8 @@ export const STAFF_ROLES = ['BARISTA', 'CASHIER'] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];
 
 const PHONE = /^0[35789]\d{8}$/;
-const PHONE_MESSAGE = 'Số điện thoại không hợp lệ (yêu cầu số di động Việt Nam 10 chữ số)';
+const PHONE_MESSAGE =
+  'Số điện thoại không hợp lệ (yêu cầu số di động Việt Nam 10 chữ số)';
 
 export class StaffParamsDto {
   @ApiProperty({ example: '0911222333' })
@@ -18,7 +27,10 @@ export class StaffParamsDto {
 }
 
 export class CreateStaffDto {
-  @ApiProperty({ example: '0911222333', description: 'Số di động VN 10 chữ số (+84 tự đổi thành 0)' })
+  @ApiProperty({
+    example: '0911222333',
+    description: 'Số di động VN 10 chữ số (+84 tự đổi thành 0)',
+  })
   @Transform(normalizePhone)
   @Matches(PHONE, { message: PHONE_MESSAGE })
   phone!: string;
@@ -46,7 +58,10 @@ export class UpdateStaffDto {
   @IsIn(STAFF_ROLES)
   role?: StaffRole;
 
-  @ApiPropertyOptional({ example: true, description: 'true là khóa, false là mở khóa' })
+  @ApiPropertyOptional({
+    example: true,
+    description: 'true là khóa, false là mở khóa',
+  })
   @IsOptional()
   @IsBoolean()
   isLocked?: boolean;

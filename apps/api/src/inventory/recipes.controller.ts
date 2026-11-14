@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -24,7 +32,10 @@ import { InventoryService } from './inventory.service.js';
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Thiếu hoặc sai token' })
 @ApiForbiddenResponse({ description: 'Không phải tài khoản MANAGER' })
-@ApiBadRequestResponse({ description: 'Dữ liệu không hợp lệ, trùng dòng hoặc nguyên liệu không tồn tại' })
+@ApiBadRequestResponse({
+  description:
+    'Dữ liệu không hợp lệ, trùng dòng hoặc nguyên liệu không tồn tại',
+})
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('MANAGER')
@@ -43,7 +54,10 @@ export class RecipesController {
   @ApiOperation({ summary: 'Thay toàn bộ công thức của món ([] để xóa)' })
   @ApiOkResponse({ type: ProductRecipeDto })
   @ApiNotFoundResponse({ description: 'Không tìm thấy món' })
-  replaceProductRecipe(@Param('id', ParseIntPipe) id: number, @Body() dto: ReplaceRecipeDto) {
+  replaceProductRecipe(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ReplaceRecipeDto,
+  ) {
     return this.inventory.replaceProductRecipe(id, dto);
   }
 
@@ -59,7 +73,10 @@ export class RecipesController {
   @ApiOperation({ summary: 'Thay toàn bộ công thức của topping ([] để xóa)' })
   @ApiOkResponse({ type: ToppingRecipeDto })
   @ApiNotFoundResponse({ description: 'Không tìm thấy topping' })
-  replaceToppingRecipe(@Param() { code }: ToppingParamsDto, @Body() dto: ReplaceToppingRecipeDto) {
+  replaceToppingRecipe(
+    @Param() { code }: ToppingParamsDto,
+    @Body() dto: ReplaceToppingRecipeDto,
+  ) {
     return this.inventory.replaceToppingRecipe(code, dto);
   }
 }

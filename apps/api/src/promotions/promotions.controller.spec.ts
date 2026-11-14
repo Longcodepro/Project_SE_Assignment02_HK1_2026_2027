@@ -1,4 +1,8 @@
-import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  type CanActivate,
+  type ExecutionContext,
+  Injectable,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
@@ -12,7 +16,10 @@ import { PromotionsService } from './promotions.service.js';
 class FakeJwtGuard implements CanActivate {
   canActivate(ctx: ExecutionContext) {
     const req = ctx.switchToHttp().getRequest();
-    req.user = { phone: '0900000003', role: req.headers['x-role'] ?? 'MANAGER' };
+    req.user = {
+      phone: '0900000003',
+      role: req.headers['x-role'] ?? 'MANAGER',
+    };
     return true;
   }
 }
@@ -29,20 +36,39 @@ const hienTai = {
   usedCount: 40,
 };
 
-async function setup(opts: { found?: Record<string, unknown> | null; createError?: unknown } = {}) {
-  const findUnique = vi.fn().mockResolvedValue(opts.found === undefined ? hienTai : opts.found);
+async function setup(
+  opts: { found?: Record<string, unknown> | null; createError?: unknown } = {},
+) {
+  const findUnique = vi
+    .fn()
+    .mockResolvedValue(opts.found === undefined ? hienTai : opts.found);
   const findMany = vi.fn().mockResolvedValue([hienTai]);
-  const create = vi.fn().mockImplementation(({ data }) =>
-    opts.createError
-      ? Promise.reject(opts.createError)
-      : Promise.resolve({ id: 9, isActive: true, usedCount: 0, minOrderAmount: 0, ...data }),
-  );
-  const update = vi.fn().mockImplementation(({ data }) => Promise.resolve({ ...hienTai, ...stripUndefined(data) }));
+  const create = vi
+    .fn()
+    .mockImplementation(({ data }) =>
+      opts.createError
+        ? Promise.reject(opts.createError)
+        : Promise.resolve({
+            id: 9,
+            isActive: true,
+            usedCount: 0,
+            minOrderAmount: 0,
+            ...data,
+          }),
+    );
+  const update = vi
+    .fn()
+    .mockImplementation(({ data }) =>
+      Promise.resolve({ ...hienTai, ...stripUndefined(data) }),
+    );
   const moduleRef = await Test.createTestingModule({
     controllers: [PromotionsController],
     providers: [
       PromotionsService,
-      { provide: PrismaService, useValue: { promotion: { findUnique, findMany, create, update } } },
+      {
+        provide: PrismaService,
+        useValue: { promotion: { findUnique, findMany, create, update } },
+      },
     ],
   })
     .overrideGuard(JwtAuthGuard)
@@ -60,24 +86,35 @@ const stripUndefined = (o: Record<string, unknown>) =>
 describe('GET /admin/promotions', () => {
   it('liệt kê mọi mã, mới tạo nhất lên đầu', async () => {
     const { app, findMany } = await setup();
-    const res = await request(app.getHttpServer()).get('/admin/promotions').expect(200);
+    const res = await request(app.getHttpServer())
+      .get('/admin/promotions')
+      .expect(200);
     expect(findMany.mock.calls[0][0].orderBy).toEqual({ id: 'desc' });
     expect(findMany.mock.calls[0][0]).not.toHaveProperty('where');
     expect(res.body).toEqual([hienTai]);
     await app.close();
   });
 
-  it.each(['CUSTOMER', 'BARISTA', 'CASHIER'])('403 với vai trò %s', async (role) => {
-    const { app, findMany } = await setup();
-    await request(app.getHttpServer()).get('/admin/promotions').set('x-role', role).expect(403);
-    expect(findMany).not.toHaveBeenCalled();
-    await app.close();
-  });
+  it.each(['CUSTOMER', 'BARISTA', 'CASHIER'])(
+    '403 với vai trò %s',
+    async (role) => {
+      const { app, findMany } = await setup();
+      await request(app.getHttpServer())
+        .get('/admin/promotions')
+        .set('x-role', role)
+        .expect(403);
+      expect(findMany).not.toHaveBeenCalled();
+      await app.close();
+    },
+  );
 });
 
 describe('POST /admin/promotions', () => {
   const tao = (app: any, body: object, role = 'MANAGER') =>
-    request(app.getHttpServer()).post('/admin/promotions').set('x-role', role).send(body);
+    request(app.getHttpServer())
+      .post('/admin/promotions')
+      .set('x-role', role)
+      .send(body);
   const hopLe = {
     code: 'tet2027',
     discountType: 'PERCENT',
@@ -90,7 +127,12 @@ describe('POST /admin/promotions', () => {
   it('tạo mã: đổi code thành chữ hoa, đổi hạn dùng thành Date', async () => {
     const { app, create } = await setup();
     const res = await tao(app, hopLe).expect(201);
-    expect(res.body).toMatchObject({ code: 'TET2027', discountType: 'PERCENT', discountValue: 15, maxUses: 200 });
+    expect(res.body).toMatchObject({
+      code: 'TET2027',
+      discountType: 'PERCENT',
+      discountValue: 15,
+      maxUses: 200,
+    });
     const data = create.mock.calls[0][0].data;
     expect(data).toEqual({
       code: 'TET2027',
@@ -105,8 +147,15 @@ describe('POST /admin/promotions', () => {
 
   it('bỏ trống hạn dùng và số lượt: lưu null (không hết hạn, không giới hạn)', async () => {
     const { app, create } = await setup();
-    await tao(app, { code: 'GIAM15K', discountType: 'FIXED', discountValue: 15000 }).expect(201);
-    expect(create.mock.calls[0][0].data).toMatchObject({ expiryDate: null, maxUses: null });
+    await tao(app, {
+      code: 'GIAM15K',
+      discountType: 'FIXED',
+      discountValue: 15000,
+    }).expect(201);
+    expect(create.mock.calls[0][0].data).toMatchObject({
+      expiryDate: null,
+      maxUses: null,
+    });
     await app.close();
   });
 
@@ -121,7 +170,10 @@ describe('POST /admin/promotions', () => {
     ['PERCENT trên 100', { ...hopLe, discountValue: 101 }],
     ['giá trị 0', { ...hopLe, discountValue: 0 }],
     ['giá trị thập phân', { ...hopLe, discountValue: 10.5 }],
-    ['FIXED quá 10 triệu', { ...hopLe, discountType: 'FIXED', discountValue: 10_000_001 }],
+    [
+      'FIXED quá 10 triệu',
+      { ...hopLe, discountType: 'FIXED', discountValue: 10_000_001 },
+    ],
     ['kiểu giảm lạ', { ...hopLe, discountType: 'BOGO' }],
     ['code quá ngắn', { ...hopLe, code: 'ab' }],
     ['code có khoảng trắng', { ...hopLe, code: 'TET 2027' }],
@@ -138,17 +190,23 @@ describe('POST /admin/promotions', () => {
     await app.close();
   });
 
-  it.each(['CUSTOMER', 'BARISTA', 'CASHIER'])('403 với vai trò %s, không ghi gì', async (role) => {
-    const { app, create } = await setup();
-    await tao(app, hopLe, role).expect(403);
-    expect(create).not.toHaveBeenCalled();
-    await app.close();
-  });
+  it.each(['CUSTOMER', 'BARISTA', 'CASHIER'])(
+    '403 với vai trò %s, không ghi gì',
+    async (role) => {
+      const { app, create } = await setup();
+      await tao(app, hopLe, role).expect(403);
+      expect(create).not.toHaveBeenCalled();
+      await app.close();
+    },
+  );
 });
 
 describe('PATCH /admin/promotions/:id', () => {
   const sua = (app: any, id: string | number, body: object, role = 'MANAGER') =>
-    request(app.getHttpServer()).patch(`/admin/promotions/${id}`).set('x-role', role).send(body);
+    request(app.getHttpServer())
+      .patch(`/admin/promotions/${id}`)
+      .set('x-role', role)
+      .send(body);
 
   it('vô hiệu mã', async () => {
     const { app, update } = await setup();
@@ -160,7 +218,9 @@ describe('PATCH /admin/promotions/:id', () => {
   });
 
   it('kích hoạt lại mã', async () => {
-    const { app, update } = await setup({ found: { ...hienTai, isActive: false } });
+    const { app, update } = await setup({
+      found: { ...hienTai, isActive: false },
+    });
     await sua(app, 1, { isActive: true }).expect(200);
     expect(update.mock.calls[0][0].data.isActive).toBe(true);
     await app.close();
@@ -177,16 +237,23 @@ describe('PATCH /admin/promotions/:id', () => {
   });
 
   it('expiryDate null bỏ hạn; maxUses null bỏ giới hạn', async () => {
-    const { app, update } = await setup({ found: { ...hienTai, expiryDate: new Date('2027-01-01') } });
+    const { app, update } = await setup({
+      found: { ...hienTai, expiryDate: new Date('2027-01-01') },
+    });
     await sua(app, 1, { expiryDate: null, maxUses: null }).expect(200);
-    expect(update.mock.calls[0][0].data).toMatchObject({ expiryDate: null, maxUses: null });
+    expect(update.mock.calls[0][0].data).toMatchObject({
+      expiryDate: null,
+      maxUses: null,
+    });
     await app.close();
   });
 
   it('đặt hạn dùng mới', async () => {
     const { app, update } = await setup();
     await sua(app, 1, { expiryDate: '2027-02-20T16:59:59.000Z' }).expect(200);
-    expect(update.mock.calls[0][0].data.expiryDate).toEqual(new Date('2027-02-20T16:59:59.000Z'));
+    expect(update.mock.calls[0][0].data.expiryDate).toEqual(
+      new Date('2027-02-20T16:59:59.000Z'),
+    );
     await app.close();
   });
 
@@ -195,8 +262,12 @@ describe('PATCH /admin/promotions/:id', () => {
     await sua(app, 1, { discountType: 'FIXED' }).expect(200);
     expect(update).toHaveBeenCalledTimes(1);
 
-    const fixed = await setup({ found: { ...hienTai, discountType: 'FIXED', discountValue: 15000 } });
-    const res = await sua(fixed.app, 1, { discountType: 'PERCENT' }).expect(400);
+    const fixed = await setup({
+      found: { ...hienTai, discountType: 'FIXED', discountValue: 15000 },
+    });
+    const res = await sua(fixed.app, 1, { discountType: 'PERCENT' }).expect(
+      400,
+    );
     expect(res.body.message).toMatch(/PERCENT phải từ 1 đến 100/);
     expect(fixed.update).not.toHaveBeenCalled();
     await app.close();
@@ -213,7 +284,9 @@ describe('PATCH /admin/promotions/:id', () => {
   it('maxUses nhỏ hơn số lượt đã dùng (40): 400; bằng đúng số đã dùng thì được', async () => {
     const { app, update } = await setup();
     const res = await sua(app, 1, { maxUses: 39 }).expect(400);
-    expect(res.body.message).toBe('Tổng lượt tối đa không được nhỏ hơn số lượt đã dùng');
+    expect(res.body.message).toBe(
+      'Tổng lượt tối đa không được nhỏ hơn số lượt đã dùng',
+    );
     expect(update).not.toHaveBeenCalled();
     await sua(app, 1, { maxUses: 40 }).expect(200);
     await app.close();
@@ -249,11 +322,14 @@ describe('PATCH /admin/promotions/:id', () => {
     await app.close();
   });
 
-  it.each(['CUSTOMER', 'BARISTA', 'CASHIER'])('403 với vai trò %s, không đụng tới CSDL', async (role) => {
-    const { app, findUnique, update } = await setup();
-    await sua(app, 1, { isActive: false }, role).expect(403);
-    expect(findUnique).not.toHaveBeenCalled();
-    expect(update).not.toHaveBeenCalled();
-    await app.close();
-  });
+  it.each(['CUSTOMER', 'BARISTA', 'CASHIER'])(
+    '403 với vai trò %s, không đụng tới CSDL',
+    async (role) => {
+      const { app, findUnique, update } = await setup();
+      await sua(app, 1, { isActive: false }, role).expect(403);
+      expect(findUnique).not.toHaveBeenCalled();
+      expect(update).not.toHaveBeenCalled();
+      await app.close();
+    },
+  );
 });

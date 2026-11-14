@@ -22,7 +22,8 @@ const MAX_RECIPE_QUANTITY = 1_000_000;
 const MAX_RECIPE_ITEMS = 200;
 
 const WhenSent = () => ValidateIf((_o, v) => v !== undefined);
-const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
+const trim = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? value.trim() : value;
 
 // ---- Nguyên liệu ----
 export class CreateIngredientDto {
@@ -32,11 +33,20 @@ export class CreateIngredientDto {
   @Length(1, 100)
   name!: string;
 
-  @ApiProperty({ enum: Unit, example: 'ML', description: 'Không đổi được sau khi tạo' })
+  @ApiProperty({
+    enum: Unit,
+    example: 'ML',
+    description: 'Không đổi được sau khi tạo',
+  })
   @IsIn(Object.values(Unit))
   unit!: Unit;
 
-  @ApiPropertyOptional({ example: 500, minimum: 0, default: 0, description: 'Chạm ngưỡng này thì cảnh báo sắp hết' })
+  @ApiPropertyOptional({
+    example: 500,
+    minimum: 0,
+    default: 0,
+    description: 'Chạm ngưỡng này thì cảnh báo sắp hết',
+  })
   @WhenSent()
   @IsInt()
   @Min(0)
@@ -45,7 +55,11 @@ export class CreateIngredientDto {
 }
 
 export class UpdateIngredientDto {
-  @ApiPropertyOptional({ example: 'Sữa đặc có đường', minLength: 1, maxLength: 100 })
+  @ApiPropertyOptional({
+    example: 'Sữa đặc có đường',
+    minLength: 1,
+    maxLength: 100,
+  })
   @WhenSent()
   @Transform(trim)
   @IsString()
@@ -76,7 +90,10 @@ export class IngredientDto {
   @ApiProperty({ example: 1000 })
   minStock!: number;
 
-  @ApiProperty({ example: false, description: 'true khi stock <= minStock (sắp hết)' })
+  @ApiProperty({
+    example: false,
+    description: 'true khi stock <= minStock (sắp hết)',
+  })
   isLow!: boolean;
 }
 
@@ -141,7 +158,11 @@ export class RecipeItemInputDto {
   @Min(1)
   ingredientId!: number;
 
-  @ApiProperty({ example: 18, minimum: 1, description: 'Theo đơn vị của nguyên liệu, cho một ly' })
+  @ApiProperty({
+    example: 18,
+    minimum: 1,
+    description: 'Theo đơn vị của nguyên liệu, cho một ly',
+  })
   @IsInt()
   @Min(1)
   @Max(MAX_RECIPE_QUANTITY)
@@ -149,7 +170,11 @@ export class RecipeItemInputDto {
 }
 
 export class ReplaceRecipeDto {
-  @ApiProperty({ type: RecipeItemInputDto, isArray: true, description: 'Thay toàn bộ; [] để xóa công thức' })
+  @ApiProperty({
+    type: RecipeItemInputDto,
+    isArray: true,
+    description: 'Thay toàn bộ; [] để xóa công thức',
+  })
   @IsArray()
   @ArrayMaxSize(MAX_RECIPE_ITEMS)
   @ValidateNested({ each: true })
@@ -163,7 +188,11 @@ export class ToppingRecipeItemInputDto {
   @Min(1)
   ingredientId!: number;
 
-  @ApiProperty({ example: 30, minimum: 1, description: 'Theo đơn vị của nguyên liệu, cho một phần topping' })
+  @ApiProperty({
+    example: 30,
+    minimum: 1,
+    description: 'Theo đơn vị của nguyên liệu, cho một phần topping',
+  })
   @IsInt()
   @Min(1)
   @Max(MAX_RECIPE_QUANTITY)
@@ -171,7 +200,11 @@ export class ToppingRecipeItemInputDto {
 }
 
 export class ReplaceToppingRecipeDto {
-  @ApiProperty({ type: ToppingRecipeItemInputDto, isArray: true, description: 'Thay toàn bộ; [] để xóa công thức' })
+  @ApiProperty({
+    type: ToppingRecipeItemInputDto,
+    isArray: true,
+    description: 'Thay toàn bộ; [] để xóa công thức',
+  })
   @IsArray()
   @ArrayMaxSize(MAX_RECIPE_ITEMS)
   @ValidateNested({ each: true })

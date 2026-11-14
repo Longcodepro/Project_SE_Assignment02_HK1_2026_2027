@@ -24,9 +24,15 @@ export class ReportsController {
   constructor(private readonly reports: ReportsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Doanh thu, số đơn hoàn tất, tỷ lệ hủy theo kỳ và Top 5 món bán chạy' })
+  @ApiOperation({
+    summary:
+      'Doanh thu, số đơn hoàn tất, tỷ lệ hủy theo kỳ và Top 5 món bán chạy',
+  })
   @ApiOkResponse({ type: ReportDto })
-  @ApiBadRequestResponse({ description: 'Ngày không hợp lệ, from sau to, khoảng quá 366 ngày hoặc groupBy lạ' })
+  @ApiBadRequestResponse({
+    description:
+      'Ngày không hợp lệ, from sau to, khoảng quá 366 ngày hoặc groupBy lạ',
+  })
   report(@Query() query: ReportQueryDto) {
     return this.reports.report(query);
   }

@@ -1,4 +1,8 @@
-import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  type CanActivate,
+  type ExecutionContext,
+  Injectable,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import bcrypt from 'bcryptjs';
 import request from 'supertest';
@@ -13,19 +17,35 @@ import { StaffService } from './staff.service.js';
 class FakeJwtGuard implements CanActivate {
   canActivate(ctx: ExecutionContext) {
     const req = ctx.switchToHttp().getRequest();
-    req.user = { phone: '0900000003', role: req.headers['x-role'] ?? 'MANAGER' };
+    req.user = {
+      phone: '0900000003',
+      role: req.headers['x-role'] ?? 'MANAGER',
+    };
     return true;
   }
 }
 
-async function setup(opts: { found?: Record<string, unknown> | null; createError?: unknown } = {}) {
-  const findUnique = vi.fn().mockResolvedValue(opts.found === undefined ? { role: 'CASHIER' } : opts.found);
+async function setup(
+  opts: { found?: Record<string, unknown> | null; createError?: unknown } = {},
+) {
+  const findUnique = vi
+    .fn()
+    .mockResolvedValue(
+      opts.found === undefined ? { role: 'CASHIER' } : opts.found,
+    );
   const findMany = vi.fn().mockResolvedValue([]);
-  const create = vi.fn().mockImplementation(({ data }) =>
-    opts.createError
-      ? Promise.reject(opts.createError)
-      : Promise.resolve({ phone: data.phone, name: data.name ?? null, role: data.role, isLocked: false }),
-  );
+  const create = vi
+    .fn()
+    .mockImplementation(({ data }) =>
+      opts.createError
+        ? Promise.reject(opts.createError)
+        : Promise.resolve({
+            phone: data.phone,
+            name: data.name ?? null,
+            role: data.role,
+            isLocked: false,
+          }),
+    );
   const update = vi.fn().mockImplementation(({ where, data }) =>
     Promise.resolve({
       phone: where.phone,
@@ -38,7 +58,10 @@ async function setup(opts: { found?: Record<string, unknown> | null; createError
     controllers: [StaffController],
     providers: [
       StaffService,
-      { provide: PrismaService, useValue: { user: { findUnique, findMany, create, update } } },
+      {
+        provide: PrismaService,
+        useValue: { user: { findUnique, findMany, create, update } },
+      },
     ],
   })
     .overrideGuard(JwtAuthGuard)
@@ -54,43 +77,80 @@ describe('GET /admin/staff', () => {
   it('liệt kê mọi tài khoản không phải khách, cũ nhất lên đầu, không có passwordHash', async () => {
     const { app, findMany } = await setup();
     findMany.mockResolvedValue([
-      { phone: '0900000001', name: 'Barista', role: 'BARISTA', isLocked: false, createdAt: new Date('2026-11-13T03:00:00Z') },
+      {
+        phone: '0900000001',
+        name: 'Barista',
+        role: 'BARISTA',
+        isLocked: false,
+        createdAt: new Date('2026-11-13T03:00:00Z'),
+      },
     ]);
 
-    const res = await request(app.getHttpServer()).get('/admin/staff').expect(200);
+    const res = await request(app.getHttpServer())
+      .get('/admin/staff')
+      .expect(200);
 
     const q = findMany.mock.calls[0][0];
     expect(q.where).toEqual({ role: { not: 'CUSTOMER' } });
     expect(q.orderBy).toEqual({ createdAt: 'asc' });
     expect(q.select).not.toHaveProperty('passwordHash');
     expect(res.body).toEqual([
-      { phone: '0900000001', name: 'Barista', role: 'BARISTA', isLocked: false, createdAt: '2026-11-13T03:00:00.000Z' },
+      {
+        phone: '0900000001',
+        name: 'Barista',
+        role: 'BARISTA',
+        isLocked: false,
+        createdAt: '2026-11-13T03:00:00.000Z',
+      },
     ]);
     await app.close();
   });
 
-  it.each(['CUSTOMER', 'BARISTA', 'CASHIER'])('403 với vai trò %s và không đụng tới CSDL', async (role) => {
-    const { app, findMany } = await setup();
-    const res = await request(app.getHttpServer()).get('/admin/staff').set('x-role', role).expect(403);
-    expect(res.body.message).toBe('Không đủ quyền truy cập');
-    expect(findMany).not.toHaveBeenCalled();
-    await app.close();
-  });
+  it.each(['CUSTOMER', 'BARISTA', 'CASHIER'])(
+    '403 với vai trò %s và không đụng tới CSDL',
+    async (role) => {
+      const { app, findMany } = await setup();
+      const res = await request(app.getHttpServer())
+        .get('/admin/staff')
+        .set('x-role', role)
+        .expect(403);
+      expect(res.body.message).toBe('Không đủ quyền truy cập');
+      expect(findMany).not.toHaveBeenCalled();
+      await app.close();
+    },
+  );
 });
 
 describe('POST /admin/staff', () => {
   const tao = (app: any, body: object, role = 'MANAGER') =>
-    request(app.getHttpServer()).post('/admin/staff').set('x-role', role).send(body);
-  const hopLe = { phone: '0911222333', password: 'matkhau123', name: 'Thu ngân 2', role: 'CASHIER' };
+    request(app.getHttpServer())
+      .post('/admin/staff')
+      .set('x-role', role)
+      .send(body);
+  const hopLe = {
+    phone: '0911222333',
+    password: 'matkhau123',
+    name: 'Thu ngân 2',
+    role: 'CASHIER',
+  };
 
   it('tạo nhân viên: băm mật khẩu, lưu đúng vai trò, không trả passwordHash', async () => {
     const { app, create } = await setup();
 
     const res = await tao(app, hopLe).expect(201);
 
-    expect(res.body).toEqual({ phone: '0911222333', name: 'Thu ngân 2', role: 'CASHIER', isLocked: false });
+    expect(res.body).toEqual({
+      phone: '0911222333',
+      name: 'Thu ngân 2',
+      role: 'CASHIER',
+      isLocked: false,
+    });
     const { passwordHash, ...rest } = create.mock.calls[0][0].data;
-    expect(rest).toEqual({ phone: '0911222333', name: 'Thu ngân 2', role: 'CASHIER' });
+    expect(rest).toEqual({
+      phone: '0911222333',
+      name: 'Thu ngân 2',
+      role: 'CASHIER',
+    });
     expect(passwordHash).not.toBe('matkhau123');
     expect(await bcrypt.compare('matkhau123', passwordHash)).toBe(true);
     await app.close();
@@ -98,7 +158,11 @@ describe('POST /admin/staff', () => {
 
   it('+84 được đổi về 0, name là tùy chọn', async () => {
     const { app, create } = await setup();
-    await tao(app, { phone: '+84911222333', password: 'matkhau123', role: 'BARISTA' }).expect(201);
+    await tao(app, {
+      phone: '+84911222333',
+      password: 'matkhau123',
+      role: 'BARISTA',
+    }).expect(201);
     expect(create.mock.calls[0][0].data.phone).toBe('0911222333');
     await app.close();
   });
@@ -126,23 +190,32 @@ describe('POST /admin/staff', () => {
     await app.close();
   });
 
-  it.each(['CUSTOMER', 'BARISTA', 'CASHIER'])('403 với vai trò %s và không ghi gì', async (role) => {
-    const { app, create } = await setup();
-    await tao(app, hopLe, role).expect(403);
-    expect(create).not.toHaveBeenCalled();
-    await app.close();
-  });
+  it.each(['CUSTOMER', 'BARISTA', 'CASHIER'])(
+    '403 với vai trò %s và không ghi gì',
+    async (role) => {
+      const { app, create } = await setup();
+      await tao(app, hopLe, role).expect(403);
+      expect(create).not.toHaveBeenCalled();
+      await app.close();
+    },
+  );
 });
 
 describe('PATCH /admin/staff/:phone', () => {
   const sua = (app: any, phone: string, body: object, role = 'MANAGER') =>
-    request(app.getHttpServer()).patch(`/admin/staff/${phone}`).set('x-role', role).send(body);
+    request(app.getHttpServer())
+      .patch(`/admin/staff/${phone}`)
+      .set('x-role', role)
+      .send(body);
 
   it('khóa tài khoản nhân viên', async () => {
     const { app, update } = await setup();
     const res = await sua(app, '0911222333', { isLocked: true }).expect(200);
     expect(res.body).toMatchObject({ phone: '0911222333', isLocked: true });
-    expect(update.mock.calls[0][0]).toMatchObject({ where: { phone: '0911222333' }, data: { isLocked: true } });
+    expect(update.mock.calls[0][0]).toMatchObject({
+      where: { phone: '0911222333' },
+      data: { isLocked: true },
+    });
     await app.close();
   });
 
@@ -163,18 +236,26 @@ describe('PATCH /admin/staff/:phone', () => {
 
   it('đổi cả vai trò và khóa trong một lần', async () => {
     const { app, update } = await setup();
-    await sua(app, '0911222333', { role: 'BARISTA', isLocked: true }).expect(200);
-    expect(update.mock.calls[0][0].data).toEqual({ role: 'BARISTA', isLocked: true });
+    await sua(app, '0911222333', { role: 'BARISTA', isLocked: true }).expect(
+      200,
+    );
+    expect(update.mock.calls[0][0].data).toEqual({
+      role: 'BARISTA',
+      isLocked: true,
+    });
     await app.close();
   });
 
-  it.each(['MANAGER', 'CUSTOMER'])('409 khi đích là %s (không phải nhân viên), không ghi gì', async (role) => {
-    const { app, update } = await setup({ found: { role } });
-    const res = await sua(app, '0900000003', { isLocked: true }).expect(409);
-    expect(res.body.message).toBe('Chỉ quản lý được tài khoản nhân viên');
-    expect(update).not.toHaveBeenCalled();
-    await app.close();
-  });
+  it.each(['MANAGER', 'CUSTOMER'])(
+    '409 khi đích là %s (không phải nhân viên), không ghi gì',
+    async (role) => {
+      const { app, update } = await setup({ found: { role } });
+      const res = await sua(app, '0900000003', { isLocked: true }).expect(409);
+      expect(res.body.message).toBe('Chỉ quản lý được tài khoản nhân viên');
+      expect(update).not.toHaveBeenCalled();
+      await app.close();
+    },
+  );
 
   it('404 khi không có tài khoản', async () => {
     const { app, update } = await setup({ found: null });
@@ -202,11 +283,14 @@ describe('PATCH /admin/staff/:phone', () => {
     await app.close();
   });
 
-  it.each(['CUSTOMER', 'BARISTA', 'CASHIER'])('403 với vai trò %s và không đụng tới CSDL', async (role) => {
-    const { app, findUnique, update } = await setup();
-    await sua(app, '0911222333', { isLocked: true }, role).expect(403);
-    expect(findUnique).not.toHaveBeenCalled();
-    expect(update).not.toHaveBeenCalled();
-    await app.close();
-  });
+  it.each(['CUSTOMER', 'BARISTA', 'CASHIER'])(
+    '403 với vai trò %s và không đụng tới CSDL',
+    async (role) => {
+      const { app, findUnique, update } = await setup();
+      await sua(app, '0911222333', { isLocked: true }, role).expect(403);
+      expect(findUnique).not.toHaveBeenCalled();
+      expect(update).not.toHaveBeenCalled();
+      await app.close();
+    },
+  );
 });

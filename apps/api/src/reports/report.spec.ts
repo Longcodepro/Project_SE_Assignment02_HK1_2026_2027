@@ -1,19 +1,32 @@
 import { BadRequestException } from '@nestjs/common';
 import { buildReport, resolveRange, type ReportOrder } from './report.js';
 
-const item = (productId: number, quantity: number, name = `Món ${productId}`) => ({
+const item = (
+  productId: number,
+  quantity: number,
+  name = `Món ${productId}`,
+) => ({
   productId,
   quantity,
   product: { name },
 });
-const don = (status: string, total: number, createdAt: string, items = [item(1, 1)]): ReportOrder => ({
+const don = (
+  status: string,
+  total: number,
+  createdAt: string,
+  items = [item(1, 1)],
+): ReportOrder => ({
   status,
   total,
   createdAt: new Date(createdAt),
   items,
 });
-const bao = (orders: ReportOrder[], groupBy: 'day' | 'week' | 'month' = 'day', from = '2026-11-12', to = '2026-11-14') =>
-  buildReport({ from, to, groupBy, orders });
+const bao = (
+  orders: ReportOrder[],
+  groupBy: 'day' | 'week' | 'month' = 'day',
+  from = '2026-11-12',
+  to = '2026-11-14',
+) => buildReport({ from, to, groupBy, orders });
 
 describe('chỉ số', () => {
   const orders = [
@@ -42,21 +55,38 @@ describe('chỉ số', () => {
   });
 
   it('tỷ lệ hủy làm tròn 4 chữ số; không có đơn thì là 0, không chia cho 0', () => {
-    expect(bao([don('CANCELLED', 1, '2026-11-13T03:00:00Z'), don('PAID', 1, '2026-11-13T03:00:00Z'), don('PAID', 1, '2026-11-13T03:00:00Z')]).totals.cancelRate).toBe(0.3333);
+    expect(
+      bao([
+        don('CANCELLED', 1, '2026-11-13T03:00:00Z'),
+        don('PAID', 1, '2026-11-13T03:00:00Z'),
+        don('PAID', 1, '2026-11-13T03:00:00Z'),
+      ]).totals.cancelRate,
+    ).toBe(0.3333);
     const rong = bao([]);
-    expect(rong.totals).toEqual({ revenue: 0, completedOrders: 0, totalOrders: 0, cancelledOrders: 0, cancelRate: 0 });
+    expect(rong.totals).toEqual({
+      revenue: 0,
+      completedOrders: 0,
+      totalOrders: 0,
+      cancelledOrders: 0,
+      cancelRate: 0,
+    });
   });
 
   it('đơn đã hủy không cộng doanh thu dù đã từng PAID (total vẫn còn trên đơn)', () => {
-    expect(bao([don('CANCELLED', 50000, '2026-11-13T03:00:00Z')]).totals.revenue).toBe(0);
+    expect(
+      bao([don('CANCELLED', 50000, '2026-11-13T03:00:00Z')]).totals.revenue,
+    ).toBe(0);
   });
 
   it('totals bằng tổng của series', () => {
-    const r = bao(
-      [don('PAID', 10000, '2026-11-12T03:00:00Z'), don('COMPLETED', 20000, '2026-11-13T03:00:00Z'), don('CANCELLED', 5, '2026-11-14T03:00:00Z')],
-    );
-    const sum = (k: 'revenue' | 'completedOrders' | 'totalOrders' | 'cancelledOrders') =>
-      r.series.reduce((s, b) => s + b[k], 0);
+    const r = bao([
+      don('PAID', 10000, '2026-11-12T03:00:00Z'),
+      don('COMPLETED', 20000, '2026-11-13T03:00:00Z'),
+      don('CANCELLED', 5, '2026-11-14T03:00:00Z'),
+    ]);
+    const sum = (
+      k: 'revenue' | 'completedOrders' | 'totalOrders' | 'cancelledOrders',
+    ) => r.series.reduce((s, b) => s + b[k], 0);
     expect(r.totals.revenue).toBe(sum('revenue'));
     expect(r.totals.completedOrders).toBe(sum('completedOrders'));
     expect(r.totals.totalOrders).toBe(sum('totalOrders'));
@@ -64,7 +94,10 @@ describe('chỉ số', () => {
   });
 
   it('đơn nằm ngoài khoảng bị bỏ qua', () => {
-    const r = bao([don('PAID', 10000, '2026-11-20T03:00:00Z'), don('PAID', 10000, '2026-11-01T03:00:00Z')]);
+    const r = bao([
+      don('PAID', 10000, '2026-11-20T03:00:00Z'),
+      don('PAID', 10000, '2026-11-01T03:00:00Z'),
+    ]);
     expect(r.totals.totalOrders).toBe(0);
   });
 });
@@ -72,12 +105,19 @@ describe('chỉ số', () => {
 describe('gom theo kỳ', () => {
   it('ngày: mỗi ngày trong khoảng đều có mặt, kể cả ngày không có đơn', () => {
     const r = bao([don('PAID', 10000, '2026-11-13T03:00:00Z')]);
-    expect(r.series.map((s) => s.period)).toEqual(['2026-11-12', '2026-11-13', '2026-11-14']);
+    expect(r.series.map((s) => s.period)).toEqual([
+      '2026-11-12',
+      '2026-11-13',
+      '2026-11-14',
+    ]);
     expect(r.series.map((s) => s.revenue)).toEqual([0, 10000, 0]);
   });
 
   it('múi giờ Việt Nam: 16:59:59 UTC vẫn là hôm nay, 17:00:00 UTC đã sang ngày hôm sau', () => {
-    const r = bao([don('PAID', 1, '2026-11-12T16:59:59Z'), don('PAID', 2, '2026-11-12T17:00:00Z')]);
+    const r = bao([
+      don('PAID', 1, '2026-11-12T16:59:59Z'),
+      don('PAID', 2, '2026-11-12T17:00:00Z'),
+    ]);
     expect(r.series.map((s) => s.revenue)).toEqual([1, 2, 0]);
   });
 
@@ -103,7 +143,10 @@ describe('gom theo kỳ', () => {
 
   it('tháng: gom theo YYYY-MM, đơn cuối tháng theo giờ Việt Nam thuộc tháng sau', () => {
     const r = bao(
-      [don('PAID', 1, '2026-10-30T03:00:00Z'), don('PAID', 10, '2026-10-31T17:30:00Z')],
+      [
+        don('PAID', 1, '2026-10-30T03:00:00Z'),
+        don('PAID', 10, '2026-10-31T17:30:00Z'),
+      ],
       'month',
       '2026-10-30',
       '2026-11-02',
@@ -118,8 +161,18 @@ describe('gom theo kỳ', () => {
 describe('Top 5 món bán chạy', () => {
   it('cộng số ly qua nhiều đơn, giảm dần; bằng nhau thì productId nhỏ trước; tối đa 5', () => {
     const r = bao([
-      don('PAID', 1, '2026-11-13T03:00:00Z', [item(1, 2), item(2, 5), item(3, 5)]),
-      don('COMPLETED', 1, '2026-11-13T04:00:00Z', [item(1, 4), item(4, 1), item(5, 1), item(6, 1), item(7, 1)]),
+      don('PAID', 1, '2026-11-13T03:00:00Z', [
+        item(1, 2),
+        item(2, 5),
+        item(3, 5),
+      ]),
+      don('COMPLETED', 1, '2026-11-13T04:00:00Z', [
+        item(1, 4),
+        item(4, 1),
+        item(5, 1),
+        item(6, 1),
+        item(7, 1),
+      ]),
     ]);
     expect(r.topProducts.map((p) => [p.productId, p.quantity])).toEqual([
       [1, 6],
@@ -128,7 +181,11 @@ describe('Top 5 món bán chạy', () => {
       [4, 1],
       [5, 1],
     ]);
-    expect(r.topProducts[0]).toEqual({ productId: 1, productName: 'Món 1', quantity: 6 });
+    expect(r.topProducts[0]).toEqual({
+      productId: 1,
+      productName: 'Món 1',
+      quantity: 6,
+    });
   });
 
   it('chỉ tính đơn được tính doanh thu: bỏ CANCELLED, PENDING, PAYMENT_FAILED', () => {
@@ -138,7 +195,9 @@ describe('Top 5 món bán chạy', () => {
       don('PAYMENT_FAILED', 1, '2026-11-13T03:00:00Z', [item(1, 99)]),
       don('READY', 1, '2026-11-13T03:00:00Z', [item(2, 3)]),
     ]);
-    expect(r.topProducts).toEqual([{ productId: 2, productName: 'Món 2', quantity: 3 }]);
+    expect(r.topProducts).toEqual([
+      { productId: 2, productName: 'Món 2', quantity: 3 },
+    ]);
   });
 
   it('không có đơn nào thì là mảng rỗng', () => {
@@ -165,8 +224,12 @@ describe('resolveRange', () => {
   });
 
   it('tối đa 366 ngày: đúng 366 được, 367 thì 400', () => {
-    expect(() => resolveRange({ from: '2026-01-01', to: '2027-01-01' })).not.toThrow();
-    expect(() => resolveRange({ from: '2025-12-31', to: '2027-01-01' })).toThrow(BadRequestException);
+    expect(() =>
+      resolveRange({ from: '2026-01-01', to: '2027-01-01' }),
+    ).not.toThrow();
+    expect(() =>
+      resolveRange({ from: '2025-12-31', to: '2027-01-01' }),
+    ).toThrow(BadRequestException);
   });
 
   it.each([

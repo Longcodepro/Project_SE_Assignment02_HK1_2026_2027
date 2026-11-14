@@ -80,24 +80,54 @@ const toppings = [
   { code: 'thach-cafe', name: 'Thạch cà phê', price: 6000 },
 ];
 for (const t of toppings) {
-  await prisma.topping.upsert({ where: { code: t.code }, update: {}, create: t });
+  await prisma.topping.upsert({
+    where: { code: t.code },
+    update: {},
+    create: t,
+  });
 }
 for (const s of [
   { size: 'S', extra: 0 },
   { size: 'M', extra: 5000 },
   { size: 'L', extra: 10000 },
 ] as const) {
-  await prisma.sizeSurcharge.upsert({ where: { size: s.size }, update: {}, create: s });
+  await prisma.sizeSurcharge.upsert({
+    where: { size: s.size },
+    update: {},
+    create: s,
+  });
 }
 
 // Mã giảm giá (Sprint 3). update rỗng: chạy seed lại không ghi đè mã Manager đã sửa hay đặt lại usedCount.
 const promotions = [
-  { code: 'WELCOME10', discountType: 'PERCENT', discountValue: 10, minOrderAmount: 50000, maxUses: 1000 },
-  { code: 'GIAM15K', discountType: 'FIXED', discountValue: 15000, minOrderAmount: 80000, maxUses: null },
-  { code: 'BREW20', discountType: 'PERCENT', discountValue: 20, minOrderAmount: 100000, maxUses: 50 },
+  {
+    code: 'WELCOME10',
+    discountType: 'PERCENT',
+    discountValue: 10,
+    minOrderAmount: 50000,
+    maxUses: 1000,
+  },
+  {
+    code: 'GIAM15K',
+    discountType: 'FIXED',
+    discountValue: 15000,
+    minOrderAmount: 80000,
+    maxUses: null,
+  },
+  {
+    code: 'BREW20',
+    discountType: 'PERCENT',
+    discountValue: 20,
+    minOrderAmount: 100000,
+    maxUses: 50,
+  },
 ] as const;
 for (const p of promotions) {
-  await prisma.promotion.upsert({ where: { code: p.code }, update: {}, create: p });
+  await prisma.promotion.upsert({
+    where: { code: p.code },
+    update: {},
+    create: p,
+  });
 }
 
 // Tài khoản nhân viên (Sprint 3). Mật khẩu lấy từ SEED_STAFF_PASSWORD.
@@ -122,7 +152,9 @@ if (staffPassword) {
     });
   }
 } else {
-  console.log('Bỏ qua tài khoản nhân viên: production chưa đặt SEED_STAFF_PASSWORD');
+  console.log(
+    'Bỏ qua tài khoản nhân viên: production chưa đặt SEED_STAFF_PASSWORD',
+  );
 }
 
 await prisma.$disconnect();

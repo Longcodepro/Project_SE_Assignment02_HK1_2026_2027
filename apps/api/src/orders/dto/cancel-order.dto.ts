@@ -3,7 +3,11 @@ import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import { OrderStatus } from '../../generated/prisma/enums.js';
 
 export class CancelOrderDto {
-  @ApiProperty({ example: 2, minimum: 0, description: 'Lấy từ GET /orders/me; sai thì 409' })
+  @ApiProperty({
+    example: 2,
+    minimum: 0,
+    description: 'Lấy từ GET /orders/me; sai thì 409',
+  })
   @IsInt()
   @Min(0)
   version!: number;
@@ -23,7 +27,10 @@ export class CancelOrderResultDto {
   @ApiProperty({ example: 'ord_a1b2c3d4e5' })
   id!: string;
 
-  @ApiProperty({ enum: [OrderStatus.CANCELLED], example: OrderStatus.CANCELLED })
+  @ApiProperty({
+    enum: [OrderStatus.CANCELLED],
+    example: OrderStatus.CANCELLED,
+  })
   status!: string;
 
   @ApiProperty({ example: 3, description: 'Đã tăng 1' })

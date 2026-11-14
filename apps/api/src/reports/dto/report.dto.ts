@@ -6,12 +6,18 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MESSAGE = 'phải là ngày dạng YYYY-MM-DD';
 
 export class ReportQueryDto {
-  @ApiPropertyOptional({ example: '2026-11-01', description: 'Mặc định là to trừ 6 ngày' })
+  @ApiPropertyOptional({
+    example: '2026-11-01',
+    description: 'Mặc định là to trừ 6 ngày',
+  })
   @IsOptional()
   @Matches(DAY, { message: `from ${DAY_MESSAGE}` })
   from?: string;
 
-  @ApiPropertyOptional({ example: '2026-11-14', description: 'Mặc định là hôm nay (giờ Việt Nam)' })
+  @ApiPropertyOptional({
+    example: '2026-11-14',
+    description: 'Mặc định là hôm nay (giờ Việt Nam)',
+  })
   @IsOptional()
   @Matches(DAY, { message: `to ${DAY_MESSAGE}` })
   to?: string;
@@ -23,7 +29,10 @@ export class ReportQueryDto {
 }
 
 class ReportBucketDto {
-  @ApiProperty({ example: 1234000, description: 'VND, đơn PAID, PREPARING, READY, COMPLETED' })
+  @ApiProperty({
+    example: 1234000,
+    description: 'VND, đơn PAID, PREPARING, READY, COMPLETED',
+  })
   revenue!: number;
 
   @ApiProperty({ example: 12 })
@@ -35,12 +44,18 @@ class ReportBucketDto {
   @ApiProperty({ example: 2 })
   cancelledOrders!: number;
 
-  @ApiProperty({ example: 0.1, description: 'cancelledOrders / totalOrders, 4 chữ số thập phân' })
+  @ApiProperty({
+    example: 0.1,
+    description: 'cancelledOrders / totalOrders, 4 chữ số thập phân',
+  })
   cancelRate!: number;
 }
 
 class ReportSeriesDto extends ReportBucketDto {
-  @ApiProperty({ example: '2026-11-02', description: 'Ngày, thứ Hai của tuần, hoặc YYYY-MM' })
+  @ApiProperty({
+    example: '2026-11-02',
+    description: 'Ngày, thứ Hai của tuần, hoặc YYYY-MM',
+  })
   period!: string;
 }
 
@@ -71,6 +86,10 @@ export class ReportDto {
   @ApiProperty({ type: ReportSeriesDto, isArray: true })
   series!: ReportSeriesDto[];
 
-  @ApiProperty({ type: TopProductDto, isArray: true, description: 'Tối đa 5 món bán chạy nhất' })
+  @ApiProperty({
+    type: TopProductDto,
+    isArray: true,
+    description: 'Tối đa 5 món bán chạy nhất',
+  })
   topProducts!: TopProductDto[];
 }
