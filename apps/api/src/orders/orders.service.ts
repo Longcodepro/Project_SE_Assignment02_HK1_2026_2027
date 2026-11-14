@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
@@ -49,8 +50,9 @@ export class OrdersService {
     }
 
     const ids = [...new Set(dto.items.map((i) => i.productId))];
+    // Món của danh mục đang ẩn coi như không tồn tại
     const products = await this.prisma.product.findMany({
-      where: { id: { in: ids } },
+      where: { id: { in: ids }, category: { isActive: true } },
     });
     const productById = new Map(products.map((p) => [p.id, p]));
     const missing = ids.filter((id) => !productById.has(id));
@@ -67,13 +69,41 @@ export class OrdersService {
       );
     }
 
-    const items = dto.items.map((i) => ({
-      productId: i.productId,
-      quantity: i.quantity,
-      size: i.size,
-      toppings: i.toppings ?? [],
-      unitPrice: unitPrice(productById.get(i.productId)!.price, i.size, i.toppings ?? []),
-    }));
+    // Bảng giá lấy từ CSDL lúc đặt: đổi giá chỉ ảnh hưởng đơn tạo sau đó
+    const toppingCodes = [...new Set(dto.items.flatMap((i) => i.toppings ?? []))];
+    const [sizeRows, toppingRows] = await Promise.all([
+      this.prisma.sizeSurcharge.findMany(),
+      toppingCodes.length
+        ? this.prisma.topping.findMany({ where: { code: { in: toppingCodes }, isActive: true } })
+        : [],
+    ]);
+    const extraBySize = new Map(sizeRows.map((s) => [s.size, s.extra]));
+    const priceByTopping = new Map(toppingRows.map((t) => [t.code, t.price]));
+    const unknownToppings = toppingCodes.filter((c) => !priceByTopping.has(c));
+    if (unknownToppings.length) {
+      throw new BadRequestException(
+        `Topping không tồn tại hoặc đã ngừng bán: ${unknownToppings.join(', ')}`,
+      );
+    }
+
+    const items = dto.items.map((i) => {
+      const sizeExtra = extraBySize.get(i.size);
+      if (sizeExtra === undefined) {
+        throw new InternalServerErrorException(`Chưa cấu hình phụ thu cho size ${i.size}`);
+      }
+      const toppings = i.toppings ?? [];
+      return {
+        productId: i.productId,
+        quantity: i.quantity,
+        size: i.size,
+        toppings,
+        unitPrice: unitPrice(
+          productById.get(i.productId)!.price,
+          sizeExtra,
+          toppings.map((t) => priceByTopping.get(t)!),
+        ),
+      };
+    });
     const subtotal = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
 
     const promo = dto.promoCode

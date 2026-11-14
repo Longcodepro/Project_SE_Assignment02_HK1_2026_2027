@@ -6,7 +6,9 @@ export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll() {
+    // Món của danh mục đang ẩn không hiện trên menu
     const products = await this.prisma.product.findMany({
+      where: { category: { isActive: true } },
       orderBy: { id: 'asc' },
       include: {
         category: {
@@ -19,7 +21,7 @@ export class ProductsService {
 
   async findOne(id: number) {
     const product = await this.prisma.product.findUnique({
-      where: { id },
+      where: { id, category: { isActive: true } },
       include: {
         category: {
           select: { id: true, name: true },

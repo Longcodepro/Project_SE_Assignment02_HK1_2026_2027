@@ -1,7 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { OrderStatus, Size } from '../../generated/prisma/enums.js';
 import { OrderReviewDto } from '../../reviews/dto/review.dto.js';
-import { TOPPING_PRICE } from '../pricing.js';
 
 // Kết quả POST /orders
 export class OrderSummaryDto {
@@ -34,7 +33,7 @@ export class OrderHistoryItemDto {
   @ApiProperty({ enum: Size, example: Size.M })
   size!: string;
 
-  @ApiProperty({ enum: Object.keys(TOPPING_PRICE), isArray: true, example: ['tran-chau'] })
+  @ApiProperty({ type: String, isArray: true, example: ['tran-chau'], description: 'Mã topping (xem GET /menu-options)' })
   toppings!: string[];
 
   @ApiProperty({ example: 42000, description: 'VND, giá 1 ly đã gồm size + topping' })

@@ -26,10 +26,30 @@ async function setup(
   const findMany = vi.fn().mockResolvedValue(products);
   const promoFindUnique = vi.fn().mockResolvedValue(promo);
   const promoUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
+  // Bảng giá trong CSDL; test đổi giá bằng cách sửa các mảng này
+  const sizeRows = [
+    { size: 'S', extra: 0 },
+    { size: 'M', extra: 5000 },
+    { size: 'L', extra: 10000 },
+  ];
+  const toppingRows = [
+    { code: 'tran-chau', price: 8000, isActive: true },
+    { code: 'kem-cheese', price: 10000, isActive: true },
+    { code: 'thach-cafe', price: 6000, isActive: true },
+    { code: 'pudding', price: 7000, isActive: false },
+  ];
+  const sizeFindMany = vi.fn().mockImplementation(() => Promise.resolve(sizeRows));
+  const toppingFindMany = vi
+    .fn()
+    .mockImplementation(({ where }) =>
+      Promise.resolve(toppingRows.filter((t) => where.code.in.includes(t.code) && t.isActive === where.isActive)),
+    );
   const db = {
     product: { findMany },
     order: { create, findMany: findManyOrders, findUnique },
     promotion: { findUnique: promoFindUnique, updateMany: promoUpdateMany },
+    sizeSurcharge: { findMany: sizeFindMany },
+    topping: { findMany: toppingFindMany },
   };
   const moduleRef = await Test.createTestingModule({
     controllers: [OrdersController],
@@ -53,7 +73,19 @@ async function setup(
   const app = moduleRef.createNestApplication();
   app.useGlobalPipes(createValidationPipe());
   await app.init();
-  return { app, create, findManyOrders, findUnique, promoFindUnique, promoUpdateMany };
+  return {
+    app,
+    create,
+    findMany,
+    findManyOrders,
+    findUnique,
+    promoFindUnique,
+    promoUpdateMany,
+    sizeRows,
+    toppingRows,
+    sizeFindMany,
+    toppingFindMany,
+  };
 }
 
 describe('POST /orders', () => {
@@ -78,7 +110,7 @@ describe('POST /orders', () => {
     ['thiếu items', {}],
     ['số lượng 0', { items: [{ ...item, quantity: 0 }] }],
     ['size lạ', { items: [{ ...item, size: 'XL' }] }],
-    ['topping lạ', { items: [{ ...item, toppings: ['la'] }] }],
+    ['topping sai định dạng', { items: [{ ...item, toppings: ['La La'] }] }],
     ['trường thừa (giá do client gửi)', { items: [{ ...item, price: 1 }] }],
   ])('400 khi %s', async (_name, body) => {
     const { app, create } = await setup();
@@ -115,6 +147,97 @@ describe('POST /orders', () => {
 
     expect(res.body.message).toMatch(/hết hàng/);
     expect(create).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe('POST /orders: bảng giá lấy từ CSDL', () => {
+  const dat = (app: any, body: object) => request(app.getHttpServer()).post('/orders').send(body);
+
+  it('giá seed cho kết quả như bảng giá cũ: 29000 + M 5000 + trân châu 8000, đủ ba size và ba topping', async () => {
+    const { app, create } = await setup();
+    await dat(app, { items: [{ productId: 1, quantity: 1, size: 'S' }] }).expect(201);
+    await dat(app, { items: [{ productId: 1, quantity: 1, size: 'L', toppings: ['kem-cheese', 'thach-cafe'] }] }).expect(201);
+    expect(create.mock.calls[0][0].data.total).toBe(29000);
+    // 29000 + 10000 (L) + 10000 + 6000
+    expect(create.mock.calls[1][0].data.total).toBe(55000);
+    await app.close();
+  });
+
+  it('Manager đổi phụ thu size và giá topping thì đơn tạo sau tính theo giá mới', async () => {
+    const { app, create, sizeRows, toppingRows } = await setup();
+    sizeRows.find((s) => s.size === 'M')!.extra = 7000;
+    toppingRows.find((t) => t.code === 'tran-chau')!.price = 9000;
+
+    await dat(app, { items: [item] }).expect(201);
+
+    // 2 × (29000 + 7000 + 9000)
+    expect(create.mock.calls[0][0].data.total).toBe(90000);
+    expect(create.mock.calls[0][0].data.items.create[0].unitPrice).toBe(45000);
+    await app.close();
+  });
+
+  it('chỉ tra topping đang bán trong các mã khách chọn; không có topping thì không tra bảng topping', async () => {
+    const { app, toppingFindMany } = await setup();
+    await dat(app, { items: [{ productId: 1, quantity: 1, size: 'M' }] }).expect(201);
+    expect(toppingFindMany).not.toHaveBeenCalled();
+    await dat(app, { items: [item, item] }).expect(201);
+    expect(toppingFindMany.mock.calls[0][0].where).toEqual({ code: { in: ['tran-chau'] }, isActive: true });
+    await app.close();
+  });
+
+  it.each([
+    ['topping không tồn tại', ['khong-co'], /không tồn tại hoặc đã ngừng bán: khong-co/],
+    ['topping đã ngừng bán', ['pudding'], /đã ngừng bán: pudding/],
+    ['nhiều topping lạ', ['khong-co', 'cung-khong'], /khong-co, cung-khong/],
+  ])('400 khi %s, không tạo đơn', async (_ten, toppings, message) => {
+    const { app, create } = await setup();
+    const res = await dat(app, { items: [{ productId: 1, quantity: 1, size: 'M', toppings }] }).expect(400);
+    expect(res.body.message).toMatch(message);
+    expect(create).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('400 khi mã topping sai định dạng; size ngoài S, M, L', async () => {
+    const { app, toppingFindMany } = await setup();
+    await dat(app, { items: [{ productId: 1, quantity: 1, size: 'M', toppings: ['Tran Chau'] }] }).expect(400);
+    await dat(app, { items: [{ productId: 1, quantity: 1, size: 'XL' }] }).expect(400);
+    expect(toppingFindMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('500 khi bảng phụ thu thiếu size (cấu hình sai), không tạo đơn với giá sai', async () => {
+    const { app, create, sizeRows } = await setup();
+    sizeRows.splice(sizeRows.findIndex((s) => s.size === 'M'), 1);
+    await dat(app, { items: [item] }).expect(500);
+    expect(create).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('món của danh mục đang ẩn coi như không tồn tại', async () => {
+    const { app, findMany, create } = await setup(undefined, undefined, []);
+    const res = await dat(app, { items: [item] }).expect(400);
+    expect(findMany.mock.calls[0][0].where).toEqual({ id: { in: [1] }, category: { isActive: true } });
+    expect(res.body.message).toMatch(/Sản phẩm không tồn tại: 1/);
+    expect(create).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('đổi giá không ảnh hưởng đơn đã đặt: lịch sử đọc unitPrice đã lưu, không tra bảng giá', async () => {
+    const stored = {
+      id: 'ord_1', status: 'PAID', total: 84000, createdAt: new Date('2026-11-01T00:00:00Z'),
+      items: [{ productId: 1, quantity: 2, size: 'M', toppings: ['tran-chau'], unitPrice: 42000, product: { name: 'Cà phê sữa' } }],
+    };
+    const { app, toppingRows, sizeRows, sizeFindMany, toppingFindMany } = await setup(vi.fn().mockResolvedValue([stored]));
+    toppingRows.find((t) => t.code === 'tran-chau')!.price = 20000;
+    sizeRows.find((s) => s.size === 'M')!.extra = 20000;
+
+    const res = await request(app.getHttpServer()).get('/orders/me').expect(200);
+
+    expect(res.body[0].total).toBe(84000);
+    expect(res.body[0].items[0].unitPrice).toBe(42000);
+    expect(sizeFindMany).not.toHaveBeenCalled();
+    expect(toppingFindMany).not.toHaveBeenCalled();
     await app.close();
   });
 });

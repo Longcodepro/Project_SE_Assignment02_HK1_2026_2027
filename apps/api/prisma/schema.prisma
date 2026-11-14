@@ -10,12 +10,15 @@ datasource db {
 model Category {
   id       Int       @id @default(autoincrement())
   name     String
+  // false: ẩn danh mục cùng các món của nó khỏi menu
+  isActive Boolean   @default(true)
   products Product[]
 }
 
 model Product {
   id          Int          @id @default(autoincrement())
   name        String
+  description String?
   // VND, size S
   price       Int
   imageUrl    String
