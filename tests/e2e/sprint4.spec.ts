@@ -133,11 +133,20 @@ test.describe('Sprint 4 - Quản lý Kho nguyên liệu & Công thức (FR-15, F
     expect(nguyenLieuSauBan.stock).toBe(985);
 
     // 4. Khách hủy đơn đã thanh toán -> Hệ thống phải tự động hoàn lại 15 đơn vị kho
+       // 4. Khách hủy đơn đã thanh toán -> Hệ thống phải tự động hoàn lại 15 đơn vị kho
+    // Lấy thông tin đơn hiện tại để có số version mới nhất sau khi thanh toán
+    const resDs = await request.get(`${API}/orders/me`, { headers: khach.headers });
+    const donHienTai = (await resDs.json()).find((o: { id: string }) => o.id === don.id);
+
+    // Gửi request hủy đơn kèm version và reason -> Backend trả về 200 OK
     const resHuy = await request.post(`${API}/orders/${don.id}/cancel`, {
       headers: khach.headers,
-      data: { reason: 'E2E test hủy đơn hoàn kho' },
+      data: {
+        version: donHienTai.version,
+        reason: 'E2E test hủy đơn hoàn kho',
+      },
     });
-    expect(resHuy.status()).toBe(201);
+    expect(resHuy.status()).toBe(200);
 
     // Kiểm tra tồn kho sau khi hủy: Phải được hoàn lại chính xác về 1.000
     const resKhoSauHuy = await request.get(`${API}/admin/ingredients`, { headers: manager.headers });
