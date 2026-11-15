@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Product, Order, CreatedOrder, AuthResponse, User, LoyaltyInfo, KdsOrder, CashierOrder, AdminCategory, AdminProduct, AdminTopping, SizeSurcharge, Ingredient, CreateReceiptPayload, ProductRecipe, } from "@/types";
+import { Product, Order, CreatedOrder, AuthResponse, User, LoyaltyInfo, KdsOrder, CashierOrder, AdminCategory, AdminProduct, AdminTopping, SizeSurcharge, Ingredient, CreateReceiptPayload, ProductRecipe, StaffUser, CreateStaffPayload, AdminPromotion, CreatePromotionPayload, ReportData,} from "@/types";
 
 // Lấy URL Backend động: ưu tiên custom URL trong localStorage (để test trên mobile / demo từ xa), sau đó đến biến môi trường
 export const getApiUrl = (): string => {
@@ -463,6 +463,61 @@ export const apiService = {
      // 4. Xem công thức pha chế của một món theo từng size (S, M, L)
     getProductRecipe: async (productId: number, token: string): Promise<ProductRecipe> => {
         const res = await axios.get(`${getApiUrl()}/admin/products/${productId}/recipe`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    // ==========================================
+    // QUẢN TRỊ VIÊN: NHÂN SỰ, VOUCHER, BÁO CÁO (S4.10)
+    // ==========================================
+    // 1. Nhân sự
+    getAdminStaff: async (token: string): Promise<StaffUser[]> => {
+        const res = await axios.get(`${getApiUrl()}/admin/staff`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    createStaff: async (data: CreateStaffPayload, token: string): Promise<StaffUser> => {
+        const res = await axios.post(`${getApiUrl()}/admin/staff`, data, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    updateStaff: async (phone: string, data: { role?: 'BARISTA' | 'CASHIER'; isLocked?: boolean }, token: string) => {
+        const res = await axios.patch(`${getApiUrl()}/admin/staff/${phone}`, data, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+      // 2. Quản lý Voucher (Mã giảm giá)
+    getAdminPromotions: async (token: string): Promise<AdminPromotion[]> => {
+        const res = await axios.get(`${getApiUrl()}/admin/promotions`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    createPromotion: async (data: CreatePromotionPayload, token: string): Promise<AdminPromotion> => {
+        const res = await axios.post(`${getApiUrl()}/admin/promotions`, data, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    updatePromotion: async (id: number, data: { isActive?: boolean }, token: string) => {
+        const res = await axios.patch(`${getApiUrl()}/admin/promotions/${id}`, data, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    // 3. Báo cáo doanh thu & sản lượng
+    getAdminReports: async (groupBy: 'day' | 'week' | 'month', token: string): Promise<ReportData> => {
+        const res = await axios.get(`${getApiUrl()}/admin/reports?groupBy=${groupBy}`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         return res.data;

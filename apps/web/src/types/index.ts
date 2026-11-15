@@ -188,3 +188,67 @@ export interface ProductRecipe {
   productId: number;
   items: RecipeItem[];
 }
+
+export interface StaffUser {
+  phone: string;
+  name: string | null;
+  role: 'BARISTA' | 'CASHIER' | 'MANAGER';
+  isLocked: boolean;
+  createdAt: string;
+}
+
+export interface CreateStaffPayload {
+  phone: string;
+  password: string;
+  name?: string;
+  role: 'BARISTA' | 'CASHIER';
+}
+
+export interface AdminPromotion {
+  id: number;
+  code: string;
+  discountType: 'FIXED' | 'PERCENT';
+  discountValue: number;
+  minOrderAmount: number;
+  maxUses: number | null;
+  usedCount: number;
+  expiryDate: string | null;
+  isActive: boolean;
+}
+
+export interface CreatePromotionPayload {
+  code: string;
+  discountType: 'FIXED' | 'PERCENT';
+  discountValue: number;
+  minOrderAmount?: number;
+  maxUses?: number;
+  expiryDate?: string;
+}
+
+export interface ReportBucket {
+  revenue: number;
+  completedOrders: number;
+  totalOrders: number;
+  cancelledOrders: number;
+  cancelRate: number;
+}
+
+export interface ReportSeriesItem extends ReportBucket {
+  period: string;
+}
+
+export interface TopProductItem {
+  productId: number;
+  productName: string;
+  quantity: number;
+}
+
+export interface ReportData {
+  from: string;
+  to: string;
+  groupBy: 'day' | 'week' | 'month';
+  totals: ReportBucket;
+  series: ReportSeriesItem[];
+  topProducts: TopProductItem[];
+}
+

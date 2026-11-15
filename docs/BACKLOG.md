@@ -342,7 +342,7 @@ Mã chức năng (`CN`), yêu cầu (`FR`) và use case (`UC`) theo `docs/requir
 |:---:|---|:---:|---|---|:---:|
 | `CN-11` | Quản lý menu, danh mục, topping (CRUD) | 4 | FR-18 | UC-15 | **Done** (S4.2 API) |
 | `CN-12` | Kho nguyên liệu và công thức pha chế (thay cờ `isAvailable`) | 4 | FR-15, FR-16, FR-17 | UC-14, UC-16, UC-17 | **Done** (S4.4, S4.5 API) |
-| `CN-13` | Nhân sự, voucher, báo cáo (Issue #27) | 4 | FR-11, FR-14, FR-19 | UC-18, UC-21, UC-19 | **Done** (S4.1, S4.7, S4.8, S4.9 API) |
+| `CN-13` | Nhân sự, voucher, báo cáo (Issue #27) | 4 | FR-11, FR-14, FR-19 | UC-18, UC-21, UC-19 | **Done** (S4.1, S4.7, S4.8, S4.9 API, S4.10 Web) |
 
 ---
 
