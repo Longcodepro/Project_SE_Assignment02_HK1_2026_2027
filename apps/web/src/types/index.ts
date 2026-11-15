@@ -161,3 +161,30 @@ export interface SizeSurcharge {
   size: 'S' | 'M' | 'L';
   surcharge: number;
 }
+
+export interface Ingredient {
+  id: number;
+  name: string;
+  unit: string;
+  stock: number;
+  minStock: number;
+  isLow: boolean;
+}
+
+export interface CreateReceiptPayload {
+  quantity: number;
+  note?: string;
+}
+
+export interface RecipeItem {
+  size: string;
+  ingredientId: number;
+  ingredientName: string;
+  unit: string;
+  quantity: number;
+}
+
+export interface ProductRecipe {
+  productId: number;
+  items: RecipeItem[];
+}
