@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Product, Order, CreatedOrder, AuthResponse, User, LoyaltyInfo, KdsOrder, CashierOrder } from "@/types";
+import { Product, Order, CreatedOrder, AuthResponse, User, LoyaltyInfo, KdsOrder, CashierOrder, AdminCategory, AdminProduct, AdminTopping, SizeSurcharge, } from "@/types";
 
 // Lấy URL Backend động: ưu tiên custom URL trong localStorage (để test trên mobile / demo từ xa), sau đó đến biến môi trường
 export const getApiUrl = (): string => {
@@ -372,4 +372,61 @@ export const apiService = {
         }
     },
 
+    // --- CỤM API QUẢN TRỊ MENU (TASK S4.3) ---
+    getAdminCategories: async (token: string): Promise<AdminCategory[]> => {
+        const res = await axios.get(`${getApiUrl()}/admin/categories`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    updateCategory: async (id: number, data: { name?: string; isActive?: boolean }, token: string) => {
+        const res = await axios.patch(`${getApiUrl()}/admin/categories/${id}`, data, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+
+    getAdminProducts: async (token: string): Promise<AdminProduct[]> => {
+        const res = await axios.get(`${getApiUrl()}/admin/products`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    updateProduct: async (id: number, data: Partial<AdminProduct>, token: string) => {
+        const res = await axios.patch(`${getApiUrl()}/admin/products/${id}`, data, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    getAdminToppings: async (token: string): Promise<AdminTopping[]> => {
+        const res = await axios.get(`${getApiUrl()}/admin/toppings`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    updateTopping: async (code: string, data: { name?: string; price?: number; isAvailable?: boolean }, token: string) => {
+        const res = await axios.patch(`${getApiUrl()}/admin/toppings/${code}`, data, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    getAdminSizes: async (token: string): Promise<SizeSurcharge[]> => {
+        const res = await axios.get(`${getApiUrl()}/admin/sizes`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    updateSize: async (size: string, surcharge: number, token: string) => {
+        const res = await axios.patch(`${getApiUrl()}/admin/sizes/${size}`, { surcharge }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    }
 };

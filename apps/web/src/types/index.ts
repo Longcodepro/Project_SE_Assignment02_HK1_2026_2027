@@ -133,3 +133,31 @@ export interface KdsOrder{
     createdAt: string;
     items: KdsItem[];
 }
+
+export interface AdminCategory {
+  id: number;
+  name: string;
+  isActive: boolean;
+}
+
+export interface AdminProduct {
+  id: number;
+  name: string;
+  price: number;
+  imageUrl: string;
+  isAvailable: boolean;
+  categoryId: number;
+  category?: { id: number; name: string };
+}
+
+export interface AdminTopping {
+  code: string;
+  name: string;
+  price: number;
+  isAvailable: boolean;
+}
+
+export interface SizeSurcharge {
+  size: 'S' | 'M' | 'L';
+  surcharge: number;
+}
