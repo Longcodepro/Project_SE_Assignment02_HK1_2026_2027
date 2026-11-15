@@ -1,0 +1,380 @@
+% !TEX program = xelatex
+% Báo cáo Assignment 2 - BrewLite. Biên dịch: latexmk -xelatex BaoCao_Assignment2.tex
+\documentclass[12pt, a4paper]{article}
+\newcommand{\tenLong}{Nguyễn Thành Long}
+\newcommand{\tenTai}{Trần Quốc Tài}
+\newcommand{\mssvLong}{MSSV: ..........}   % TODO: điền MSSV
+\newcommand{\mssvTai}{MSSV: ..........}    % TODO: điền MSSV
+\newcommand{\sgufooter}{Bài tập lớn môn Công nghệ phần mềm -- Assignment 2 -- HK1 2026-2027}
+\input{sgu}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcommand{\hinh}[3]{\begin{figure}[!htbp]\centering
+  \includegraphics[width=#2\textwidth, height=0.78\textheight, keepaspectratio]{hinh/#1.png}
+  \caption{#3}\end{figure}}
+% Sơ đồ rộng: xoay 90 độ, dùng hết chiều cao trang để chữ đọc được
+\newcommand{\hinhxoay}[2]{\begin{figure}[p]\centering
+  \includegraphics[angle=90, width=0.95\textwidth, height=0.88\textheight, keepaspectratio]{hinh/#1.png}
+  \caption{#2}\end{figure}}
+
+\begin{document}
+\sgutitle{BrewLite -- Requirements to Deployment}{Assignment 2: Từ yêu cầu đến triển khai}{THÁNG 11/2026}
+
+% =====================================================================
+\section{Giới thiệu}
+\subsection{Mục tiêu}
+Assignment 2 tiếp tục đề tài BrewLite của Assignment 1 nhưng đánh giá \emph{toàn bộ quy trình kỹ thuật phần mềm}:
+khai thác và đặc tả yêu cầu, mô hình hóa phân tích thiết kế, thiết kế kiến trúc, hiện thực qua 4 Sprint theo Scrum,
+thiết lập CI/CD tự động và triển khai lên môi trường sản xuất truy cập được trên Internet.
+Đề thi~\cite{de} gồm 5 task trọng tâm (mỗi task 2 điểm) cùng ma trận truy vết khép kín:
+yêu cầu $\rightarrow$ use-case / user story $\rightarrow$ sơ đồ thiết kế $\rightarrow$ mã nguồn $\rightarrow$ kiểm thử.
+Luồng nghiệp vụ cốt lõi giữ nguyên và mở rộng:
+\emph{xem menu $\rightarrow$ chọn tùy chọn size/topping $\rightarrow$ giỏ hàng $\rightarrow$ áp mã voucher $\rightarrow$ đặt đơn $\rightarrow$ thanh toán không tiền mặt $\rightarrow$ pha chế KDS $\rightarrow$ nhận món tại quầy $\rightarrow$ đánh giá dịch vụ}.
+
+\subsection{Khác biệt so với Assignment 1}
+\begin{table}[!htbp]\centering\small
+\begin{tabularx}{\textwidth}{@{}L{3cm} X X@{}}
+\toprule & \textbf{Assignment 1} & \textbf{Assignment 2} \\ \midrule
+Trọng tâm & Hiện thực nghiệp vụ end-to-end theo Scrum & Quy trình công nghệ phần mềm từ yêu cầu đến triển khai \\
+Kho mã & Kho riêng, chứng minh phân công từng thành viên & Monorepo (\fpath{apps/web}, \fpath{apps/api}, \fpath{docs/}, \fpath{tests/}) \\
+Tài liệu & User stories, backlog tiến độ & SRS (FR/NFR, MoSCoW), use-case, 6 sơ đồ PlantUML, ADR, RTM \\
+Triển khai & Docker Compose chạy cục bộ & CI/CD tự động, Production trên Internet (Vercel, Render, Neon), E2E \\
+Phạm vi & 10 task (Sprint 1--3 cục bộ) & 21 Functional Requirements (4 Sprint hoàn chỉnh) \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Nhóm, kho mã và sản phẩm}
+\begin{itemize}
+  \item Nhóm: \tenLong{} (\texttt{Longcodepro}) -- Backend, DevOps, Scrum Master, Kiến trúc; \tenTai{} (\texttt{TaiTran263}) -- Frontend, UI/UX, Yêu cầu và Ma trận truy vết.
+  \item Kho mã nguồn: \url{https://github.com/Longcodepro/Project_SE_Assignment02_HK1_2026_2027}.
+  \item Frontend Production (Vercel): \url{https://se-as2-brewlite.vercel.app}.
+  \item Backend Production (Render): \url{https://brewlite-api.onrender.com}, endpoint kiểm tra sức khỏe tại \texttt{/health}, tài liệu OpenAPI/Swagger tại \texttt{/docs}.
+  \item Cơ sở dữ liệu: PostgreSQL 16 lưu trữ trên Neon Serverless Database (Singapore, kết nối bảo mật qua SSL \texttt{sslmode=require}).
+  \item Công nghệ cốt lõi: Next.js 16 (App Router)~\cite{next}, NestJS 12~\cite{nest}, Prisma ORM 7~\cite{prisma}, Tailwind CSS, Zustand, Vitest, Playwright, Docker, GitHub Actions.
+\end{itemize}
+
+% =====================================================================
+\section{Task 1: Khai thác và đặc tả yêu cầu}
+\subsection{Bối cảnh, stakeholder và phạm vi}
+Quán cà phê vừa và nhỏ cần giải pháp tiếp nhận đơn và thanh toán không tiền mặt trực tiếp trên thiết bị di động của khách hàng,
+giúp giảm thiểu thời gian xếp hàng tại quầy và nâng cao hiệu suất phục vụ trong giờ cao điểm.
+Nguồn sự thật cho phần này là tài liệu \fpath{docs/requirements/context-and-scope.md}.
+
+\begin{table}[!htbp]\centering\small
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule \textbf{Stakeholder} & \textbf{Mục tiêu chính} \\ \midrule
+Khách hàng & Đặt món nhanh, tùy chọn size/topping linh hoạt, thanh toán tiện lợi, áp voucher, theo dõi đơn \\
+Nhân viên pha chế (Barista) & Nhận thông tin đơn hàng thanh toán thành công theo thời gian thực trên màn KDS, đổi trạng thái pha chế \\
+Nhân viên thu ngân (Cashier) & Xác thực mã nhận hàng 6 số của khách để giao món chính xác; xử lý hủy đơn tại quầy khi cần \\
+Quản lý cửa hàng (Manager) & Quản lý danh mục, menu, bảng giá, kho nguyên liệu, công thức pha chế, tài khoản nhân sự và xem báo cáo \\
+Cổng thanh toán (mô phỏng) & Xử lý giao dịch thanh toán Thẻ/Ví an toàn, toàn vẹn và chống gửi trùng lặp \\
+Nhóm phát triển & Thiết kế hệ thống đúng kiến trúc, kiểm thử tự động toàn diện, giao hàng đúng cam kết \\
+Giảng viên hướng dẫn & Nghiệm thu tính đầy đủ của quy trình kỹ thuật phần mềm, tài liệu và mức độ chạy thực tế \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Phạm vi hệ thống hoàn chỉnh (Sprint 1--4):}
+Xem menu theo danh mục kèm tìm kiếm và 3 trạng thái giao diện; tùy chọn size S/M/L và topping; giỏ hàng Zustand lưu \texttt{localStorage};
+đăng ký/đăng nhập số điện thoại chuẩn hóa, xác thực JWT; tạo đơn hàng với giá và phụ thu do server tính toán;
+thanh toán mô phỏng Thẻ/Ví, chống gửi trùng bằng \texttt{Idempotency-Key}; vòng đời đơn và khóa lạc quan \texttt{version};
+tích điểm thưởng thành viên; màn hình pha chế KDS; mã nhận hàng 6 số giao món; áp dụng voucher giảm giá;
+hủy đơn an toàn trước pha chế (hoàn tiền, kho, điểm); đánh giá dịch vụ 1--5 sao;
+quản lý kho nguyên liệu tự động trừ/hoàn kho và cảnh báo ngưỡng tồn; quản lý công thức BOM; quản lý bảng giá CSDL;
+quản trị nhân sự 4 vai trò; báo cáo phân tích doanh thu và sản lượng.
+
+\subsection{Yêu cầu chức năng và phi chức năng}
+Hệ thống gồm 21 yêu cầu chức năng (\texttt{FR-01}--\texttt{FR-21}) và 5 yêu cầu phi chức năng (\texttt{NFR-01}--\texttt{NFR-05}),
+được phân loại theo thang ưu tiên MoSCoW và chia theo 4 Sprint phát triển. Toàn bộ 21 yêu cầu chức năng đều đã được hiện thực và kiểm thử đầy đủ trên nhánh \texttt{main}.
+
+\begin{table}[!htbp]\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{@{}l X c l l@{}}
+\toprule \textbf{Mã} & \textbf{Yêu cầu chức năng} & \textbf{Sprint} & \textbf{MoSCoW} & \textbf{Trạng thái} \\ \midrule
+FR-01 & Xem menu theo danh mục, tìm kiếm/lọc, nhãn hết hàng & 1 & Must & Đã hoàn thành \\
+FR-02 & Tùy biến size (S/M/L) và topping, xem giá tạm tính & 2 & Must & Đã hoàn thành \\
+FR-03 & Quản lý giỏ hàng phía Client, lưu bền vững \texttt{localStorage} & 2 & Must & Đã hoàn thành \\
+FR-04 & Đăng ký, đăng nhập bằng số điện thoại, JWT, phân vai trò & 2 & Must & Đã hoàn thành \\
+FR-05 & Tạo đơn hàng, giá niêm yết do server tính toán độc quyền & 2 & Must & Đã hoàn thành \\
+FR-06 & Thanh toán mô phỏng Thẻ/Ví, bảo mật không lưu số thẻ thô & 2 & Must & Đã hoàn thành \\
+FR-07 & Lịch sử đơn hàng cá nhân, theo dõi trạng thái tự động (polling) & 2 & Must & Đã hoàn thành \\
+FR-08 & Vòng đời đơn hàng theo máy trạng thái, khóa lạc quan \texttt{version} & 2 & Must & Đã hoàn thành \\
+FR-09 & Chống thanh toán trùng lặp bằng header \texttt{Idempotency-Key} & 2 & Must & Đã hoàn thành \\
+FR-10 & Tích điểm thành viên 1 điểm / 1.000đ, xem số dư và lịch sử & 2 & Should & Đã hoàn thành \\
+FR-11 & Quản lý và áp dụng Voucher (khách áp mã, Manager quản lý mã) & 3, 4 & Could & Đã hoàn thành \\
+FR-12 & Hủy đơn trước khi pha chế, hoàn tiền/kho/điểm/lượt mã an toàn & 3 & Could & Đã hoàn thành \\
+FR-13 & Khách hàng đánh giá 1--5 sao cho đơn hàng đã hoàn tất & 3 & Could & Đã hoàn thành \\
+FR-14 & Báo cáo doanh thu, sản lượng, tỷ lệ hủy đơn, Top 5 món bán chạy & 4 & Could & Đã hoàn thành \\
+FR-15 & Quản lý kho nguyên liệu, tự động trừ/hoàn kho theo đơn hàng & 4 & Could & Đã hoàn thành \\
+FR-16 & Quản lý công thức pha chế (BOM) theo món, kích cỡ và topping & 4 & Could & Đã hoàn thành \\
+FR-17 & Tự động phát hiện và cảnh báo nguyên liệu chạm ngưỡng tối thiểu & 4 & Could & Đã hoàn thành \\
+FR-18 & Quản lý danh mục, món, topping và bảng giá phụ thu trong CSDL & 4 & Could & Đã hoàn thành \\
+FR-19 & Quản lý tài khoản nhân sự (Barista, Cashier, Manager), khóa/mở tài khoản & 4 & Could & Đã hoàn thành \\
+FR-20 & Màn hình KDS cho Barista (\texttt{PAID} $\rightarrow$ \texttt{PREPARING} $\rightarrow$ \texttt{READY}) & 3 & Could & Đã hoàn thành \\
+FR-21 & Sinh mã nhận hàng 6 số, Cashier xác thực giao món (\texttt{COMPLETED}) & 3 & Could & Đã hoàn thành \\ \bottomrule
+\end{tabularx}
+\caption{Danh mục 21 yêu cầu chức năng (FR) của hệ thống BrewLite}
+\end{table}
+
+\begin{table}[!htbp]\centering\small
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule \textbf{Mã} & \textbf{Nhóm chất lượng} & \textbf{Nội dung đặc tả kỹ thuật} \\ \midrule
+NFR-01 & Bảo mật & Server độc quyền định giá; mật khẩu băm \texttt{bcryptjs}; JWT xác thực không secret mặc định; không lưu số thẻ thô; không lộ secret ra git \\
+NFR-02 & Độ tin cậy & Production chuẩn HTTPS; kiểm tra \texttt{GET /health}; xử lý đồng thời qua khóa lạc quan; môi trường tái tạo bằng Docker Compose \\
+NFR-03 & Bảo trì, kiểm thử & Mọi PR phải vượt qua CI tự động (Lint, Test, Build); API có Swagger OpenAPI; migration CSDL có phiên bản \\
+NFR-04 & Khả dụng (UX) & Thiết kế Mobile-first chuẩn responsive; menu có đủ 3 trạng thái: Skeleton Loading, Empty State, Error + Retry \\
+NFR-05 & Hiệu năng & FCP $\le$ 1,5 giây trên 4G, TBT $\le$ 200 ms; đo kiểm chuẩn xác bằng Google Lighthouse di động trên production \\ \bottomrule
+\end{tabularx}
+\caption{Danh mục 5 yêu cầu phi chức năng (NFR)}
+\end{table}
+
+\hinh{usecase-overview}{0.8}{Sơ đồ use-case tổng quát của hệ thống BrewLite (\fpath{docs/diagrams/usecase-overview.puml})}
+
+\subsection{Đặc tả use-case trọng tâm: UC-05 Đặt hàng và thanh toán}
+\begin{table}[!htbp]\centering\small
+\begin{tabularx}{\textwidth}{@{}L{3.2cm} X@{}}
+\toprule \textbf{Mục} & \textbf{Nội dung} \\ \midrule
+Mã, ưu tiên & UC-05, Mức độ ưu tiên: Must; liên kết FR-05, FR-06, FR-08, FR-09, FR-10, FR-11 \\
+Actor & Khách hàng (chính), Cổng thanh toán mô phỏng (phụ), Barista (nhận đơn pha chế sau thanh toán) \\
+Tiền điều kiện & Giỏ hàng có ít nhất một món hợp lệ; tài khoản khách hàng đã đăng nhập JWT; backend sẵn sàng (\texttt{/health} = 200) \\
+Hậu điều kiện (thành công) & Đơn hàng chuyển sang \texttt{PAID} ($\texttt{version}=1$); trừ nguyên liệu kho tương ứng; áp dụng voucher thành công; cộng điểm thưởng 1 điểm/1.000đ; xóa sạch giỏ hàng; chuyển sang màn hình thành công và bật polling \\
+Hậu điều kiện (thất bại) & Đơn hàng mang trạng thái \texttt{PAYMENT\_FAILED}; không trừ tiền, không trừ kho, không cộng điểm; giữ nguyên giỏ hàng để khách đổi phương thức thanh toán \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Luồng sự kiện chính:}
+(1) Khách hàng mở giỏ hàng, kiểm tra các món đã chọn và bấm ``Tiến hành Đặt hàng''.
+(2) Hệ thống kiểm tra phiên đăng nhập JWT (nếu chưa đăng nhập, hiển thị modal đăng nhập và giữ nguyên giỏ hàng).
+(3) Khách nhập mã voucher tùy chọn; server xác thực điều kiện và trả số tiền giảm thực tế.
+(4) Khách chọn phương thức thanh toán Thẻ (\texttt{CARD}) hoặc Ví (\texttt{WALLET}) và bấm ``Xác nhận Thanh toán''.
+(5) Client sinh mã duy nhất \texttt{Idempotency-Key} và khóa nút bấm để ngăn bấm liên tiếp.
+(6) Client gửi \texttt{POST /orders}: server kiểm tra tồn kho nguyên liệu, tính toán giá theo CSDL, tạo đơn \texttt{PENDING}.
+(7) Client gửi \texttt{POST /payments} kèm mã đơn và \texttt{Idempotency-Key}.
+(8) Cổng mô phỏng xử lý giao dịch.
+(9) Thực hiện trong một Database Transaction: chuyển đơn sang \texttt{PAID}, ghi nhận thanh toán \texttt{SUCCESS}, trừ nguyên liệu kho, tích điểm thưởng.
+(10) Server phản hồi kết quả; client xóa giỏ hàng và chuyển sang \texttt{/order-success}.
+
+\hinh{usecase-checkout}{0.9}{Use-case Đặt hàng và thanh toán (\fpath{docs/diagrams/usecase-checkout.puml})}
+
+% =====================================================================
+\section{Task 2: Mô hình hóa hệ thống}
+Toàn bộ sơ đồ được thiết kế bằng ngôn ngữ PlantUML~\cite{puml} (\fpath{.puml}) đóng vai trò là nguồn sự thật (Single Source of Truth),
+kèm tệp vector \fpath{.svg} được xuất tự động.
+
+\subsection{Activity diagram (Activity-01)}
+Sơ đồ hoạt động mô tả toàn bộ luồng nghiệp vụ của khách hàng từ khi truy cập ứng dụng đến khi nhận đồ uống:
+xem menu, chọn món/size/topping, quản lý giỏ hàng, xác thực tài khoản, nhập voucher, thanh toán và theo dõi tiến độ pha chế;
+bao gồm các nhánh rẽ xử lý lỗi: hết hàng, thẻ bị từ chối, thanh toán lại đơn \texttt{PAYMENT\_FAILED}, và nhận mã 6 số tại quầy.
+
+\hinhxoay{activity-01-menu-cart-auth}{Activity-01: luồng đặt món, thanh toán và nhận hàng (\fpath{docs/diagrams/activity-01-menu-cart-auth.puml})}
+
+\subsection{Sequence diagram (Sequence-01)}
+Sơ đồ tuần tự thể hiện sự phối hợp chặt chẽ giữa 5 thành phần: Khách hàng, Next.js Web App, NestJS API Gateway, CSDL PostgreSQL và Cổng thanh toán mô phỏng.
+Sơ đồ làm rõ nhánh \texttt{opt} xử lý \texttt{Idempotency-Key}, nhánh \texttt{alt} xử lý thành công hoặc từ chối thẻ đuôi \texttt{0000},
+cùng khối giao dịch ACID đảm bảo kiểm tra khóa lạc quan \texttt{version} chống xung đột dữ liệu.
+
+\hinhxoay{sequence-checkout}{Sequence-01: luồng tương tác đặt hàng và thanh toán (\fpath{docs/diagrams/sequence-checkout.puml})}
+
+\subsection{Class diagram (Class-01)}
+Mô hình miền (Domain Model) bao quát đầy đủ các thực thể nghiệp vụ:
+\texttt{User}, \texttt{Category}, \texttt{Product}, \texttt{Order}, \texttt{OrderItem}, \texttt{Payment},
+cùng các thực thể mở rộng ở Sprint 3 và Sprint 4: \texttt{Promotion}, \texttt{Review}, \texttt{Ingredient}, \texttt{RecipeItem},
+\texttt{ToppingRecipeItem}, \texttt{StockReceipt}, \texttt{StockUsage}, \texttt{Topping}, \texttt{SizeSurcharge}.
+Các enum nghiệp vụ chuẩn hóa: \texttt{Role} (\texttt{CUSTOMER}, \texttt{BARISTA}, \texttt{CASHIER}, \texttt{MANAGER}),
+\texttt{OrderStatus} (7 trạng thái), \texttt{PaymentMethod}, \texttt{PaymentStatus}, \texttt{DiscountType}.
+
+\hinh{class-domain}{0.75}{Class-01: mô hình miền hoàn chỉnh của hệ thống (\fpath{docs/diagrams/class-domain.puml})}
+
+% =====================================================================
+\section{Task 3: Thiết kế kiến trúc hệ thống}
+\subsection{Kiến trúc tổng thể và các quyết định kiến trúc (ADR)}\label{sec:adr}
+Các quyết định được ghi theo dạng ADR~\cite{adr}.
+Hệ thống được thiết kế theo mô hình Monorepo kết hợp kiến trúc \textbf{Modular Monolith} phân lớp rõ ràng:
+\begin{itemize}
+  \item \textbf{Frontend (\fpath{apps/web}):} Next.js 16 (App Router), kiến trúc Server/Client Components, Tailwind CSS, Zustand quản lý trạng thái, Axios tích hợp interceptor tự động đính kèm JWT Bearer token và hỗ trợ chuyển đổi API URL động.
+  \item \textbf{Backend (\fpath{apps/api}):} NestJS 12 phân lớp chuẩn Controller $\rightarrow$ Service $\rightarrow$ Prisma Repository. Chia thành 13 module nghiệp vụ độc lập (cùng module dùng chung \texttt{prisma}): \texttt{auth}, \texttt{products}, \texttt{orders}, \texttt{payments}, \texttt{loyalty}, \texttt{promotions}, \texttt{kds}, \texttt{cashier}, \texttt{inventory}, \texttt{menu}, \texttt{reports}, \texttt{reviews}, \texttt{staff}.
+  \item \textbf{Dữ liệu và giao dịch:} PostgreSQL 16 quản lý bằng Prisma ORM. Mọi thao tác đổi trạng thái đơn, thanh toán, trừ kho và tích điểm đều được bọc trong giao dịch \texttt{\$transaction} với khóa lạc quan (\texttt{version}).
+\end{itemize}
+
+\begin{table}[!htbp]\centering\footnotesize
+\begin{tabularx}{\textwidth}{@{}l L{3.2cm} X@{}}
+\toprule \textbf{ADR} & \textbf{Quyết định} & \textbf{Đánh đổi và lý do lựa chọn} \\ \midrule
+001 & Monorepo (\fpath{apps/web}, \fpath{apps/api}, \fpath{docs}, \fpath{tests}) & Dễ dàng đồng bộ API Contract giữa frontend và backend trong một PR duy nhất; tài liệu nằm cạnh mã nguồn; đổi lại cần quản lý độc lập 2 \texttt{package-lock.json}. \\
+002 & Modular Monolith phân tầng & Tận dụng giao dịch ACID toàn vẹn cho luồng đặt hàng -- thanh toán -- trừ kho; chi phí vận hành thấp hơn microservices; dễ tách module sau này. \\
+003 & PostgreSQL + Prisma ORM & Đảm bảo toàn vẹn dữ liệu quan hệ, type-safe từ tầng CSDL đến TypeScript, migration tự động có phiên bản rõ ràng. \\
+004 & Zustand + \texttt{persist} & Quản lý giỏ hàng nhẹ nhàng, không gây re-render diện rộng như Redux, tự động lưu bền vững vào \texttt{localStorage} của trình duyệt di động. \\
+005 & Header \texttt{Idempotency-Key} & Ngăn chặn triệt để tình trạng tạo trùng đơn và trừ tiền 2 lần khi kết nối mạng di động chập chờn hoặc người dùng bấm nút nhiều lần. \\ \bottomrule
+\end{tabularx}
+\caption{Các quyết định kiến trúc then chốt (\fpath{docs/architecture/adr/})}
+\end{table}
+
+\subsection{Deployment diagram}
+Sơ đồ triển khai biểu diễn 3 môi trường phân tách: Môi trường phát triển nội bộ (Docker Compose),
+Môi trường tích hợp liên tục (GitHub Actions Runners), và Môi trường vận hành thực tế (Production Cloud: Vercel, Render, Neon).
+
+\hinh{deployment}{1.0}{Deployment diagram: kiến trúc triển khai hệ thống (\fpath{docs/diagrams/deployment.puml})}
+
+% =====================================================================
+\section{Task 4: Sprint 1 (Khởi tạo và Khung Menu)}
+\subsection{Khởi tạo cấu trúc dự án và quy trình làm việc}
+Dự án được khởi tạo theo đúng cấu trúc monorepo tiêu chuẩn của đề bài: \fpath{apps/web}, \fpath{apps/api}, \fpath{docs/requirements},
+\fpath{docs/diagrams}, \fpath{docs/architecture}, \fpath{tests/}, \fpath{.github/workflows/}.
+Tuân thủ nghiêm ngặt quy trình làm việc Git chuyên nghiệp:
+mỗi tính năng phát triển trên một nhánh riêng (\texttt{<tên>/task-x.y-...}), mỗi commit theo định dạng chuẩn tiếng Việt có dấu,
+mỗi chức năng gắn liền một Pull Request và liên kết đóng issue tương ứng (\texttt{Closes \#N}).
+
+\subsection{MVP Sprint 1}
+Sprint 1 tập trung xây dựng nền tảng hệ thống:
+\begin{itemize}
+  \item Khởi tạo dịch vụ Backend NestJS và CSDL mẫu với 6 sản phẩm đồ uống chủ lực.
+  \item Hiện thực API công khai \texttt{GET /products} kèm tài liệu Swagger tại \texttt{/docs}.
+  \item Xây dựng trang Menu phía Frontend đạt chuẩn Mobile-first, hiển thị lưới sản phẩm với đầy đủ 3 trạng thái giao diện:
+        Skeleton Loading (khi đang tải), Empty State (khi danh mục trống), và Error + Retry (khi mất kết nối API).
+  \item Thiết lập pipeline CI GitHub Actions ban đầu kiểm tra tự động Lint, Test và Build ở mọi Pull Request.
+\end{itemize}
+
+% =====================================================================
+\section{Task 5: Hiện thực mở rộng (Sprint 2, 3, 4) và Bàn giao}
+\subsection{Sprint 2: Core MVP (Đặt đơn, Thanh toán, Tích điểm)}
+Sprint 2 hoàn thiện trọn vẹn luồng nghiệp vụ cốt lõi không dùng tiền mặt:
+\begin{itemize}
+  \item Modal tùy chọn kích cỡ (S/M/L) và topping (Trân châu, Kem cheese, Thạch cà phê) cập nhật giá thời gian thực.
+  \item Giỏ hàng lưu bền vững \texttt{localStorage} bằng Zustand, hỗ trợ gộp dòng cùng tùy chọn và tách dòng khác tùy chọn.
+  \item Hệ thống xác thực người dùng bằng số điện thoại 10 số, mật khẩu băm \texttt{bcryptjs}, cấp phát JWT Bearer Token.
+  \item API \texttt{POST /orders} với quy tắc định giá do server tính toán độc quyền, từ chối mọi trường giá gửi từ client.
+  \item API \texttt{POST /payments} tích hợp Cổng mô phỏng (từ chối thẻ có đuôi \texttt{0000}, từ chối ví trên 500.000đ).
+  \item Máy trạng thái đơn hàng kết hợp cơ chế khóa lạc quan \texttt{version} và chống gửi trùng qua \texttt{Idempotency-Key}.
+  \item Cơ chế tích điểm thưởng thành viên tự động 1 điểm cho mỗi 1.000đ thanh toán thành công (\texttt{GET /loyalty/me}).
+  \item Trang lịch sử đơn hàng cá nhân (\texttt{/orders}) hỗ trợ tự động polling 5 giây/lần để theo dõi tiến độ đơn.
+\end{itemize}
+
+\subsection{Sprint 3: Nghiệp vụ Vận hành Cửa hàng}
+Sprint 3 đưa ứng dụng vào hoạt động thực tế tại cửa hàng với các phân hệ dành cho nhân viên và khách hàng:
+\begin{itemize}
+  \item \textbf{Màn hình KDS cho Barista (FR-20):} Trang \texttt{/kds} dành riêng cho vai trò \texttt{BARISTA}, hiển thị danh sách đơn \texttt{PAID} theo thời gian thực; cho phép Barista bấm nhận pha chế (\texttt{PREPARING}) và báo hoàn tất pha chế (\texttt{READY}).
+  \item \textbf{Mã nhận hàng 6 số và Quầy thu ngân (FR-21):} Khi đơn hàng chuyển sang trạng thái \texttt{READY}, hệ thống tự động sinh một mã ngẫu nhiên 6 chữ số (\texttt{pickupCode}) hiển thị trên màn hình của khách hàng. Nhân viên thu ngân tại màn hình \texttt{/cashier} xác thực đúng mã nhận hàng để bàn giao đồ uống và chuyển trạng thái sang \texttt{COMPLETED}.
+  \item \textbf{Hệ thống Voucher giảm giá phía khách hàng (FR-11):} Khách hàng có thể nhập mã khuyến mãi (như \texttt{WELCOME10}, \texttt{GIAM15K}, \texttt{BREW20}) tại bước thanh toán. Server định giá lại độc quyền, trừ số tiền giảm và kiểm tra điều kiện áp dụng trong giao dịch.
+  \item \textbf{Hủy đơn hàng an toàn (FR-12):} Khách hàng có thể hủy đơn chưa pha chế; Cashier có thể hủy đơn tại quầy. Hệ thống hoàn lại tiền, hoàn kho nguyên liệu, thu hồi điểm thưởng và hoàn lại lượt dùng voucher trong một transaction khóa lạc quan.
+  \item \textbf{Đánh giá dịch vụ 1--5 sao (FR-13):} Khách hàng có thể chấm điểm sao và gửi nhận xét phản hồi cho các đơn hàng đã hoàn tất (\texttt{COMPLETED}).
+\end{itemize}
+
+\subsection{Sprint 4: Quản trị Cửa hàng, Kho và Phân tích Doanh thu}
+Sprint 4 hoàn thiện năng lực quản trị doanh nghiệp toàn diện cho vai trò \texttt{MANAGER}:
+\begin{itemize}
+  \item \textbf{Quản lý Menu và Bảng giá động trong CSDL (FR-18):} Bộ API \texttt{/admin/categories}, \texttt{/admin/products}, \texttt{/admin/toppings}, \texttt{/admin/sizes} cho phép thêm, sửa, ẩn món và thay đổi bảng giá linh hoạt trong CSDL thay vì cố định trong mã nguồn.
+  \item \textbf{Quản lý Kho nguyên liệu và Công thức pha chế BOM (FR-15, FR-16):} Định nghĩa nguyên liệu theo đơn vị tính (g, ml, cái), ngưỡng tồn kho tối thiểu; thiết lập công thức tiêu hao chi tiết cho từng ly nước theo kích cỡ và topping.
+  \item \textbf{Trừ/hoàn kho tự động và Cảnh báo tồn kho (FR-15, FR-17):} Tự động trừ kho có điều kiện khi thanh toán, hoàn kho khi hủy đơn; API \texttt{GET /admin/ingredients/alerts} phát hiện kịp thời các nguyên liệu chạm ngưỡng báo động để nhập hàng.
+  \item \textbf{Quản trị tài khoản nhân sự (FR-19):} Phân quyền chặt chẽ 4 vai trò (\texttt{CUSTOMER}, \texttt{BARISTA}, \texttt{CASHIER}, \texttt{MANAGER}) qua \texttt{RolesGuard}, hỗ trợ tạo tài khoản nhân viên, đổi vai trò và khóa/mở khóa tài khoản.
+  \item \textbf{Quản trị Voucher phía Manager (FR-11):} Quản lý mã khuyến mãi, thiết lập tỷ lệ giảm (\%), số tiền cố định, mức giảm tối đa, hạn sử dụng và số lượt dùng tối đa.
+  \item \textbf{Báo cáo phân tích doanh thu (FR-14):} API \texttt{GET /admin/reports} tổng hợp doanh thu thực tế, số đơn hoàn tất, tỷ lệ hủy đơn, thống kê Top 5 món bán chạy nhất theo ngày, tuần, tháng (chuẩn hóa theo múi giờ Việt Nam GMT+7).
+\end{itemize}
+
+\subsection{Kiểm thử và kết quả xác minh}
+Hệ thống được kiểm thử nhiều tầng. Số liệu dưới đây đo trên nhánh \texttt{main} sau khi tích hợp toàn bộ 4 Sprint (số test chạy lại bằng \texttt{npx vitest run} ngày 15/11/2026):
+
+\begin{table}[!htbp]\centering\small
+\begin{tabularx}{\textwidth}{@{}l X l@{}}
+\toprule \textbf{Hạng mục kiểm thử} & \textbf{Công cụ và phạm vi kiểm tra} & \textbf{Kết quả} \\ \midrule
+Kiểm tra tĩnh & \texttt{oxlint} (Backend), \texttt{eslint} (Frontend), NestJS Build, Next.js Build & Hoàn toàn không lỗi \\
+Unit và Integration Test API & Vitest, 24 tệp kiểm thử bao quát 13 module backend & \textbf{526 / 526 passed} (100\%) \\
+Unit Test Web & Vitest, 10 tệp kiểm thử (giỏ hàng Zustand, bảng giá, KDS, pickup, voucher) & \textbf{91 / 91 passed} (100\%) \\
+Live HTTP API Test & Bộ kịch bản kiểm thử trực tiếp trên PostgreSQL thật qua HTTP (43 kiểm tra) & \textbf{43 / 43 passed} (100\%) \\
+E2E Test tự động & Playwright, 2 tệp: \fpath{checkout.spec.ts} (8 kịch bản: đặt hàng, từ chối thẻ \texttt{0000}, thanh toán lại, idempotency) và \fpath{sprint3.spec.ts} (13 kịch bản) & \textbf{21 kịch bản}, job E2E xanh \\
+CI Pipeline (GitHub Actions) & 4 job: (1) Backend: lint, build, test; (2) Frontend: lint, build, test; (3) Smoke Test và triển khai; (4) E2E Playwright & Xanh ở lần chạy mới nhất trên \texttt{main} \\
+CD Pipeline & Đóng gói Docker đẩy lên GHCR, kích hoạt webhook triển khai Render khi có secret & Xanh ở lần chạy mới nhất trên \texttt{main} \\ \bottomrule
+\end{tabularx}
+\caption{Tổng hợp kết quả kiểm thử hệ thống BrewLite}
+\end{table}
+
+\subsection{Đo lường hiệu năng thực tế (Lighthouse Production)}
+Đo lường bằng Google Lighthouse~\cite{lh} (chế độ Mobile 4G giả lập) trên môi trường production Vercel:
+\begin{table}[!htbp]\centering\footnotesize
+\begin{tabularx}{\textwidth}{@{}l *{5}{>{\centering\arraybackslash}X}@{}}
+\toprule \textbf{Trang kiểm tra} & \textbf{Performance} & \textbf{Accessibility} & \textbf{Best Practices} & \textbf{FCP (trung vị)} & \textbf{TBT lớn nhất} \\ \midrule
+Trang chủ / Menu (\texttt{/}) & 97 / 100 & 92 / 100 & 100 / 100 & 1,2 giây & 80 ms \\
+Giỏ hàng (\texttt{/cart}) & 97 / 100 & 95 / 100 & 100 / 100 & 1,2 giây & 70 ms \\
+Thanh toán (\texttt{/checkout}) & 97 / 100 & 95 / 100 & 100 / 100 & 1,2 giây & 70 ms \\ \bottomrule
+\end{tabularx}
+\caption{Chỉ số hiệu năng Lighthouse trên môi trường Production (CLS = 0 tuyệt đối)}
+\end{table}
+
+% =====================================================================
+\section{Ma trận truy vết yêu cầu (Traceability Matrix)}\label{sec:rtm}
+Ma trận truy vết khép kín toàn diện liên kết từ Yêu cầu chức năng (FR) đến Use-case, Sơ đồ thiết kế, Mã nguồn và Bài kiểm thử:
+
+\begin{table}[!htbp]\centering\scriptsize\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{@{}l L{1.9cm} L{1.9cm} L{3.4cm} X@{}}
+\toprule \textbf{FR} & \textbf{UC / US} & \textbf{Sơ đồ} & \textbf{Mã nguồn / API} & \textbf{Kiểm thử tự động} \\ \midrule
+FR-01 & UC-01, US-01 & Activity-01, Class-01 & \texttt{GET /products}; \fpath{page.tsx}, \fpath{ProductCard.tsx} & \fpath{products.controller.spec.ts}, \fpath{swagger.spec.ts}, E2E \\
+FR-02 & UC-02, US-02 & Activity-01, Class-01 & \fpath{ProductDetailModal.tsx}; \fpath{orders/pricing.ts} & \fpath{orders.controller.spec.ts}; \fpath{ProductDetailModal.spec.ts} \\
+FR-03 & UC-03, US-03 & Activity-01, ADR-004 & \fpath{cart/page.tsx}, \fpath{useCartStore.ts} & \fpath{useCartStore.spec.ts} (7 test), E2E \\
+FR-04 & UC-04, US-04 & Sequence-01, Class-01 & \texttt{POST /auth/register}, \texttt{/login}; \fpath{jwt-auth.guard.ts} & \fpath{auth.controller.spec.ts} (14 test), E2E \\
+FR-05 & UC-05, US-05 & Sequence-01, Class-01 & \texttt{POST /orders}; \texttt{OrdersService.create} & \fpath{orders.controller.spec.ts} (52 test), E2E \\
+FR-06 & UC-05, US-06 & Sequence-01, Class-01 & \texttt{POST /payments}; \fpath{mock-gateway.ts} & \fpath{payments.controller.spec.ts} (32 test), E2E \\
+FR-07 & UC-06, US-07 & Activity-01, Class-01 & \texttt{GET /orders/me}; \fpath{orders/page.tsx} & \fpath{orders.controller.spec.ts}, E2E \\
+FR-08 & UC-05, US-08 & Sequence-01 & \fpath{order-status.ts}; \texttt{PaymentsService.pay} & \fpath{order-status.spec.ts} (16 test), \fpath{payments.spec.ts} \\
+FR-09 & UC-05, US-09 & Sequence-01, ADR-005 & \fpath{common/idempotency.ts} & \fpath{orders.controller.spec.ts}, E2E \\
+FR-10 & UC-20, US-10 & Sequence-01, Class-01 & \fpath{payments/loyalty.ts}; \texttt{GET /loyalty/me} & \fpath{loyalty.controller.spec.ts}, \fpath{loyalty.spec.ts} \\
+FR-11 & UC-10, UC-21 & Use Case, Class-01 & \texttt{/orders} (\texttt{promoCode}); \texttt{/admin/promotions} & \fpath{promotion.spec.ts}, \fpath{promotions.controller.spec.ts} \\
+FR-12 & UC-08, UC-13 & Use Case, Class-01 & \texttt{POST /orders/:id/cancel}; \fpath{CancelOrderModal.tsx} & \fpath{orders.cancel.spec.ts} (28 test), \fpath{cancel.test.ts} \\
+FR-13 & UC-09, US-13 & Use Case, Class-01 & \texttt{POST /orders/:id/review}; \fpath{ReviewModal.tsx} & \fpath{reviews.controller.spec.ts} (24 test), \fpath{review.test.ts} \\
+FR-14 & UC-19, US-14 & Use Case, Class-01 & \texttt{GET /admin/reports}; \fpath{reports/report.ts} & \fpath{reports.controller.spec.ts}, \fpath{report.spec.ts} (22 test) \\
+FR-15 & UC-14, UC-17 & Use Case, Class-01 & \texttt{/admin/ingredients}; \texttt{stock.ts} trừ/hoàn kho & \fpath{inventory.controller.spec.ts} (47 test), \fpath{stock.spec.ts} \\
+FR-16 & UC-16 & Use Case, Class-01 & \texttt{/admin/products/:id/recipe}; \texttt{RecipesController} & \fpath{recipes.controller.spec.ts} (27 test) \\
+FR-17 & UC-17 & Use Case, Class-01 & \texttt{GET /admin/ingredients/alerts} & \fpath{inventory.controller.spec.ts} (nhóm alerts) \\
+FR-18 & UC-15 & Use Case, Class-01 & \texttt{/admin/categories}, \texttt{/products}, \texttt{/toppings} & \fpath{menu-admin.controller.spec.ts} (59 test) \\
+FR-19 & UC-18 & Use Case, Class-01 & \texttt{/admin/staff}; \fpath{roles.guard.ts} (4 vai trò) & \fpath{staff.controller.spec.ts} (33 test), \fpath{roles.guard.spec.ts} \\
+FR-20 & UC-11 & Use Case, Class-01 & \texttt{GET /kds/orders}; \fpath{apps/web/src/app/kds/page.tsx} & \fpath{kds.controller.spec.ts} (28 test), \fpath{kds.spec.ts} \\
+FR-21 & UC-07, UC-12 & Use Case, Class-01 & \texttt{pickupCode}; \texttt{/cashier}; \fpath{cashier/page.tsx} & \fpath{cashier.controller.spec.ts} (39 test), \fpath{pickup.test.ts} \\ \bottomrule
+\end{tabularx}
+\caption{Ma trận truy vết 21 yêu cầu chức năng (FR-01 đến FR-21)}
+\end{table}
+
+% =====================================================================
+\section{Lịch sử Git và Bằng chứng đóng góp}
+\subsection{Tuân thủ quy trình phát triển}
+Toàn bộ lịch sử mã nguồn được quản lý chặt chẽ theo từng nhánh chức năng.
+Mọi yêu cầu tài liệu từ Task 1 đến Task 3 (SRS, sơ đồ PlantUML, ADR, Ma trận truy vết) đều được xây dựng, rà soát và lưu vết trên Git.
+Các nhánh tính năng của Sprint 1, 2, 3 và 4 đều đi kèm bộ kiểm thử đơn vị, được kiểm tra tự động qua GitHub Actions và merge vào nhánh chính \texttt{main}.
+
+\subsection{Bằng chứng đóng góp của các thành viên}
+Số liệu thống kê chính xác được trích xuất trực tiếp từ \texttt{git log} trên nhánh \texttt{main} của kho mã nguồn Assignment 2:
+
+\begin{table}[!htbp]\centering\small
+\begin{tabularx}{\textwidth}{@{}l X r r@{}}
+\toprule \textbf{Chỉ số đóng góp} & \textbf{Phương pháp đo lường} & \textbf{\tenLong} & \textbf{\tenTai} \\ \midrule
+Pull Request đã merge & Theo tiền tố nhánh \texttt{long/}, \texttt{tai/} của các PR đã merge (75 PR) & 22 & 53 \\
+Số commit (không tính merge) & \texttt{git shortlog -sn --no-merges} theo email tác giả & 117 & 31 \\
+Khối lượng dòng mã thay đổi & \texttt{git log --numstat} trong \fpath{apps/}, \fpath{docs/}, \fpath{tests/} & +47.516 / $-$12.155 & +5.255 / $-$589 \\ \bottomrule
+\end{tabularx}
+\caption{Bằng chứng phân công và đóng góp của các thành viên}
+\end{table}
+
+\textbf{Nguyễn Thành Long:} Đảm nhiệm toàn bộ phần Backend API (NestJS), thiết kế CSDL và migration Prisma, xây dựng kiến trúc Modular Monolith, tích hợp máy trạng thái, khóa lạc quan, idempotency, cơ chế trừ/hoàn kho tự động, quản trị phân quyền nhân sự, báo cáo thống kê, thiết lập toàn bộ pipeline CI/CD trên GitHub Actions, kiểm thử tự động Vitest/Playwright, và triển khai hệ thống lên Render, Neon, Vercel.
+
+\textbf{Trần Quốc Tài:} Đảm nhiệm xây dựng giao diện ứng dụng Frontend (Next.js 16 App Router), thiết kế UI/UX thích ứng Mobile-first, quản trị trạng thái giỏ hàng Zustand, các màn hình nghiệp vụ Barista (KDS), Cashier (Quầy nhận hàng), modal đánh giá và hủy đơn, biên soạn tài liệu đặc tả yêu cầu SRS, xây dựng các sơ đồ PlantUML và thiết lập ma trận truy vết RTM.
+
+% =====================================================================
+\section{Đánh giá và Hướng phát triển}
+\subsection{Kết quả đạt được}
+\begin{itemize}
+  \item Hiện thực đủ 21/21 yêu cầu chức năng (FR-01 đến FR-21), mỗi yêu cầu có truy vết tới mã nguồn và bài kiểm thử ở mục~\ref{sec:rtm}.
+  \item Hơn 600 kiểm thử tự động: 526 test backend, 91 test frontend, 21 kịch bản E2E, 43 kiểm tra HTTP trực tiếp.
+  \item Triển khai thành công lên môi trường thực tế truy cập được qua Internet với chứng chỉ SSL/HTTPS.
+\end{itemize}
+
+\subsection{Hướng phát triển trong tương lai}
+\begin{itemize}
+  \item Xây dựng cổng giao diện Web Dashboard hoàn chỉnh cho Quản lý (Manager Portal) để trực quan hóa biểu đồ doanh thu và quản lý kho tương tác.
+  \item Tích hợp cổng thanh toán trực tuyến thực tế (VNPay, MoMo, ZaloPay, Stripe) thay cho cổng mô phỏng.
+  \item Nâng cấp cơ chế cập nhật trạng thái đơn hàng từ Polling định kỳ sang WebSockets / Server-Sent Events (SSE) để giảm tải cho server và cập nhật tức thì.
+\end{itemize}
+
+% =====================================================================
+\begin{thebibliography}{9}
+\bibitem{de} Trường Đại học Sài Gòn, \emph{Đề tài bài tập lớn môn Công nghệ phần mềm: BrewLite -- Requirements to Deployment}, HK1 2026--2027.
+\bibitem{nest} NestJS Documentation, \url{https://docs.nestjs.com}.
+\bibitem{prisma} Prisma ORM Documentation, \url{https://www.prisma.io/docs}.
+\bibitem{next} Next.js Documentation, \url{https://nextjs.org/docs}.
+\bibitem{puml} PlantUML Official Documentation, \url{https://plantuml.com}.
+\bibitem{adr} Michael Nygard, \emph{Documenting Architecture Decisions}, 2011.
+\bibitem{lh} Google Chrome Developers, \emph{Lighthouse Performance Auditing}, \url{https://developer.chrome.com/docs/lighthouse}.
+\end{thebibliography}
+\end{document}
