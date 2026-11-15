@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Product, Order, CreatedOrder, AuthResponse, User, LoyaltyInfo, KdsOrder, CashierOrder, AdminCategory, AdminProduct, AdminTopping, SizeSurcharge, } from "@/types";
+import { Product, Order, CreatedOrder, AuthResponse, User, LoyaltyInfo, KdsOrder, CashierOrder, AdminCategory, AdminProduct, AdminTopping, SizeSurcharge, Ingredient, CreateReceiptPayload, ProductRecipe, } from "@/types";
 
 // Lấy URL Backend động: ưu tiên custom URL trong localStorage (để test trên mobile / demo từ xa), sau đó đến biến môi trường
 export const getApiUrl = (): string => {
@@ -428,5 +428,43 @@ export const apiService = {
             headers: { Authorization: `Bearer ${token}` }
         });
         return res.data;
-    }
+    },
+
+    // 1. Lấy danh sách toàn bộ nguyên liệu kèm số lượng tồn kho
+    getAdminIngredients: async (token: string): Promise<Ingredient[]> => {
+        const res = await axios.get(`${getApiUrl()}/admin/ingredients`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    // 2. Lấy danh sách nguyên liệu sắp hết (stock <= minStock, thiếu nhiều nhất lên đầu)
+    getAdminInventoryAlerts: async (token: string): Promise<Ingredient[]> => {
+        const res = await axios.get(`${getApiUrl()}/admin/ingredients/alerts`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    // 3. Nhập kho cho một nguyên liệu (ghi phiếu nhập và tự động cộng dồn tồn kho)
+    createIngredientReceipt: async (
+        ingredientId: number,
+        payload: CreateReceiptPayload,
+        token: string
+    ) => {
+        const res = await axios.post(
+            `${getApiUrl()}/admin/ingredients/${ingredientId}/receipts`,
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    },
+
+     // 4. Xem công thức pha chế của một món theo từng size (S, M, L)
+    getProductRecipe: async (productId: number, token: string): Promise<ProductRecipe> => {
+        const res = await axios.get(`${getApiUrl()}/admin/products/${productId}/recipe`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
 };
