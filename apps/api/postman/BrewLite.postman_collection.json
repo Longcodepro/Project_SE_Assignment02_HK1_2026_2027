@@ -461,7 +461,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"quantity\": 1,\n      \"size\": \"M\",\n      \"toppings\": [\"tran-chau\"]\n    }\n  ],\n  \"promoCode\": \"WELCOME10\"\n}"
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"quantity\": 2,\n      \"size\": \"M\",\n      \"toppings\": [\"tran-chau\"]\n    }\n  ],\n  \"promoCode\": \"WELCOME10\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/orders", "host": ["{{baseUrl}}"], "path": ["orders"] }
           }
@@ -490,7 +490,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"items\": [{ \"productId\": 1, \"quantity\": 1, \"size\": \"M\" }]\n}"
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"quantity\": 2,\n      \"size\": \"M\",\n      \"toppings\": [\"tran-chau\"]\n    }\n  ],\n  \"promoCode\": \"WELCOME10\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/orders", "host": ["{{baseUrl}}"], "path": ["orders"] }
           }
@@ -670,7 +670,12 @@
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const orders = pm.response.json();",
-                  "pm.test('Là mảng đơn', () => pm.expect(orders).to.be.an('array'));"
+                  "pm.test('Là mảng đơn', () => pm.expect(orders).to.be.an('array'));",
+                  "const createdId = pm.environment.get('createdOrderId');",
+                  "const target = (orders || []).find(o => o.id === createdId) || (orders && orders[0]);",
+                  "if (target && typeof target.version === 'number') {",
+                  "  pm.environment.set('kdsVersion', target.version);",
+                  "}"
                 ]
               }
             }
@@ -684,7 +689,7 @@
           }
         },
         {
-          "name": "POST /kds/orders/:id/status - Bắt đầu pha chế (PREPARING)",
+          "name": "PATCH /kds/orders/:id/status - Bắt đầu pha chế (PREPARING)",
           "event": [
             {
               "listen": "test",
@@ -693,26 +698,30 @@
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const res = pm.response.json();",
-                  "pm.test('Chuyển sang PREPARING', () => pm.expect(res.status).to.eql('PREPARING'));"
+                  "pm.test('Chuyển sang PREPARING', () => pm.expect(res.status).to.eql('PREPARING'));",
+                  "pm.test('Version tăng lên', () => {",
+                  "  pm.expect(res.version).to.be.above(0);",
+                  "  pm.environment.set('kdsVersion', res.version);",
+                  "});"
                 ]
               }
             }
           ],
           "request": {
-            "method": "POST",
+            "method": "PATCH",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
               { "key": "Authorization", "value": "Bearer {{baristaToken}}" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"PREPARING\"\n}"
+              "raw": "{\n  \"status\": \"PREPARING\",\n  \"version\": {{kdsVersion}}\n}"
             },
             "url": { "raw": "{{baseUrl}}/kds/orders/{{createdOrderId}}/status", "host": ["{{baseUrl}}"], "path": ["kds", "orders", "{{createdOrderId}}", "status"] }
           }
         },
         {
-          "name": "POST /kds/orders/:id/status - Hoàn tất món (READY -> Sinh pickupCode)",
+          "name": "PATCH /kds/orders/:id/status - Hoàn tất món (READY)",
           "event": [
             {
               "listen": "test",
@@ -722,23 +731,22 @@
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const res = pm.response.json();",
                   "pm.test('Chuyển sang READY', () => pm.expect(res.status).to.eql('READY'));",
-                  "pm.test('Có sinh mã nhận hàng 6 số', () => {",
-                  "  pm.expect(res.pickupCode).to.match(/^\\d{6}$/);",
-                  "  pm.environment.set('pickupCode', res.pickupCode);",
+                  "pm.test('Version tăng lên', () => {",
+                  "  pm.expect(res.version).to.be.above(0);",
                   "});"
                 ]
               }
             }
           ],
           "request": {
-            "method": "POST",
+            "method": "PATCH",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
               { "key": "Authorization", "value": "Bearer {{baristaToken}}" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"READY\"\n}"
+              "raw": "{\n  \"status\": \"READY\",\n  \"version\": {{kdsVersion}}\n}"
             },
             "url": { "raw": "{{baseUrl}}/kds/orders/{{createdOrderId}}/status", "host": ["{{baseUrl}}"], "path": ["kds", "orders", "{{createdOrderId}}", "status"] }
           }
