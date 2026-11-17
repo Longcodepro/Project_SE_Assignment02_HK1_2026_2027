@@ -1,3 +1,8 @@
+/**
+ * PaymentsController: Tiếp nhận yêu cầu thanh toán POST /payments.
+ * Yêu cầu đăng nhập (JwtAuthGuard).
+ */
+
 import { Body, Controller, Headers, Post, UseGuards } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -22,21 +27,25 @@ import { PaymentsService } from './payments.service.js';
 export class PaymentsController {
   constructor(private readonly payments: PaymentsService) {}
 
+  /**
+   * Thanh toán đơn hàng bằng Ví hoặc Thẻ
+   * Nhận header Idempotency-Key tùy chọn để chống trừ tiền 2 lần khi gửi lặp request.
+   */
   @Post()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Thanh toán mô phỏng bằng Ví hoặc Thẻ' })
   @ApiHeader({
     name: 'Idempotency-Key',
     required: false,
-    description: '1-128 ký tự [A-Za-z0-9_-]; gửi lại cùng key trả kết quả cũ, không trừ tiền lần nữa',
+    description: '1-128 ký tự; gửi lại cùng key trả kết quả cũ, không trừ tiền lần nữa',
   })
   @ApiCreatedResponse({
     type: PaymentResponseDto,
-    description: 'Cả khi bị từ chối: status = PAYMENT_FAILED kèm reason',
+    description: 'Trả về 201 cả khi thẻ bị từ chối (status = PAYMENT_FAILED kèm lý do)',
   })
-  @ApiBadRequestResponse({ description: 'Dữ liệu không hợp lệ' })
+  @ApiBadRequestResponse({ description: 'Dữ liệu không hợp lệ (sai số thẻ, sai method)' })
   @ApiNotFoundResponse({ description: 'Không tìm thấy đơn hàng' })
-  @ApiConflictResponse({ description: 'Đơn đã thanh toán hoặc bị xử lý đồng thời' })
+  @ApiConflictResponse({ description: 'Đơn đã thanh toán rồi hoặc bị xử lý đồng thời' })
   pay(
     @CurrentUser() user: AuthUser,
     @Body() dto: CreatePaymentDto,

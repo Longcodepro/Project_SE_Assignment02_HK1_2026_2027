@@ -1,18 +1,28 @@
+/**
+ * Logic kiểm tra và tính toán giảm giá của Mã khuyến mãi (Voucher).
+ */
+
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import type { DiscountType } from '../generated/prisma/enums.js';
 
 export type PromotionRule = {
-  discountType: DiscountType;
+  discountType: DiscountType; // FIXED (giảm số tiền cố định) hoặc PERCENT (giảm %)
   discountValue: number;
-  minOrderAmount: number;
+  minOrderAmount: number;     // Giá trị đơn tối thiểu để được áp dụng
   isActive: boolean;
   expiryDate: Date | null;
-  maxUses: number | null;
-  usedCount: number;
+  maxUses: number | null;     // Số lượt dùng tối đa toàn hệ thống (null = vô hạn)
+  usedCount: number;          // Số lượt đã sử dụng thực tế
 };
 
-// Mã không dùng được thì ném lỗi rõ lý do; chưa giữ lượt (việc đó làm trong transaction tạo đơn)
-export function assertPromotionUsable(p: PromotionRule, subtotal: number, now = new Date()) {
+/**
+ * Kiểm tra mã giảm giá có hợp lệ để áp dụng vào đơn hay không
+ */
+export function assertPromotionUsable(
+  p: PromotionRule,
+  subtotal: number,
+  now = new Date(),
+) {
   if (!p.isActive) {
     throw new BadRequestException('Mã giảm giá không tồn tại hoặc đã bị vô hiệu');
   }
@@ -29,7 +39,11 @@ export function assertPromotionUsable(p: PromotionRule, subtotal: number, now = 
   }
 }
 
-// FIXED không giảm quá giá trị đơn; PERCENT làm tròn xuống
+/**
+ * Tính số tiền thực tế được giảm:
+ * - FIXED: Giảm tối đa bằng giá trị đơn (không làm tổng tiền thành số âm).
+ * - PERCENT: Tính theo % và làm tròn xuống bằng Math.floor.
+ */
 export const discountFor = (p: PromotionRule, subtotal: number) =>
   p.discountType === 'FIXED'
     ? Math.min(p.discountValue, subtotal)

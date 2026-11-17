@@ -1,10 +1,16 @@
+/**
+ * DTO định dạng dữ liệu trả về cho Đơn hàng (Summary & History).
+ */
+
 import { ApiProperty } from '@nestjs/swagger';
 import { OrderStatus, Size } from '../../generated/prisma/enums.js';
 import { OrderReviewDto } from '../../reviews/dto/review.dto.js';
 
-// Kết quả POST /orders
+/**
+ * Tóm tắt đơn hàng trả về sau khi tạo mới (POST /orders)
+ */
 export class OrderSummaryDto {
-  @ApiProperty({ example: 'ord_a1b2c3d4e5' })
+  @ApiProperty({ example: 'ord_a1b2c3d4e5', description: 'Mã đơn hàng duy nhất' })
   id!: string;
 
   @ApiProperty({ enum: OrderStatus, example: OrderStatus.PENDING })
@@ -12,13 +18,13 @@ export class OrderSummaryDto {
 
   @ApiProperty({
     example: 71000,
-    description: 'VND, do server tính, đã trừ giảm giá',
+    description: 'Tổng tiền thực trả (VND, server tự tính, đã trừ giảm giá)',
   })
   total!: number;
 
   @ApiProperty({
     example: 0,
-    description: 'VND được giảm nhờ mã giảm giá; 0 nếu không dùng mã',
+    description: 'Số tiền được giảm từ voucher (0 nếu không áp mã)',
   })
   discountAmount!: number;
 
@@ -26,11 +32,14 @@ export class OrderSummaryDto {
     type: String,
     nullable: true,
     example: 'WELCOME10',
-    description: 'Mã đã áp, null nếu không dùng',
+    description: 'Mã giảm giá đã áp dụng (null nếu không dùng)',
   })
   promoCode!: string | null;
 }
 
+/**
+ * Chi tiết một dòng món trong lịch sử đơn hàng
+ */
 export class OrderHistoryItemDto {
   @ApiProperty({ example: 1 })
   productId!: number;
@@ -48,31 +57,32 @@ export class OrderHistoryItemDto {
     type: String,
     isArray: true,
     example: ['tran-chau'],
-    description: 'Mã topping (xem GET /menu-options)',
+    description: 'Mã các topping kèm theo',
   })
   toppings!: string[];
 
   @ApiProperty({
     example: 42000,
-    description: 'VND, giá 1 ly đã gồm size + topping',
+    description: 'VND, đơn giá 1 ly tại thời điểm mua (đã gồm phụ thu size + topping)',
   })
   unitPrice!: number;
 }
 
-// Một phần tử của GET /orders/me
+/**
+ * Cấu trúc đầy đủ một đơn hàng trong danh sách lịch sử (GET /orders/me)
+ */
 export class OrderHistoryDto extends OrderSummaryDto {
   @ApiProperty({
     type: String,
     nullable: true,
     example: '038417',
-    description:
-      'Mã nhận hàng 6 số; chỉ có khi status là READY, ngược lại null',
+    description: 'Mã nhận hàng 6 số; chỉ xuất hiện khi status là READY để ra quầy nhận món',
   })
   pickupCode!: string | null;
 
   @ApiProperty({
     example: 2,
-    description: 'Gửi lại khi hủy đơn (POST /orders/:id/cancel)',
+    description: 'Phiên bản đơn hàng phục vụ khóa lạc quan khi hủy đơn',
   })
   version!: number;
 
@@ -80,14 +90,14 @@ export class OrderHistoryDto extends OrderSummaryDto {
     type: String,
     nullable: true,
     example: 'Đổi ý',
-    description: 'Lý do hủy; null nếu chưa hủy',
+    description: 'Lý do hủy đơn nếu đã bị hủy',
   })
   cancelReason!: string | null;
 
   @ApiProperty({
     type: OrderReviewDto,
     nullable: true,
-    description: 'Đánh giá của khách; null nếu chưa đánh giá',
+    description: 'Đánh giá sao và nhận xét của khách (null nếu chưa đánh giá)',
   })
   review!: OrderReviewDto | null;
 
@@ -96,7 +106,7 @@ export class OrderHistoryDto extends OrderSummaryDto {
     format: 'date-time',
     nullable: true,
     example: '2026-11-14T04:10:00.000Z',
-    description: 'Thời điểm hoàn tiền mô phỏng; null nếu chưa hoàn',
+    description: 'Thời điểm hoàn tiền mô phỏng',
   })
   refundedAt!: Date | null;
 

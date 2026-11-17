@@ -1,3 +1,8 @@
+/**
+ * PaymentsModule: Xử lý giao dịch thanh toán cho đơn hàng.
+ * Cần AuthModule để xác thực người gọi là chủ đơn hàng.
+ */
+
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
 import { MockPaymentGateway } from './mock-gateway.js';

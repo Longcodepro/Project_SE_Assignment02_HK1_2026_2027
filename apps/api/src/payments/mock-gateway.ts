@@ -1,3 +1,12 @@
+/**
+ * Cổng thanh toán mô phỏng (Mock Payment Gateway).
+ *
+ * Quy tắc mô phỏng:
+ * - CARD (Thẻ ngân hàng): Thẻ có 4 số cuối là '0000' sẽ bị từ chối (dùng để test luồng lỗi).
+ * - WALLET (Ví điện tử): Đơn trên 500.000đ sẽ báo số dư ví không đủ.
+ * - Các trường hợp còn lại: Thanh toán thành công 100%.
+ */
+
 import { Injectable } from '@nestjs/common';
 
 export type ChargeInput = {
@@ -6,10 +15,7 @@ export type ChargeInput = {
   cardNumber?: string;
 };
 
-// Cổng thanh toán mô phỏng, kết quả cố định để test và demo được:
-//  - CARD: số thẻ kết thúc bằng 0000 bị từ chối
-//  - WALLET: đơn trên 500.000đ báo không đủ số dư
-export const WALLET_LIMIT = 500_000;
+export const WALLET_LIMIT = 500_000; // Giới hạn số dư tối đa của ví mô phỏng
 
 @Injectable()
 export class MockPaymentGateway {

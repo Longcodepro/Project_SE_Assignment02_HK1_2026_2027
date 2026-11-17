@@ -1,5 +1,13 @@
-// Giá một ly = giá món (size S) + phụ thu size + giá các topping.
-// Phụ thu và giá topping đọc từ CSDL (Sprint 4); giá luôn tính lại ở server,
-// không tin giá client gửi lên. Dòng đơn lưu sẵn unitPrice nên đổi giá không ảnh hưởng đơn cũ.
-export const unitPrice = (basePrice: number, sizeExtra: number, toppingPrices: number[]) =>
-  basePrice + sizeExtra + toppingPrices.reduce((sum, price) => sum + price, 0);
+/**
+ * Công thức tính giá một ly nước tại Server (Server-side Pricing).
+ *
+ * Nguyên tắc:
+ * Giá 1 ly = Giá gốc size S + Phụ thu size + Tổng giá các topping.
+ * Server LUÔN TỰ TÍNH LẠI, tuyệt đối không tin giá client gửi lên để chống gian lận (sửa request).
+ */
+
+export const unitPrice = (
+  basePrice: number,
+  sizeExtra: number,
+  toppingPrices: number[],
+) => basePrice + sizeExtra + toppingPrices.reduce((sum, price) => sum + price, 0);

@@ -1,15 +1,15 @@
 {
   "info": {
-    "name": "BrewLite API",
-    "description": "Sprint 1: GET / và GET /products. Chạy: npm run postman (cần backend đang chạy).",
+    "name": "BrewLite API - Comprehensive Test Suite",
+    "description": "Bộ kịch bản kiểm thử tích hợp toàn diện cho BrewLite: Auth, Products, Orders, Payments, KDS, Cashier, Reports.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Health",
+      "name": "01. Health & Docs",
       "item": [
         {
-          "name": "GET / - backend đang chạy",
+          "name": "GET / - Root Endpoint",
           "event": [
             {
               "listen": "test",
@@ -17,106 +17,18 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('trả Hello World!', () => pm.expect(pm.response.text()).to.eql('Hello World!'));"
+                  "pm.test('Trả chuỗi Hello World!', () => pm.expect(pm.response.text()).to.eql('Hello World!'));"
                 ]
               }
             }
           ],
           "request": {
             "method": "GET",
-            "header": [],
-            "description": "",
-            "url": {
-              "raw": "{{baseUrl}}/",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": []
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Products",
-      "item": [
-        {
-          "name": "GET /products - danh sách sản phẩm",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('Content-Type là JSON', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'));",
-                  "const body = pm.response.json();",
-                  "pm.test('là mảng và không rỗng (đã seed)', () => { pm.expect(body).to.be.an('array').that.is.not.empty; });",
-                  "pm.test('mỗi sản phẩm đúng hình dạng API-CONTRACT', () => {",
-                  "  body.forEach((p) => {",
-                  "    pm.expect(p.id).to.be.a('number');",
-                  "    pm.expect(p.name).to.be.a('string').that.is.not.empty;",
-                  "    pm.expect(Number.isInteger(p.price) && p.price >= 0, 'price là số nguyên VND').to.be.true;",
-                  "    pm.expect(p.imageUrl).to.be.a('string');",
-                  "  });",
-                  "});",
-                  "pm.test('sắp theo id tăng dần', () => { const ids = body.map((p) => p.id); pm.expect(ids).to.eql([...ids].sort((a, b) => a - b)); });",
-                  "pm.test('phản hồi dưới 1 giây', () => pm.expect(pm.response.responseTime).to.be.below(1000));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "description": "Hợp đồng: docs/API-CONTRACT.md, mục GET /products",
-            "url": {
-              "raw": "{{baseUrl}}/products",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "products"
-              ]
-            }
+            "url": { "raw": "{{baseUrl}}/", "host": ["{{baseUrl}}"], "path": [] }
           }
         },
         {
-          "name": "GET /khong-ton-tai - route lạ trả 404",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
-                  "pm.test('body lỗi có statusCode 404', () => pm.expect(pm.response.json().statusCode).to.eql(404));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "description": "",
-            "url": {
-              "raw": "{{baseUrl}}/khong-ton-tai",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "khong-ton-tai"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Docs",
-      "item": [
-        {
-          "name": "GET /docs-json - tài liệu Swagger",
+          "name": "GET /health - System Health Check",
           "event": [
             {
               "listen": "test",
@@ -124,33 +36,825 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('mô tả GET /products', () => pm.expect(pm.response.json().paths['/products'].get).to.exist);"
+                  "const res = pm.response.json();",
+                  "pm.test('Status là ok', () => pm.expect(res.status).to.eql('ok'));",
+                  "pm.test('Có timestamp', () => pm.expect(res.timestamp).to.be.a('string'));"
                 ]
               }
             }
           ],
           "request": {
             "method": "GET",
-            "header": [],
-            "description": "Có thể import URL này vào Postman (Import > Link) để sinh collection từ Swagger",
-            "url": {
-              "raw": "{{baseUrl}}/docs-json",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "docs-json"
-              ]
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        },
+        {
+          "name": "GET /docs-json - OpenAPI Swagger Schema",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Tiêu đề API đúng', () => pm.expect(res.info.title).to.eql('BrewLite API'));",
+                  "pm.test('Có đường dẫn /products', () => pm.expect(res.paths['/products']).to.exist);"
+                ]
+              }
             }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/docs-json", "host": ["{{baseUrl}}"], "path": ["docs-json"] }
           }
         }
       ]
-    }
-  ],
-  "variable": [
+    },
     {
-      "key": "baseUrl",
-      "value": "http://localhost:4003"
+      "name": "02. Products & Menu",
+      "item": [
+        {
+          "name": "GET /products - Danh sách sản phẩm",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json();",
+                  "pm.test('Dữ liệu là mảng không rỗng', () => pm.expect(list).to.be.an('array').that.is.not.empty);",
+                  "pm.test('Món đầu tiên có đủ cấu trúc', () => {",
+                  "  const p = list[0];",
+                  "  pm.expect(p.id).to.be.a('number');",
+                  "  pm.expect(p.name).to.be.a('string');",
+                  "  pm.expect(p.price).to.be.above(0);",
+                  "  pm.expect(p.category).to.be.an('object');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/products", "host": ["{{baseUrl}}"], "path": ["products"] }
+          }
+        },
+        {
+          "name": "GET /products/1 - Chi tiết sản phẩm tồn tại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test('Đúng ID = 1', () => pm.expect(p.id).to.eql(1));",
+                  "pm.test('Tên là Cà phê sữa', () => pm.expect(p.name).to.eql('Cà phê sữa'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/products/1", "host": ["{{baseUrl}}"], "path": ["products", "1"] }
+          }
+        },
+        {
+          "name": "GET /products/999 - Sản phẩm không tồn tại (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/products/999", "host": ["{{baseUrl}}"], "path": ["products", "999"] }
+          }
+        },
+        {
+          "name": "GET /products/abc - ID sai kiểu số (400 ParseIntPipe)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/products/abc", "host": ["{{baseUrl}}"], "path": ["products", "abc"] }
+          }
+        },
+        {
+          "name": "GET /menu-options - Bảng giá size và topping",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const opts = pm.response.json();",
+                  "pm.test('Có mảng sizes và toppings', () => {",
+                  "  pm.expect(opts.sizes).to.be.an('array');",
+                  "  pm.expect(opts.toppings).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/menu-options", "host": ["{{baseUrl}}"], "path": ["menu-options"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Auth (Xác thực & Đăng nhập)",
+      "item": [
+        {
+          "name": "POST /auth/register - Đăng ký khách hàng mới",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const randomSuffix = Math.floor(10000000 + Math.random() * 90000000);",
+                  "pm.environment.set('tempCustomerPhone', '09' + randomSuffix.toString().slice(0, 8));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.test('Không chứa passwordHash', () => pm.expect(res.passwordHash).to.be.undefined);",
+                  "pm.test('Role mặc định là CUSTOMER', () => pm.expect(res.role).to.eql('CUSTOMER'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{tempCustomerPhone}}\",\n  \"password\": \"matkhau123\",\n  \"name\": \"Khách Hàng Mới\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        },
+        {
+          "name": "POST /auth/register - Trùng số điện thoại (409 Conflict)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "const res = pm.response.json();",
+                  "pm.test('Thông báo rõ trùng SĐT', () => pm.expect(res.message).to.include('Số điện thoại đã được đăng ký'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{tempCustomerPhone}}\",\n  \"password\": \"matkhau123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        },
+        {
+          "name": "POST /auth/register - Mật khẩu quá ngắn (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"0911223344\",\n  \"password\": \"123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        },
+        {
+          "name": "POST /auth/login - Đăng nhập Khách hàng (Lưu customerToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Trả về chuỗi accessToken', () => {",
+                  "  pm.expect(res.accessToken).to.be.a('string');",
+                  "  pm.expect(res.accessToken.split('.')).to.have.lengthOf(3);",
+                  "  pm.environment.set('customerToken', res.accessToken);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{tempCustomerPhone}}\",\n  \"password\": \"matkhau123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "POST /auth/login - Sai mật khẩu (401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{tempCustomerPhone}}\",\n  \"password\": \"sai_mat_khau\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "POST /auth/login - Barista (Lưu baristaToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.environment.set('baristaToken', res.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"0900000001\",\n  \"password\": \"matkhau123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "POST /auth/login - Manager (Lưu managerToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.environment.set('managerToken', res.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"0900000003\",\n  \"password\": \"matkhau123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Orders (Đặt hàng)",
+      "item": [
+        {
+          "name": "POST /orders - Thiếu Token (401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [{ \"productId\": 1, \"quantity\": 1, \"size\": \"S\" }]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/orders", "host": ["{{baseUrl}}"], "path": ["orders"] }
+          }
+        },
+        {
+          "name": "POST /orders - Giỏ hàng rỗng (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": []\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/orders", "host": ["{{baseUrl}}"], "path": ["orders"] }
+          }
+        },
+        {
+          "name": "POST /orders - Đặt đơn thành công (201 Created)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('idemKeyOrder', 'order-key-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.test('Status là PENDING', () => pm.expect(res.status).to.eql('PENDING'));",
+                  "pm.test('Tiền do server tính > 0', () => pm.expect(res.total).to.be.above(0));",
+                  "pm.environment.set('createdOrderId', res.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" },
+              { "key": "Idempotency-Key", "value": "{{idemKeyOrder}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"quantity\": 1,\n      \"size\": \"M\",\n      \"toppings\": [\"tran-chau\"]\n    }\n  ],\n  \"promoCode\": \"WELCOME10\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/orders", "host": ["{{baseUrl}}"], "path": ["orders"] }
+          }
+        },
+        {
+          "name": "POST /orders - Gửi trùng Idempotency-Key (Trả lại đơn cũ)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.test('Trả lại đúng ID của đơn vừa tạo', () => pm.expect(res.id).to.eql(pm.environment.get('createdOrderId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" },
+              { "key": "Idempotency-Key", "value": "{{idemKeyOrder}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [{ \"productId\": 1, \"quantity\": 1, \"size\": \"M\" }]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/orders", "host": ["{{baseUrl}}"], "path": ["orders"] }
+          }
+        },
+        {
+          "name": "GET /orders/me - Lịch sử đơn của khách",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const list = pm.response.json();",
+                  "pm.test('Đơn vừa đặt nằm ở đầu danh sách', () => {",
+                  "  pm.expect(list[0].id).to.eql(pm.environment.get('createdOrderId'));",
+                  "  pm.expect(list[0].status).to.eql('PENDING');",
+                  "  pm.environment.set('orderVersion', list[0].version);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/orders/me", "host": ["{{baseUrl}}"], "path": ["orders", "me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Payments (Thanh toán)",
+      "item": [
+        {
+          "name": "POST /payments - Thiếu Token (401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{createdOrderId}}\",\n  \"method\": \"WALLET\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/payments", "host": ["{{baseUrl}}"], "path": ["payments"] }
+          }
+        },
+        {
+          "name": "POST /payments - Thẻ đuôi 0000 bị từ chối (PAYMENT_FAILED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.test('Trạng thái là PAYMENT_FAILED', () => pm.expect(res.status).to.eql('PAYMENT_FAILED'));",
+                  "pm.test('Có lý do từ chối', () => pm.expect(res.reason).to.include('Thẻ bị từ chối'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{createdOrderId}}\",\n  \"method\": \"CARD\",\n  \"cardNumber\": \"4111111111110000\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/payments", "host": ["{{baseUrl}}"], "path": ["payments"] }
+          }
+        },
+        {
+          "name": "POST /payments - Thanh toán Ví thành công (Chuyển sang PAID)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.test('Trạng thái chuyển sang PAID', () => pm.expect(res.status).to.eql('PAID'));",
+                  "pm.test('Có tích điểm loyalty', () => pm.expect(res.pointsEarned).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{createdOrderId}}\",\n  \"method\": \"WALLET\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/payments", "host": ["{{baseUrl}}"], "path": ["payments"] }
+          }
+        },
+        {
+          "name": "POST /payments - Đơn đã thanh toán không được trả lần 2 (409 Conflict)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{createdOrderId}}\",\n  \"method\": \"WALLET\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/payments", "host": ["{{baseUrl}}"], "path": ["payments"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. KDS (Màn hình Pha chế Bếp)",
+      "item": [
+        {
+          "name": "GET /kds/orders - Khách hàng xem bếp bị chặn (403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/kds/orders", "host": ["{{baseUrl}}"], "path": ["kds", "orders"] }
+          }
+        },
+        {
+          "name": "GET /kds/orders - Barista xem đơn cần làm (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const orders = pm.response.json();",
+                  "pm.test('Là mảng đơn', () => pm.expect(orders).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{baristaToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/kds/orders", "host": ["{{baseUrl}}"], "path": ["kds", "orders"] }
+          }
+        },
+        {
+          "name": "POST /kds/orders/:id/status - Bắt đầu pha chế (PREPARING)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Chuyển sang PREPARING', () => pm.expect(res.status).to.eql('PREPARING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{baristaToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PREPARING\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/kds/orders/{{createdOrderId}}/status", "host": ["{{baseUrl}}"], "path": ["kds", "orders", "{{createdOrderId}}", "status"] }
+          }
+        },
+        {
+          "name": "POST /kds/orders/:id/status - Hoàn tất món (READY -> Sinh pickupCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Chuyển sang READY', () => pm.expect(res.status).to.eql('READY'));",
+                  "pm.test('Có sinh mã nhận hàng 6 số', () => {",
+                  "  pm.expect(res.pickupCode).to.match(/^\\d{6}$/);",
+                  "  pm.environment.set('pickupCode', res.pickupCode);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{baristaToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"READY\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/kds/orders/{{createdOrderId}}/status", "host": ["{{baseUrl}}"], "path": ["kds", "orders", "{{createdOrderId}}", "status"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Cancel Order (Hủy đơn)",
+      "item": [
+        {
+          "name": "POST /orders - Tạo đơn phụ để test hủy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.environment.set('cancelOrderId', res.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [{ \"productId\": 2, \"quantity\": 1, \"size\": \"S\" }]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/orders", "host": ["{{baseUrl}}"], "path": ["orders"] }
+          }
+        },
+        {
+          "name": "POST /orders/:id/cancel - Hủy đơn thành công",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Status đổi thành CANCELLED', () => pm.expect(res.status).to.eql('CANCELLED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": 0,\n  \"reason\": \"Khách đổi ý không muốn uống nữa\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/orders/{{cancelOrderId}}/cancel", "host": ["{{baseUrl}}"], "path": ["orders", "{{cancelOrderId}}", "cancel"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Reports (Báo cáo Admin)",
+      "item": [
+        {
+          "name": "GET /admin/reports - Khách hàng xem báo cáo bị chặn (403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/admin/reports", "host": ["{{baseUrl}}"], "path": ["admin", "reports"] }
+          }
+        },
+        {
+          "name": "GET /admin/reports - Manager xem báo cáo doanh thu (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const rep = pm.response.json();",
+                  "pm.test('Có mục totals doanh thu', () => pm.expect(rep.totals.revenue).to.be.a('number'));",
+                  "pm.test('Có top sản phẩm bán chạy', () => pm.expect(rep.topProducts).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{managerToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/admin/reports", "host": ["{{baseUrl}}"], "path": ["admin", "reports"] }
+          }
+        }
+      ]
     }
   ]
 }

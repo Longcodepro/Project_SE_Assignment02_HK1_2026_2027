@@ -1,12 +1,19 @@
+/**
+ * DTO cho chức năng hủy đơn hàng POST /orders/:id/cancel.
+ */
+
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import { OrderStatus } from '../../generated/prisma/enums.js';
 
+/**
+ * Payload gửi lên khi yêu cầu hủy đơn
+ */
 export class CancelOrderDto {
   @ApiProperty({
     example: 2,
     minimum: 0,
-    description: 'Lấy từ GET /orders/me; sai thì 409',
+    description: 'Version của đơn hàng tại thời điểm xem. Dùng cho Khóa lạc quan (Optimistic Locking), sai version -> 409',
   })
   @IsInt()
   @Min(0)
@@ -15,7 +22,7 @@ export class CancelOrderDto {
   @ApiPropertyOptional({
     example: 'Đổi ý, không muốn uống nữa',
     maxLength: 200,
-    description: 'Bắt buộc khi đơn đang PAID',
+    description: 'Lý do hủy đơn. BẮT BUỘC nếu đơn đã thanh toán (PAID)',
   })
   @IsOptional()
   @IsString()
@@ -23,17 +30,17 @@ export class CancelOrderDto {
   reason?: string;
 }
 
+/**
+ * Kết quả trả về sau khi hủy đơn thành công
+ */
 export class CancelOrderResultDto {
   @ApiProperty({ example: 'ord_a1b2c3d4e5' })
   id!: string;
 
-  @ApiProperty({
-    enum: [OrderStatus.CANCELLED],
-    example: OrderStatus.CANCELLED,
-  })
+  @ApiProperty({ enum: [OrderStatus.CANCELLED], example: OrderStatus.CANCELLED })
   status!: string;
 
-  @ApiProperty({ example: 3, description: 'Đã tăng 1' })
+  @ApiProperty({ example: 3, description: 'Version mới sau khi hủy (tăng lên 1)' })
   version!: number;
 
   @ApiProperty({
@@ -41,7 +48,7 @@ export class CancelOrderResultDto {
     format: 'date-time',
     nullable: true,
     example: '2026-11-14T04:10:00.000Z',
-    description: 'Thời điểm hoàn tiền mô phỏng; null nếu đơn chưa từng PAID',
+    description: 'Thời điểm hoàn tiền mô phỏng (null nếu đơn chưa thanh toán)',
   })
   refundedAt!: Date | null;
 }

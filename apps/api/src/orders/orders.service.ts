@@ -1,3 +1,14 @@
+/**
+ * OrdersService: Trái tim xử lý nghiệp vụ đặt hàng, tính giá và hủy đơn.
+ *
+ * Các kỹ thuật cốt lõi:
+ * 1. Chống gửi đơn trùng lặp (Idempotency) dựa trên cặp (userPhone, idempotencyKey).
+ * 2. Tính giá hoàn toàn tại Server (Server-side Pricing) từ bảng giá CSDL.
+ * 3. Kiểm tra trước nguyên liệu trong kho (Pre-flight Stock Check).
+ * 4. Khóa lạc quan (Optimistic Locking) qua cột `version` khi hủy đơn.
+ * 5. Hoàn lại nguyên liệu và lượt dùng voucher trong Database Transaction khi hủy.
+ */
+
 import {
   BadRequestException,
   ConflictException,
@@ -21,6 +32,7 @@ import { assertTransition } from './order-status.js';
 import { unitPrice } from './pricing.js';
 import { assertPromotionUsable, discountFor } from './promotion.js';
 
+// Cấu trúc SELECT tóm tắt sau khi tạo đơn
 const SUMMARY = {
   id: true,
   status: true,
@@ -34,6 +46,7 @@ const STALE_ORDER = 'Đơn vừa được cập nhật bởi yêu cầu khác, v
 export type CancelActor =
   { kind: 'customer'; phone: string } | { kind: 'cashier' };
 
+// Chuyển { promotion: { code: 'X' } } thành { promoCode: 'X' }
 const toSummary = <T extends { promotion: { code: string } | null }>({
   promotion,
   ...order
@@ -46,11 +59,15 @@ const toSummary = <T extends { promotion: { code: string } | null }>({
 export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Tạo đơn hàng mới
+   */
   async create(
     userPhone: string,
     dto: CreateOrderDto,
     idempotencyKey?: string,
   ) {
+    // 1. Kiểm tra Idempotency: nếu đã tạo đơn với key này rồi thì trả về đơn cũ ngay lập tức
     const findExisting = async () => {
       const existing = await this.prisma.order.findUnique({
         where: {
@@ -68,12 +85,14 @@ export class OrdersService {
       if (existing) return existing;
     }
 
+    // 2. Lấy danh sách ID món duy nhất và truy vấn CSDL (chỉ lấy món có danh mục đang hoạt động)
     const ids = [...new Set(dto.items.map((i) => i.productId))];
-    // Món của danh mục đang ẩn coi như không tồn tại
     const products = await this.prisma.product.findMany({
       where: { id: { in: ids }, category: { isActive: true } },
     });
     const productById = new Map(products.map((p) => [p.id, p]));
+
+    // Báo lỗi 400 nếu có sản phẩm không tồn tại
     const missing = ids.filter((id) => !productById.has(id));
     if (missing.length) {
       throw new BadRequestException(
@@ -81,6 +100,7 @@ export class OrdersService {
       );
     }
 
+    // Báo lỗi 409 nếu món tạm hết hàng
     const unavailable = products.filter((p) => !p.isAvailable);
     if (unavailable.length) {
       throw new ConflictException(
@@ -88,7 +108,7 @@ export class OrdersService {
       );
     }
 
-    // Bảng giá lấy từ CSDL lúc đặt: đổi giá chỉ ảnh hưởng đơn tạo sau đó
+    // 3. Tải phụ thu size và bảng giá topping đang bán từ CSDL
     const toppingCodes = [
       ...new Set(dto.items.flatMap((i) => i.toppings ?? [])),
     ];
@@ -109,6 +129,7 @@ export class OrdersService {
       );
     }
 
+    // 4. Tính đơn giá (unitPrice) cho từng dòng món và tổng tiền gốc (subtotal)
     const items = dto.items.map((i) => {
       const sizeExtra = extraBySize.get(i.size);
       if (sizeExtra === undefined) {
@@ -134,21 +155,23 @@ export class OrdersService {
       0,
     );
 
+    // 5. Kiểm tra và áp dụng mã giảm giá (nếu có)
     const promo = dto.promoCode
       ? await this.prisma.promotion.findUnique({
           where: { code: dto.promoCode.toUpperCase() },
         })
       : null;
     if (dto.promoCode) {
-      if (!promo)
+      if (!promo) {
         throw new BadRequestException(
           'Mã giảm giá không tồn tại hoặc đã bị vô hiệu',
         );
+      }
       assertPromotionUsable(promo, subtotal);
     }
     const discountAmount = promo ? discountFor(promo, subtotal) : 0;
 
-    // Kiểm tra sớm đủ nguyên liệu (kể cả topping); không giữ chỗ, bước trừ kho thật ở lúc thanh toán
+    // 6. Kiểm tra nguyên liệu trong kho (Pre-flight check: không đủ nguyên liệu báo lỗi ngay)
     try {
       await assertStockAvailable(
         this.prisma,
@@ -163,8 +186,9 @@ export class OrdersService {
       throw e;
     }
 
+    // 7. Chuẩn bị dữ liệu ghi đơn hàng
     const data = {
-      id: `ord_${randomBytes(5).toString('hex')}`,
+      id: `ord_${randomBytes(5).toString('hex')}`, // Sinh ID dạng "ord_a1b2c3d4e5"
       userPhone,
       idempotencyKey,
       total: subtotal - discountAmount,
@@ -173,14 +197,14 @@ export class OrdersService {
       items: { create: items },
     };
 
+    // 8. Ghi vào database (sử dụng transaction nếu có mã giảm giá để giữ lượt an toàn)
     try {
       if (!promo) {
         return toSummary(
           await this.prisma.order.create({ data, select: SUMMARY }),
         );
       }
-      // Giữ lượt dùng cùng transaction với việc tạo đơn: hai khách tranh lượt cuối chỉ một người được,
-      // và lỗi trùng Idempotency-Key làm hoàn tác luôn việc giữ lượt
+      // Dùng Transaction để tăng usedCount của voucher và tạo đơn đồng thời
       return toSummary(
         await this.prisma.$transaction(async (tx) => {
           const reserved = await tx.promotion.updateMany({
@@ -199,7 +223,7 @@ export class OrdersService {
         }),
       );
     } catch (e) {
-      // Hai yêu cầu cùng key đến cùng lúc: yêu cầu thua trả lại đơn của yêu cầu thắng
+      // Xử lý race condition: nếu 2 request cùng idempotencyKey đến cùng lúc
       if (idempotencyKey && isUniqueViolation(e)) {
         const existing = await findExisting();
         if (existing) return existing;
@@ -208,9 +232,11 @@ export class OrdersService {
     }
   }
 
-  // Khách hủy đơn của mình; Cashier hủy đơn PAID của bất kỳ khách nào
+  /**
+   * Hủy đơn hàng (Khách tự hủy hoặc Thu ngân hủy đơn PAID)
+   */
   async cancel(id: string, dto: CancelOrderDto, actor: CancelActor) {
-    // Đơn của người khác cũng báo 404 để không lộ đơn có tồn tại
+    // 1. Kiểm tra quyền sở hữu đơn hàng (Khách chỉ tìm thấy đơn của chính mình)
     const order = await this.prisma.order.findFirst({
       where: {
         id,
@@ -225,8 +251,10 @@ export class OrdersService {
     });
     if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
 
-    // Kiểm tra version trước để client cũ nhận đúng lý do (đơn đã bị đổi), rồi mới xét trạng thái
+    // 2. KHÓA LẠC QUAN: Nếu version client gửi lên khác version trong DB -> đơn đã bị ai đó sửa
     if (order.version !== dto.version) throw new ConflictException(STALE_ORDER);
+
+    // 3. Kiểm tra bước chuyển trạng thái sang CANCELLED
     assertTransition(order.status, 'CANCELLED');
     if (actor.kind === 'cashier' && order.status !== 'PAID') {
       throw new ForbiddenException('Quầy chỉ hủy được đơn đã thanh toán');
@@ -237,11 +265,11 @@ export class OrdersService {
     if (paid && !reason) {
       throw new BadRequestException('Cần ghi lý do khi hủy đơn đã thanh toán');
     }
-    // Hoàn tiền mô phỏng: chỉ ghi thời điểm, không có giao dịch hoàn tiền thật
     const refundedAt = paid ? new Date() : null;
 
+    // 4. Thực thi việc hủy trong Transaction nguyên tử
     await this.prisma.$transaction(async (tx) => {
-      // Khóa lạc quan: Barista bấm PREPARING cùng lúc thì chỉ một bên ghi được
+      // Cập nhật trạng thái và tăng version lên 1
       const updated = await tx.order.updateMany({
         where: { id, version: dto.version, status: order.status },
         data: {
@@ -253,6 +281,7 @@ export class OrdersService {
       });
       if (updated.count === 0) throw new ConflictException(STALE_ORDER);
 
+      // Nếu đơn đã trả tiền: trừ lại điểm loyalty đã tích và hoàn trả nguyên liệu vào kho
       if (paid) {
         const payment = await tx.payment.findFirst({
           where: { orderId: id, status: 'SUCCESS' },
@@ -264,8 +293,10 @@ export class OrdersService {
             data: { loyaltyPoints: { decrement: payment.pointsEarned } },
           });
         }
-        await refundStock(tx, id);
+        await refundStock(tx, id); // Hoàn lại lượng sữa, hạt cà phê, ly đã trừ
       }
+
+      // Trả lại 1 lượt dùng cho mã giảm giá
       if (order.promotionId !== null) {
         await tx.promotion.updateMany({
           where: { id: order.promotionId, usedCount: { gt: 0 } },
@@ -273,6 +304,7 @@ export class OrdersService {
         });
       }
     });
+
     return {
       id,
       status: 'CANCELLED' as const,
@@ -281,6 +313,9 @@ export class OrdersService {
     };
   }
 
+  /**
+   * Lấy lịch sử đơn hàng của người dùng hiện tại (mới nhất xếp trước)
+   */
   async findMine(userPhone: string) {
     const orders = await this.prisma.order.findMany({
       where: { userPhone },
@@ -310,6 +345,8 @@ export class OrdersService {
         },
       },
     });
+
+    // Định dạng lại cấu trúc trả về cho Frontend
     return orders.map(({ items, ...order }) => ({
       ...toSummary(order),
       items: items.map(({ product, ...item }) => ({
