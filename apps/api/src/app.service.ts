@@ -1,3 +1,7 @@
+/**
+ * AppService: Tầng nghiệp vụ đơn giản cho root endpoint.
+ */
+
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

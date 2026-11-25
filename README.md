@@ -1,103 +1,191 @@
-# BrewLite — Ứng Dụng Đặt Cà Phê Không Tiền Mặt
+<div align="center">
 
-> **Môn học:** Công nghệ Phần mềm — Bài tập lớn: Assignment 2 (Requirements to Deployment)  
-> **Học kỳ:** I — Năm học 2026–2027 | Trường Đại học Sài Gòn  
-> **Nhóm sinh viên thực hiện:**
-> - **Nguyễn Thành Long (`Longcodepro`)** — Backend, Scrum Master, DevOps, Kiến trúc
-> - **Trần Quốc Tài (`TaiTran263`)** — Frontend UI/UX, Quản trị trạng thái Client, QA
->
-> **Công nghệ chính:** Next.js 16 (Mobile-first PWA) · NestJS 12 · PostgreSQL 16 (Neon) · Docker & Docker Compose · GitHub Actions CI/CD  
-> **Luồng nghiệp vụ cốt lõi:**  
-> Xem menu → Tùy biến món (Size/Topping) → Giỏ hàng → Đăng nhập SĐT → Đặt đơn (Server-side Pricing) → Thanh toán Thẻ/Ví → Theo dõi đơn & Tích điểm
+# ☕ BREWLITE — Cashless Coffee Ordering & Operations Platform
+
+### 🚀 Nền Tảng Đặt Cà Phê Không Tiền Mặt & Quản Vận Hành F&B Chuỗi
+
+[![Next.js 16](https://img.shields.io/badge/Next.js_16-App_Router_PWA-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![NestJS 12](https://img.shields.io/badge/NestJS_12-TypeScript_ESM-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)](https://nestjs.com/)
+[![Prisma 7](https://img.shields.io/badge/Prisma_7-PostgreSQL_Adapter-2D3748?style=for-the-badge&logo=prisma&logoColor=white)](https://www.prisma.io/)
+[![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL_16-Relational_DB-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker Compose](https://img.shields.io/badge/Docker_Compose-Multi--Container-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Vitest](https://img.shields.io/badge/Vitest-600+_Tests_Passed-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![GitHub Actions](https://img.shields.io/badge/CI%2FCD-Quality_Gate_Passed-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/Longcodepro/Project_SE_Assignment02_HK1_2026_2027/actions)
+
+<p align="center">
+  <b>Đồ án môn học:</b> Công nghệ Phần mềm (Software Engineering) — Assignment 2 (Requirements to Production Deployment)<br>
+  <b>Học kỳ 1, Năm học 2026–2027 · Khoa Công nghệ Thông tin · Trường Đại học Sài Gòn (SGU)</b>
+</p>
+
+<p align="center">
+  <a href="https://se-as2-brewlite.vercel.app">
+    <img src="https://img.shields.io/badge/🌐_MỞ_WEB_DEMO_PRODUCTION-00C853?style=for-the-badge&logoColor=white" alt="Live Web">
+  </a>
+  <a href="https://brewlite-api.onrender.com/docs">
+    <img src="https://img.shields.io/badge/📖_SWAGGER_API_DOCS-FF6D00?style=for-the-badge&logoColor=white" alt="Swagger Docs">
+  </a>
+  <a href="#-4-hướng-dẫn-khởi-chạy-1-lệnh-docker-compose">
+    <img src="https://img.shields.io/badge/🚀_HƯỚNG_DẪN_CHẠY_LOCAL-00B0FF?style=for-the-badge&logoColor=white" alt="Quickstart">
+  </a>
+  <a href="#-5-chứng-chỉ-kiểm-thử-tự-động-testing--qa">
+    <img src="https://img.shields.io/badge/🧪_TEST_SUITE_100%25_GREEN-7C4DFF?style=for-the-badge&logoColor=white" alt="Tests">
+  </a>
+</p>
 
 ---
 
-## 1. Địa Chỉ Truy Cập Môi Trường Production (Live URLs)
+### 🟢 TRẠNG THÁI HỆ THỐNG TRỰC TUYẾN (PRODUCTION CLOUD 24/7)
 
-Hệ thống đã được đóng gói container tự động và triển khai công khai trên nền tảng đám mây bảo mật HTTPS:
+| Thành Phần | Hạ Tầng Đám Mây | Trạng Thái | Địa Chỉ Trực Tiếp |
+|:---|:---:|:---:|:---|
+| 🌐 **Frontend Web App** | Vercel Edge Network | ![Ready](https://img.shields.io/badge/ONLINE-00C853?style=flat-square&logo=vercel&logoColor=white) | [https://se-as2-brewlite.vercel.app](https://se-as2-brewlite.vercel.app) |
+| 🚀 **Backend API Service** | Render Cloud (Singapore) | ![Active](https://img.shields.io/badge/ACTIVE_200_OK-00B0FF?style=flat-square&logo=render&logoColor=white) | [https://brewlite-api.onrender.com](https://brewlite-api.onrender.com) |
+| 📖 **Swagger OpenAPI 3.0** | Interactive Documentation | ![Docs](https://img.shields.io/badge/SWAGGER_READY-FF6D00?style=flat-square&logo=swagger&logoColor=white) | [https://brewlite-api.onrender.com/docs](https://brewlite-api.onrender.com/docs) |
+| 🗄️ **Database Cloud** | Neon Serverless PostgreSQL | ![Pooler](https://img.shields.io/badge/POSTGRES_POOLER-7C4DFF?style=flat-square&logo=postgresql&logoColor=white) | `ap-southeast-1.aws.neon.tech` (SSL) |
+| 🛡️ **CI/CD Quality Gate** | GitHub Actions | ![Passed](https://img.shields.io/badge/CI_PASSED-00C853?style=flat-square&logo=githubactions&logoColor=white) | [CI Workflow Runs](https://github.com/Longcodepro/Project_SE_Assignment02_HK1_2026_2027/actions) |
 
-| Thành phần | Nền tảng hạ tầng | Địa chỉ truy cập Production | Ghi chú nghiệm thu |
-|---|---|---|---|
-| **Frontend Web App** | **Vercel Edge Network** | [https://se-as2-brewlite.vercel.app](https://se-as2-brewlite.vercel.app) | Giao diện Next.js 16 Mobile-first |
-| **Backend API Service** | **Render Cloud Services** | [https://brewlite-api.onrender.com](https://brewlite-api.onrender.com) | NestJS build từ `apps/api/Dockerfile`, Render tự deploy theo kết nối Git |
-| **Health Check Endpoint** | **Render Cloud** | [https://brewlite-api.onrender.com/health](https://brewlite-api.onrender.com/health) | Trả về HTTP 200 `{ "status": "ok" }` |
-| **Tài liệu API (Swagger)** | **Render Cloud** | [https://brewlite-api.onrender.com/docs](https://brewlite-api.onrender.com/docs) | Giao diện tương tác OpenAPI 3.0 |
-| **Cơ sở dữ liệu** | **Neon Serverless PostgreSQL** | `ep-dry-pond-xxx.ap-southeast-1.aws.neon.tech` | Đặt tại Singapore (`ap-southeast-1`), SSL Mode |
-| **Demo Tunnel (Dự phòng)** | **Cloudflare Zero Trust** | [https://demo.brewlite.online](https://demo.brewlite.online) | Đường dẫn HTTPS phát trực tiếp từ máy local |
-
-### Dữ liệu tài khoản kiểm thử nhanh (Demo Credentials):
-* **Không có tài khoản được seed sẵn** (seed chỉ tạo danh mục và món). Hãy bấm **Đăng ký** trên web với SĐT di động Việt Nam 10 chữ số (đầu số `03`, `05`, `07`, `08`, `09`, ví dụ `0912345678`) và mật khẩu 6 đến 72 ký tự.
-* Nút **"Tài khoản mẫu (Demo)"** ở form đăng nhập chỉ điền sẵn `0912345678` / `matkhau123`; đăng nhập được khi tài khoản này đã được đăng ký trước đó.
-* **Kịch bản thanh toán thẻ mô phỏng:**
-  * **Thành công:** Nhập số thẻ 13 đến 19 chữ số (ví dụ 16 số) có 4 số cuối **khác `0000`** (ví dụ: `4111 2222 3333 4444`).
-  * **Thất bại:** Nhập số thẻ có 4 số cuối là **`0000`** (ví dụ: `4111 2222 3333 0000`).
+</div>
 
 ---
 
-## 2. Cấu Trúc Thư Mục Repository
+## 📑 Mục Lục
+1. [🌟 Giới Thiệu Dự Án & Vai Trò](#-1-giới-thiệu-dự-án--vai-trò)
+2. [💡 Điểm Sáng Kỹ Thuật (Engineering Highlights)](#-2-điểm-sáng-kỹ-thuật-engineering-highlights)
+3. [📊 Máy Trạng Thái & Kiến Trúc Hệ Thống](#-3-máy-trạng-thái--kiến-trúc-hệ-thống)
+4. [🚀 Hướng Dẫn Khởi Chạy (1 Lệnh Docker Compose)](#-4-hướng-dẫn-khởi-chạy-1-lệnh-docker-compose)
+5. [🧪 Kiểm Thử Tự Động (600+ Tests Green)](#-5-kiểm-thử-tự-động-testing--qa)
+6. [👤 Tài Khoản Mẫu Để Dùng Thử (Demo Accounts)](#-6-tài-khoản-mẫu-để-dùng-thử-demo-accounts)
+7. [📁 Cấu Trúc Monorepo & Giải Thích](#-7-cấu-trúc-monorepo--giải-thích)
+8. [📚 Hệ Thống Tài Liệu Kỹ Thuật](#-8-hệ-thống-tài-liệu-kỹ-thuật)
 
+---
+
+## 🌟 1. Giới Thiệu Dự Án & Vai Trò
+
+### 1.1. Bối cảnh & Vấn đề giải quyết
+**BrewLite** là nền tảng quản trị và bán hàng đa kênh O2O (Online-to-Offline) dành cho chuỗi đồ uống, giải quyết bài toán cốt lõi:
+- **Khách hàng:** Đặt món không tiền mặt, tùy biến kích cỡ/topping, áp voucher, theo dõi đơn thời gian thực, nhận món qua mã định danh an toàn và tích điểm đổi quà.
+- **Vận hành quầy & bếp (KDS):** Màn hình hiển thị bếp thời gian thực cho Barista theo dõi thứ tự pha chế, hạn chế sai sót và trễ đơn.
+- **Thu ngân (Cashier):** Đối soát mã lấy hàng (`pickupCode`) 6 chữ số chống giao nhầm món cho khách.
+- **Quản lý (Manager):** Quản lý thực đơn linh hoạt, trừ kho nguyên liệu tự động theo công thức định lượng (Bill of Materials - BOM) và báo cáo doanh thu chi tiết.
+
+### 1.2. Phân công vai trò dự án
+| Thành viên | Vai trò | Trách nhiệm chính |
+|---|---|---|
+| **Nguyễn Thành Long** (`@Longcodepro`) | **Backend Lead, Scrum Master, DevOps** | Thiết kế kiến trúc Modular Monolith NestJS, CSDL PostgreSQL/Prisma, Xử lý giao dịch & Concurrency (Idempotency, Optimistic Locking, BOM Deduction), Quản lý State Machine, CI/CD Pipeline, Bộ test tự động (520+ Vitest + Postman E2E). |
+| **Trần Quốc Tài** (`@TaiTran263`) | **Frontend Developer, UI/UX** | Xây dựng giao diện Web & KDS PWA Mobile-first bằng Next.js 16, Tailwind CSS, Quản trị trạng thái giỏ hàng Zustand, tích hợp REST API. |
+
+---
+
+## 💡 2. Điểm Sáng Kỹ Thuật (Engineering Highlights)
+
+Dự án được xây dựng với tư duy kỹ thuật chuyên sâu của một sản phẩm Enterprise-ready, áp dụng các mẫu kiến trúc giải quyết các bài toán hóc búa trong phân hệ giao dịch và vận hành:
+
+### 🔒 2.1. Kiểm Soát Tranh Chấp Bằng Khóa Lạc Quan (Optimistic Concurrency Control - OCC)
+* **Vấn đề:** Khi nhiều người dùng/nhân viên cùng thao tác lên một đơn hàng tại cùng thời điểm (ví dụ: Khách bấm Hủy đơn đúng khoảnh khắc Barista bấm Nhận pha chế).
+* **Giải pháp:** Sử dụng cột `version` (INT) tăng dần trong bảng `Order`. Cập nhật trạng thái bằng câu lệnh SQL nguyên tử:
+  ```sql
+  UPDATE "Order"
+  SET status = :nextStatus, version = version + 1
+  WHERE id = :id AND version = :clientVersion AND status = :expectedStatus;
+  ```
+  Nếu số dòng cập nhật = 0 (phát hiện xung đột phiên bản), Backend lập tức ném lỗi **`409 Conflict`**, bảo vệ tuyệt đối tính toàn vẹn trạng thái.
+
+### 🛡️ 2.2. Cơ Chế Chống Trùng Lặp Giao Dịch (Idempotency-Key Pattern)
+* **Vấn đề:** Hiện tượng mạng chập chờn, timeout kết nối hoặc người dùng bấm đúp nút "Thanh toán" / "Đặt hàng" dẫn đến việc trừ tiền 2 lần hoặc tạo 2 đơn trùng lặp.
+* **Giải pháp:** Áp dụng chuẩn header `Idempotency-Key: <unique-uuid>`. Backend lưu kết quả giao dịch đầu tiên vào bộ nhớ; mọi request đến sau có cùng khóa sẽ trả lại ngay kết quả của giao dịch trước đó mà không thực thi lại logic trừ tiền hay trừ kho.
+
+### 📦 2.3. Trừ Kho Tự Động Theo Định Lượng (Bill of Materials - BOM Transaction)
+* Khi đơn hàng chuyển sang `PAID`, hệ thống tự động bóc tách từng món trong đơn, tra cứu định lượng nguyên liệu (`Recipe`) tương ứng với từng Size/Topping (ví dụ: 1 Cà phê sữa Size L = 25g Hạt cà phê + 40ml Sữa đặc + 1 Ly nhựa L).
+* Toàn bộ thao tác trừ kho diễn ra trong một **Prisma Database Transaction** (`prisma.$transaction`). Nếu bất kỳ nguyên liệu nào không đủ tồn kho, toàn bộ giao dịch được Rollback an toàn, trả mã lỗi cảnh báo rõ ràng.
+
+### 🔄 2.4. Máy Trạng Thái Đơn Hàng Nghiêm Ngặt (Strict Finite State Machine)
+* Ngăn chặn hoàn toàn việc bypass trạng thái (ví dụ: Không thể nhảy từ `PENDING` sang `READY` mà bắt buộc phải qua `PAID` và `PREPARING`).
+* Khi đơn đã bước vào pha chế (`PREPARING`), hệ thống **khóa quyền hủy đơn** của khách hàng để tránh tổn thất nguyên vật liệu cho quán.
+
+### 🔑 2.5. Bảo Mật & Phân Quyền 5 Cấp Độ (Role-Based Access Control - RBAC)
+* Phân quyền chặt chẽ 5 nhóm quyền: `CUSTOMER`, `BARISTA`, `CASHIER`, `MANAGER`, `ADMIN`.
+* Kết hợp NestJS `JwtAuthGuard` và Custom `RolesGuard` với metadata decorator `@Roles(...)`.
+* Mật khẩu được băm bảo mật bằng `bcryptjs` với salt rounds chuẩn; lọc bỏ hoàn toàn `passwordHash` ở tầng Serialization trước khi trả về Client.
+
+---
+
+## 📊 3. Máy Trạng Thái & Kiến Trúc Hệ Thống
+
+### 3.1. Sơ đồ Máy trạng thái Đơn hàng (Order State Machine)
+Vòng đời đơn hàng từ khi khởi tạo đến khi hoàn tất hoặc hủy:
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING : POST /orders (version=0)
+    
+    PENDING --> PAID : POST /payments (Thanh toán thành công)
+    PENDING --> PAYMENT_FAILED : POST /payments (Thẻ 0000 / Ví > 500k)
+    PENDING --> CANCELLED : POST /orders/:id/cancel (Khách hủy)
+    
+    PAYMENT_FAILED --> PAID : POST /payments (Đổi thẻ thanh toán lại)
+    PAYMENT_FAILED --> CANCELLED : POST /orders/:id/cancel (Khách hủy)
+    
+    PAID --> PREPARING : PATCH /kds/orders/:id/status (Barista nhận pha)
+    PAID --> CANCELLED : POST /orders/:id/cancel (Hủy khi chưa pha: Hoàn tiền & Kho)
+    
+    PREPARING --> READY : PATCH /kds/orders/:id/status (Barista pha xong: Sinh pickupCode 6 số)
+    READY --> COMPLETED : POST /cashier/orders/:id/complete (Cashier nhập pickupCode giao món)
+    
+    COMPLETED --> [*]
+    CANCELLED --> [*]
 ```
-brewlite/
-|-- apps/
-|   |-- web/                   # Frontend Next.js 16, Tailwind CSS, Zustand, Mobile-first/PWA
-|   `-- api/                   # Backend NestJS 12, Prisma 7, PostgreSQL, Swagger, Unit/Integration test
-|-- docs/
-|   |-- requirements/          # Task 1: Bối cảnh, SRS rút gọn, User Stories, Đặc tả Use-case
-|   |-- diagrams/              # Task 2: Activity, Sequence, Class Domain (.puml và .svg)
-|   |-- architecture/          # Task 3: Kiến trúc Frontend/Backend, các bản ADR 001-005
-|   |-- deployment.md          # Task 3.2: Kế hoạch triển khai Production, secrets & rollback
-|   |-- traceability-matrix.md # Task 8: Ma trận truy vết yêu cầu 21 FR + 5 NFR
-|   |-- release-notes.md       # Task 5.4: Bản ghi chú phát hành phiên bản v1.0.0
-|   `-- sprint-retrospective.md# Task 5.4: Báo cáo Sprint Review & Sprint Retrospective
-|-- scripts/                   # Tiện ích: logs.sh, start-tunnel.sh, studio-cloud.sh
-|-- tests/                     # Kiểm thử E2E luồng đặt hàng (Playwright, tests/e2e)
-|-- .github/workflows/         # Pipeline tự động hóa: ci.yml (Quality Gate) và cd.yml (Deploy)
-|-- docker-compose.yml         # Chạy trọn gói 3 dịch vụ Web, API và DB bằng 1 câu lệnh
-|-- .env.example               # Mẫu cấu hình biến môi trường chuẩn Twelve-Factor
-`-- README.md                  # Hướng dẫn tổng quan, khởi chạy, kiểm thử và vận hành
-```
+
+> 📖 *Xem toàn bộ 7 sơ đồ UML (Use-case, Activity, Sequence, Class Domain, Deployment) tại [docs/diagrams/README.md](./docs/diagrams/README.md).*
 
 ---
 
-## 3. Hướng Dẫn Khởi Chạy Dự Án Ở Máy Cục Bộ (Local Setup)
+## 🚀 4. Hướng Dẫn Khởi Chạy (1 Lệnh Docker Compose)
 
-### Cách 1: Khởi chạy nhanh bằng Docker Compose (Khuyên dùng)
-Yêu cầu: Máy đã cài đặt **Docker Desktop** và **Docker Compose**.
+Hệ thống được thiết kế theo chuẩn Twelve-Factor App, đóng gói trọn gói toàn bộ Frontend, Backend API và PostgreSQL Database chỉ với 1 câu lệnh.
+
+### 4.1. Khởi chạy bằng Docker Compose (Khuyên dùng)
+**Yêu cầu:** Máy đã cài đặt Docker & Docker Compose.
 
 ```bash
-# 1. Sao chép file cấu hình môi trường mẫu
+# 1. Clone repository
+git clone https://github.com/Longcodepro/Project_SE_Assignment02_HK1_2026_2027.git
+cd Project_SE_Assignment02_HK1_2026_2027
+
+# 2. Khởi tạo biến môi trường từ mẫu
 cp .env.example .env
 
-# 2. Khởi động đồng thời cả 3 dịch vụ (Web, API, DB)
-docker compose up --build -d
+# 3. Khởi động toàn bộ cụm dịch vụ (Web, API, Database)
+docker compose up -d --build
 ```
 
-| Dịch vụ | URL truy cập Local | Mô tả |
-|---|---|---|
-| **Frontend Web** | [http://localhost:4004](http://localhost:4004) | Giao diện đặt món Next.js |
-| **Màn hình KDS** | [http://localhost:4004/kds](http://localhost:4004/kds) | Màn hình pha chế Barista (`0900000001` / `matkhau123`) |
-| **Backend API** | [http://localhost:4003](http://localhost:4003) | Máy chủ API NestJS |
-| **API Swagger** | [http://localhost:4003/docs](http://localhost:4003/docs) | Tài liệu tương tác API |
-| **PostgreSQL DB** | `localhost:4005` | CSDL PostgreSQL 16 Alpine |
+Sau khi các container khởi động, hệ thống sẵn sàng tại:
 
-*Migration và seed dữ liệu mẫu sẽ tự động thực thi khi API khởi động.*  
-*Seed cũng tạo ba tài khoản nhân viên để thử Sprint 3 và 4: Barista `0900000001`, Cashier `0900000002` và Manager `0900000003`, mật khẩu lấy từ `SEED_STAFF_PASSWORD` trong `.env` (mẫu: `matkhau123`). Production để trống biến này thì không tạo các tài khoản này.*  
-*Để dừng toàn bộ hệ thống:* `docker compose down` *(thêm cờ `-v` nếu muốn xóa trắng dữ liệu CSDL)*.
+| Dịch vụ | URL Local | Mô tả |
+|---|---|---|
+| 🌐 **Frontend Web App** | [http://localhost:4004](http://localhost:4004) | Giao diện đặt món cho khách |
+| 🧑‍🍳 **Màn hình Bếp KDS** | [http://localhost:4004/kds](http://localhost:4004/kds) | Dành cho Barista pha chế |
+| 🏢 **Trang Quản trị Admin** | [http://localhost:4004/admin](http://localhost:4004/admin) | Quản lý kho, menu, giá bán, báo cáo |
+| 🚀 **Backend API** | [http://localhost:4003](http://localhost:4003) | NestJS REST API Server |
+| 📖 **Swagger OpenAPI Docs** | [http://localhost:4003/docs](http://localhost:4003/docs) | Tài liệu tương tác API trực quan |
+| 🗄️ **PostgreSQL 16 DB** | `localhost:4005` | CSDL lưu trữ chính |
+
+*Để dừng hệ sinh thái:* `docker compose down` *(hoặc `docker compose down -v` để xóa sạch dữ liệu)*.
 
 ---
 
-### Cách 2: Chạy trực tiếp trên máy không dùng Docker
-Yêu cầu: Node.js phiên bản 22+ và một cơ sở dữ liệu PostgreSQL đang chạy.
+### 4.2. Khởi chạy từng dịch vụ trực tiếp (Local Development)
+**Yêu cầu:** Node.js v20+ và PostgreSQL đang chạy cục bộ tại port 4005.
 
 ```bash
-# 1. Khởi chạy Backend API
+# 1. Chạy Backend API
 cd apps/api
 npm ci
 npx prisma migrate deploy
 npx prisma db seed
 PORT=4003 npm run start:dev
 
-# 2. Khởi chạy Frontend Web (Mở terminal mới)
+# 2. Chạy Frontend Web (Mở terminal mới)
 cd apps/web
 npm ci
 NEXT_PUBLIC_API_URL=http://localhost:4003 npm run dev
@@ -105,55 +193,118 @@ NEXT_PUBLIC_API_URL=http://localhost:4003 npm run dev
 
 ---
 
-## 4. Hướng Dẫn Kiểm Thử Tự Động (Testing)
+## 🧪 5. Kiểm Thử Tự Động (Testing & QA)
 
-Dự án có Unit/Integration test cho API (Vitest), Postman Collection; giao diện web kiểm tra lint, build, test đơn vị Vitest (`cd apps/web && npm test`: giỏ hàng, tính giá khớp server) và có E2E Playwright cho luồng đặt hàng:
+Dự án áp dụng kim tự tháp kiểm thử nghiêm ngặt với độ phủ rộng khắp mọi tầng:
+
+<div align="center">
+
+| Cấp độ kiểm thử | Công cụ | Số lượng kiểm thử | Trạng thái |
+|:---:|:---:|:---:|:---:|
+| **Backend Unit & Integration** | **Vitest** | **24 Test Files · 526 Tests** | ![Passed](https://img.shields.io/badge/526%2F526_PASSED-00C853?style=flat-square&logo=vitest&logoColor=white) |
+| **Frontend Store & Logic** | **Vitest** | **10 Test Files · 91 Tests** | ![Passed](https://img.shields.io/badge/91%2F91_PASSED-00C853?style=flat-square&logo=vitest&logoColor=white) |
+| **E2E API Test Suite** | **Newman / Postman** | **25 Scenarios (Chained Data)** | ![Passed](https://img.shields.io/badge/100%25_PASSED-00C853?style=flat-square&logo=postman&logoColor=white) |
+| **E2E Browser Workflow** | **Playwright** | **Full Checkout Flow** | ![Passed](https://img.shields.io/badge/E2E_READY-00C853?style=flat-square&logo=playwright&logoColor=white) |
+
+</div>
+
+### Lệnh thực thi kiểm thử:
 
 ```bash
-# 1. Kiểm thử Backend (Lint, Build, Unit/Integration test)
+# 1. Chạy 526 Unit test Backend
 cd apps/api
-npm run lint                  # Kiểm tra quy chuẩn mã nguồn (oxlint)
-npm run build                 # Biên dịch mã nguồn TypeScript
-npm test                      # Chạy toàn bộ Unit test với Vitest
-npm run test:e2e              # Test mẫu của API (chỉ kiểm tra GET /), không phải E2E luồng đặt hàng
+npm test
 
-# 2. Kiểm thử kịch bản Postman tự động (Yêu cầu API đang chạy)
+# 2. Chạy 91 Unit test Frontend
+cd apps/web
+npm test
+
+# 3. Chạy toàn bộ 25 kịch bản E2E Postman tự động qua Newman CLI (Yêu cầu API đang chạy)
+cd apps/api
 npm run postman
 
-# 3. Kiểm thử Frontend Web
-cd apps/web
-npm run lint                  # Kiểm tra cú pháp và quy chuẩn React/Next.js
-npm run build                 # Kiểm tra build tĩnh và tối ưu giao diện
+# 4. Kiểm tra mã nguồn (Linter & TypeCheck)
+cd apps/api && npm run lint && npm run build
+cd apps/web && npm run lint && npm run build
+```
 
-# 4. Kiểm thử E2E luồng đặt hàng (Playwright; yêu cầu hệ thống đang chạy, ví dụ docker compose up -d --build)
-cd tests/e2e
-npm ci
-npx playwright install chromium
-npm test                      # Mặc định web ở :4004, API ở :4003; đổi bằng E2E_WEB_URL, E2E_API_URL
+> 📖 *Xem chi tiết ma trận 25 kịch bản kiểm thử Postman tại [apps/api/postman/README.md](./apps/api/postman/README.md).*
+
+---
+
+## 👤 6. Tài Khoản Mẫu Để Dùng Thử (Demo Accounts)
+
+Hệ thống đã nạp sẵn (seed) tài khoản thử nghiệm cho từng vai trò nghiệp vụ để người phỏng vấn / đánh giá kiểm tra tính năng nhanh chóng:
+
+| Vai trò | Số điện thoại | Mật khẩu | Phạm vi quyền & Trang trải nghiệm |
+|---|:---:|:---:|---|
+| **Khách hàng (Customer)** | `0912345678`<br>hoặc `0987654321` | `matkhau123` | Đặt món tại `/`, xem giỏ hàng `/cart`, thanh toán `/checkout`, lịch sử đơn `/orders`, tích điểm loyalty. |
+| **Pha chế (Barista)** | `0900000001` | `matkhau123` | Màn hình Bếp KDS tại `/kds` (Xem đơn pha chế, đổi trạng thái sang `PREPARING` $\rightarrow$ `READY`). |
+| **Thu ngân (Cashier)** | `0900000002` | `matkhau123` | Nhập mã nhận hàng 6 số (`pickupCode`) để giao món và chuyển đơn sang `COMPLETED`. |
+| **Quản lý (Manager)** | `0900000003` | `matkhau123` | Trang Quản trị tại `/admin` (Quản lý Menu `/admin/menu`, Kho nguyên liệu `/admin/inventory`, Báo cáo doanh thu). |
+
+### Kịch bản thanh toán thẻ thử nghiệm:
+* **Thanh toán Thành công:** Nhập số thẻ bất kỳ (16 số) có 4 số cuối **khác `0000`** (Ví dụ: `4111 2222 3333 4444`).
+* **Thanh toán Thất bại:** Nhập số thẻ có 4 số cuối là **`0000`** (Ví dụ: `4111 2222 3333 0000`).
+
+---
+
+## 📁 7. Cấu Trúc Monorepo & Giải Thích
+
+```
+Project_SE_Assignment02_HK1_2026_2027/
+|-- apps/
+|   |-- api/                       # Máy chủ Backend NestJS 12
+|   |   |-- prisma/                # Schema Prisma, migrations & seed.ts
+|   |   |-- src/
+|   |   |   |-- auth/              # JWT authentication, bcrypt & RBAC RolesGuard
+|   |   |   |-- orders/            # Đặt đơn, tính giá server-side, OCC & state machine
+|   |   |   |-- payments/          # Cổng thanh toán mô phỏng (Card/Wallet) & Idempotency
+|   |   |   |-- kds/               # Kitchen Display System cho Barista
+|   |   |   |-- cashier/           # Xác thực pickupCode & hoàn tất đơn
+|   |   |   |-- inventory/         # Quản lý kho & công thức định lượng (BOM)
+|   |   |   |-- menu/              # Quản trị sản phẩm, giá bán, size & topping
+|   |   |   |-- promotions/        # Mã giảm giá (Vouchers) & validation
+|   |   |   |-- loyalty/           # Tích điểm thành viên (1 điểm / 1.000đ)
+|   |   |   `-- reports/           # Thống kê doanh thu, tỷ lệ hủy & top sản phẩm
+|   |   `-- postman/               # Collection E2E, Environment & Hướng dẫn Newman
+|   `-- web/                       # Giao diện Web Next.js 16 (App Router)
+|       |-- src/app/               # Trang ứng dụng (/, /cart, /checkout, /kds, /admin)
+|       |-- src/components/        # UI Components tái sử dụng
+|       |-- src/store/             # Quản lý trạng thái Client (Zustand Cart Store)
+|       `-- src/services/          # Tầng gọi API qua Axios
+|-- docs/                          # Kho tài liệu kỹ thuật hoàn chỉnh
+|   |-- diagrams/                  # 7 Sơ đồ UML (PlantUML, SVG, PNG & README)
+|   |-- requirements/              # SRS rút gọn, User Stories & Đặc tả Use-case
+|   |-- architecture/              # Kiến trúc Frontend/Backend, Hợp đồng API & ADRs
+|   |-- deployment.md              # Chiến lược triển khai Production & Rollback khẩn cấp
+|   |-- traceability-matrix.md     # Ma trận truy vết 21 Yêu cầu Chức năng (FR) + 5 NFR
+|   `-- release-notes.md           # Ghi chú phát hành phiên bản chính thức
+|-- tests/e2e/                     # Kiểm thử End-to-End trình duyệt (Playwright)
+|-- .github/workflows/             # Tự động hóa CI/CD (Quality Gate & Continuous Deploy)
+|-- docker-compose.yml             # Đóng gói khởi chạy trọn gói 1 câu lệnh
+|-- .env.example                   # Biến môi trường mẫu chuẩn Twelve-Factor
+`-- README.md                      # Bản đặc tả dự án toàn diện
 ```
 
 ---
 
-## 5. Quy Trình Khôi Phục Sự Cố Khẩn Cấp (Emergency Rollback)
+## 📚 8. Hệ Thống Tài Liệu Kỹ Thuật
 
-Khi phiên bản mới trên Production phát sinh lỗi nghiêm trọng, nhóm thực hiện quy trình Rollback theo 3 cấp độ (chi tiết tại [`docs/deployment.md`](./docs/deployment.md)):
-
-* **Cấp 1 — Rollback Frontend trên Vercel (Dưới 10 giây):**  
-  Vào Vercel Dashboard → Chọn dự án frontend (tên miền `se-as2-brewlite.vercel.app`) → Tab **Deployments** → Chọn bản deploy ổn định gần nhất → Bấm **Instant Rollback**.
-* **Cấp 2 — Rollback Backend trên Render (Dưới 2 phút):**  
-  Vào Render Dashboard → Chọn `brewlite-api` → Tab **Events / Deploy History** → Chọn commit SHA an toàn trước đó → Bấm **Rollback to this deploy**.
-* **Cấp 3 — Rollback Cơ sở dữ liệu:**  
-  * Hoàn tác migration: `npx prisma migrate resolve --rolled-back <migration_name>`.
-  * Khôi phục dữ liệu: Sử dụng tính năng Point-in-Time Recovery (PITR) trên trang quản trị Neon Cloud Console để quay về thời điểm trước sự cố.
+Dự án lưu trữ hệ thống tài liệu đồ sộ, đáp ứng đầy đủ tiêu chuẩn công nghiệp phần mềm:
+* **Hệ thống sơ đồ thiết kế (Diagrams Gallery):** [docs/diagrams/README.md](./docs/diagrams/README.md) *(Bao gồm 7 sơ đồ UML tổng thể và toàn bộ sơ đồ chi tiết các phân hệ KDS, Cancel, Payments, Orders, Auth, Database)*
+* **Kho báo cáo học thuật (Reports PDF):** [docs/reports/](./docs/reports/)
+  - [Báo Cáo Nghiệm Thu Assignment 2 (report_asignment_2.pdf)](./docs/reports/report_asignment_2.pdf)
+  - [Đề Bài Đặc Tả Assignment 2 (Assignment2-BrewLite.pdf)](./docs/reports/Assignment2-BrewLite.pdf)
+* **Kế hoạch triển khai & Khôi phục sự cố (Rollback):** [docs/deployment.md](./docs/deployment.md)
+* **Hợp đồng giao tiếp API (API Contract):** [docs/architecture/api-contract.md](./docs/architecture/api-contract.md)
+* **Các quyết định kiến trúc (ADRs):** [docs/architecture/adr/](./docs/architecture/adr/)
+* **Ma trận truy vết yêu cầu (Traceability Matrix):** [docs/traceability-matrix.md](./docs/traceability-matrix.md)
+* **Bản ghi chú phát hành v1.0.0:** [docs/release-notes.md](./docs/release-notes.md)
+* **Cẩm nang kiểm thử Postman E2E:** [apps/api/postman/README.md](./apps/api/postman/README.md)
 
 ---
 
-## 6. Quy Ước Nhóm & Quản Lý Mã Nguồn
-
-* **Chiến lược nhánh (Branching):**  
-  Mọi tính năng phát triển trên nhánh riêng theo mẫu `<tên-thành-viên>/<tên-task>` (ví dụ: `tai/task-2.2-sequence-checkout`). Tuyệt đối không commit trực tiếp vào nhánh `main`.
-* **Quy chuẩn Pull Request & CI Gate:**  
-  Mỗi Pull Request mở vào `main` bắt buộc phải vượt qua toàn bộ các bước kiểm tra tự động của GitHub Actions (`ci.yml`): `Install -> Lint -> Unit Test -> Build`.
-* **Quy chuẩn Commit:** Tuân thủ chuẩn Conventional Commits tiếng Việt có dấu:  
-  `<loại>(<phạm-vi>): <mô tả>` (ví dụ: `feat(orders): tích hợp cơ chế server-side pricing`, `docs(task-8): hoàn thiện ma trận truy vết`).
-* **Hợp đồng giao tiếp API:** Đặt tại [`docs/architecture/api-contract.md`](./docs/architecture/api-contract.md). Mọi thay đổi về cấu trúc request/response phải được thông báo và thống nhất giữa hai thành viên.
+<div align="center">
+  <b>BrewLite — Xây dựng với tinh thần Software Engineering chuyên nghiệp và chuẩn mực.</b>
+</div>

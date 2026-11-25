@@ -53,6 +53,7 @@ export default function AdminDashboardPage() {
     const [newPromoVal, setNewPromoVal] = useState<number | ''>('');
     const [newPromoMinOrder, setNewPromoMinOrder] = useState<number | ''>('');
     const [newPromoMaxUses, setNewPromoMaxUses] = useState<number | ''>('');
+    const [newPromoExpiryDate, setNewPromoExpiryDate] = useState<string>('');
     const [showAddPromoModal, setShowAddPromoModal] = useState(false);
     // Trạng thái chung
     const [loading, setLoading] = useState(true);
@@ -184,6 +185,7 @@ export default function AdminDashboardPage() {
                     discountValue: Number(newPromoVal),
                     minOrderAmount: newPromoMinOrder ? Number(newPromoMinOrder) : undefined,
                     maxUses: newPromoMaxUses ? Number(newPromoMaxUses) : undefined,
+                    expiryDate: newPromoExpiryDate ? new Date(newPromoExpiryDate + 'T23:59:59.000Z').toISOString() : undefined,
                 },
                 token
             );
@@ -193,6 +195,7 @@ export default function AdminDashboardPage() {
             setNewPromoVal('');
             setNewPromoMinOrder('');
             setNewPromoMaxUses('');
+            setNewPromoExpiryDate('');
             await loadData();
         } catch (err: unknown) {
             showToast(err instanceof Error ? err.message : 'Lỗi khi tạo mã giảm giá');
@@ -544,6 +547,7 @@ export default function AdminDashboardPage() {
                       <th className="py-3.5 px-6">Giá trị giảm</th>
                       <th className="py-3.5 px-6">Đơn tối thiểu</th>
                       <th className="py-3.5 px-6">Lượt dùng</th>
+                      <th className="py-3.5 px-6">Hạn dùng</th>
                       <th className="py-3.5 px-6 text-center">Trạng thái</th>
                       <th className="py-3.5 px-6 text-right">Thao tác</th>
                     </tr>
@@ -565,6 +569,17 @@ export default function AdminDashboardPage() {
                         </td>
                         <td className="py-4 px-6 font-mono text-stone-300">
                           {p.usedCount} / {p.maxUses ?? '∞'}
+                        </td>
+                        <td className="py-4 px-6 text-xs text-stone-300 font-mono">
+                          {p.expiryDate ? (
+                            new Date(p.expiryDate).toLocaleDateString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                            })
+                          ) : (
+                            <span className="text-stone-500 font-sans">Vô thời hạn</span>
+                          )}
                         </td>
                         <td className="py-4 px-6 text-center">
                           {p.isActive ? (
@@ -729,6 +744,17 @@ export default function AdminDashboardPage() {
                     onChange={(e) => setNewPromoMaxUses(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-4 py-2.5 bg-stone-950 border border-stone-700 rounded-xl text-stone-100 text-sm font-mono"
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-300 uppercase mb-1">Ngày hết hạn (Tùy chọn)</label>
+                  <input
+                    type="date"
+                    min={new Date().toISOString().split('T')[0]}
+                    value={newPromoExpiryDate}
+                    onChange={(e) => setNewPromoExpiryDate(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-stone-950 border border-stone-700 rounded-xl text-stone-100 text-sm font-mono"
+                  />
+                  <p className="text-[11px] text-stone-500 mt-1">Bỏ trống nếu voucher có giá trị vô thời hạn</p>
                 </div>
                 <div className="flex justify-end gap-3 pt-4 border-t border-stone-800">
                   <button

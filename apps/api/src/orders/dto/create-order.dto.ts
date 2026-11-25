@@ -1,3 +1,7 @@
+/**
+ * DTO nhận dữ liệu đặt hàng mới từ Client.
+ */
+
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -15,19 +19,22 @@ import {
 } from 'class-validator';
 import { Size } from '../../generated/prisma/enums.js';
 
+/**
+ * Một dòng món trong giỏ hàng
+ */
 export class OrderItemDto {
-  @ApiProperty({ example: 1, minimum: 1 })
+  @ApiProperty({ example: 1, minimum: 1, description: 'ID sản phẩm' })
   @IsInt()
   @Min(1)
   productId!: number;
 
-  @ApiProperty({ example: 2, minimum: 1, maximum: 99 })
+  @ApiProperty({ example: 2, minimum: 1, maximum: 99, description: 'Số lượng ly' })
   @IsInt()
   @Min(1)
   @Max(99)
   quantity!: number;
 
-  @ApiProperty({ enum: Size, example: 'M', description: 'Phụ thu theo bảng giá hiện hành (GET /menu-options)' })
+  @ApiProperty({ enum: Size, example: 'M', description: 'Size ly (S, M, L)' })
   @IsIn(Object.values(Size))
   size!: Size;
 
@@ -35,29 +42,32 @@ export class OrderItemDto {
     type: String,
     isArray: true,
     example: ['tran-chau'],
-    description: 'Mã topping đang bán (GET /menu-options); không trùng nhau; mã lạ trả 400',
+    description: 'Danh sách mã topping (không được trùng nhau trong cùng 1 ly)',
   })
   @IsOptional()
   @IsArray()
-  @ArrayUnique()
+  @ArrayUnique() // Chặn gửi trùng mã topping (ví dụ 2 lần 'tran-chau' trong cùng mảng)
   @Matches(/^[a-z0-9-]{2,32}$/, { each: true, message: 'mỗi topping phải là mã topping hợp lệ' })
   toppings?: string[];
 }
 
+/**
+ * Payload toàn bộ đơn đặt hàng gửi lên POST /orders
+ */
 export class CreateOrderDto {
-  @ApiProperty({ type: OrderItemDto, isArray: true, minItems: 1 })
+  @ApiProperty({ type: OrderItemDto, isArray: true, minItems: 1, description: 'Danh sách món đặt' })
   @IsArray()
-  @ArrayNotEmpty({ message: 'items must not be empty' })
+  @ArrayNotEmpty({ message: 'Giỏ hàng không được rỗng' })
   @ValidateNested({ each: true })
   @Type(() => OrderItemDto)
   items!: OrderItemDto[];
 
   @ApiPropertyOptional({
     example: 'WELCOME10',
-    description: 'Mã giảm giá, tối đa một mã mỗi đơn; server tính số tiền giảm',
+    description: 'Mã giảm giá áp dụng cho đơn (tùy chọn)',
   })
   @IsOptional()
   @IsString()
-  @Matches(/^[A-Za-z0-9_-]{3,32}$/, { message: 'promoCode must be 3-32 characters: letters, digits, _ or -' })
+  @Matches(/^[A-Za-z0-9_-]{3,32}$/, { message: 'promoCode phải từ 3-32 ký tự' })
   promoCode?: string;
 }

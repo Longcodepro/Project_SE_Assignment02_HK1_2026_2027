@@ -1,3 +1,12 @@
+/**
+ * Unit Test kiểm tra tính toàn vẹn của Swagger Document.
+ *
+ * Đảm bảo:
+ * 1. Endpoint GET /products trả về mảng ProductDto đúng với hợp đồng API-CONTRACT.md.
+ * 2. Các module Auth, Orders, Payments, Loyalty đều có Schema request/response đầy đủ.
+ * 3. Nút Authorize Bearer token được cấu hình đúng.
+ */
+
 import { Test } from '@nestjs/testing';
 import { SwaggerModule } from '@nestjs/swagger';
 import { AppController } from './app.controller.js';

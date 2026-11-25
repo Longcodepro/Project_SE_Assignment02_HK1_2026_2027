@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { Coffee, ShoppingBag, Clock, ReceiptText, User as UserIcon, LogIn, LogOut, Radio, ChefHat, PackageCheck, LayoutDashboard, } from 'lucide-react';
+import { Coffee, ShoppingBag, Clock, ReceiptText, User as UserIcon, LogIn, LogOut, Radio, ChefHat, PackageCheck, LayoutDashboard, Package, } from 'lucide-react';
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { apiService } from "@/services/api";
@@ -114,16 +114,26 @@ export default function Navbar() {
                         </button>
                     )}
 
-                    {/* NÚT KDS DÀNH CHO BARISTA */}
+                    {/* NÚT KDS VÀ KHO DÀNH CHO BARISTA */}
                     {isClient && token && user?.role === 'BARISTA' && (
-                        <Link
-                            href="/kds"
-                            className="flex items-center gap-1 bg-[#4A2E1B] hover:bg-[#5E3B23] border border-[#8C5835] text-[#FAF7F2] p-1.5 sm:px-3 sm:py-2 rounded-full transition active:scale-95 shadow-sm text-xs font-bold text-amber-300"
-                            title="Màn hình pha chế KDS"
-                        >
-                            <ChefHat className="w-4 h-4 text-[#D4A373]" />
-                            <span className="hidden sm:inline">KDS</span>
-                        </Link>
+                        <>
+                            <Link
+                                href="/kds"
+                                className="flex items-center gap-1 bg-[#4A2E1B] hover:bg-[#5E3B23] border border-[#8C5835] text-[#FAF7F2] p-1.5 sm:px-3 sm:py-2 rounded-full transition active:scale-95 shadow-sm text-xs font-bold text-amber-300"
+                                title="Màn hình pha chế KDS"
+                            >
+                                <ChefHat className="w-4 h-4 text-[#D4A373]" />
+                                <span className="hidden sm:inline">KDS</span>
+                            </Link>
+                            <Link
+                                href="/admin/inventory"
+                                className="flex items-center gap-1 bg-[#4A2E1B] hover:bg-[#5E3B23] border border-[#8C5835] text-[#FAF7F2] p-1.5 sm:px-3 sm:py-2 rounded-full transition active:scale-95 shadow-sm text-xs font-bold text-amber-300"
+                                title="Kho nguyên liệu & Nhập kho"
+                            >
+                                <Package className="w-4 h-4 text-[#D4A373]" />
+                                <span className="hidden sm:inline">Kho</span>
+                            </Link>
+                        </>
                     )}
 
                     {/* NÚT GIAO MÓN DÀNH CHO CASHIER */}

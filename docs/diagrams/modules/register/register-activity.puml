@@ -1,0 +1,62 @@
+@startuml
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam shadowing false
+skinparam conditionStyle diamond
+skinparam ranksep 35
+skinparam nodesep 50
+
+|Khách hàng|
+start
+:Mở Modal Đăng ký trên ứng dụng;
+:Nhập Họ tên, Số điện thoại VN (10 số) và Mật khẩu (6–72 ký tự);
+:Bấm nút "Đăng ký tài khoản";
+
+|Giao diện Next.js|
+:Kiểm tra nhanh định dạng SĐT phía Client (Regex đầu số 03, 05, 07, 08, 09);
+:Gửi yêu cầu HTTP POST /auth/register
+(kèm body: { phone, password, name });
+
+|Backend (NestJS API)|
+if (ValidationPipe kiểm tra DTO đầu vào?) then ([sai định dạng hoặc pass < 6 ký tự])
+  :Báo lỗi 400 Bad Request;
+  |Giao diện Next.js|
+  :Hiển thị thông báo lỗi kiểm tra dữ liệu;
+  |Khách hàng|
+  stop
+endif
+
+|Backend (NestJS API)|
+:Băm mật khẩu 1 chiều bằng bcryptjs (salt rounds = 10);
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Thực hiện ghi bản ghi User mới vào CSDL;
+
+|Backend (NestJS API)|
+if (Số điện thoại đã tồn tại trong CSDL? (Lỗi P2002)) then ([trùng SĐT])
+  :Bắt lỗi Unique Constraint;
+  :Báo lỗi 409 Conflict
+("Số điện thoại đã được đăng ký");
+  |Giao diện Next.js|
+  :Thông báo số điện thoại đã tồn tại;
+  |Khách hàng|
+  stop
+endif
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Lưu tài khoản thành công với role = CUSTOMER;
+
+|Backend (NestJS API)|
+:Trả về 201 Created
+kèm thông tin { id, phone, name, role }
+(Tuyệt đối không lộ passwordHash);
+
+|Giao diện Next.js|
+:Tự động chuyển sang form Đăng nhập;
+
+|Khách hàng|
+:Xem thông báo thành công và tiến hành đăng nhập;
+stop
+@enduml

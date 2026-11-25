@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Product, Order, CreatedOrder, AuthResponse, User, LoyaltyInfo, KdsOrder, CashierOrder, AdminCategory, AdminProduct, AdminTopping, SizeSurcharge, Ingredient, CreateReceiptPayload, ProductRecipe, StaffUser, CreateStaffPayload, AdminPromotion, CreatePromotionPayload, ReportData,} from "@/types";
+import { Product, Order, CreatedOrder, AuthResponse, User, LoyaltyInfo, KdsOrder, CashierOrder, AdminCategory, AdminProduct, AdminTopping, SizeSurcharge, Ingredient, CreateReceiptPayload, ProductRecipe, ToppingRecipe, StaffUser, CreateStaffPayload, AdminPromotion, CreatePromotionPayload, ReportData, IngredientReceipt, MenuOptions} from "@/types";
 
 // Lấy URL Backend động: ưu tiên custom URL trong localStorage (để test trên mobile / demo từ xa), sau đó đến biến môi trường
 export const getApiUrl = (): string => {
@@ -336,6 +336,12 @@ export const apiService = {
         return res.data;
     },
 
+        // Lấy phụ thu size và danh sách topping đang bán công khai từ Database
+    getMenuOptions: async (): Promise<MenuOptions> => {
+        const res = await axios.get(`${getApiUrl()}/menu-options`);
+        return res.data;
+    },
+
     // 12a. Cashier hủy đơn đã thanh toán (PAID) tại quầy, bắt buộc có lý do
     cancelCashierOrder: async (
         orderId: string,
@@ -380,6 +386,13 @@ export const apiService = {
         return res.data;
     },
 
+    createCategory: async (name: string, token: string): Promise<AdminCategory> => {
+        const res = await axios.post(`${getApiUrl()}/admin/categories`, { name }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
     updateCategory: async (id: number, data: { name?: string; isActive?: boolean }, token: string) => {
         const res = await axios.patch(`${getApiUrl()}/admin/categories/${id}`, data, {
             headers: { Authorization: `Bearer ${token}` }
@@ -387,6 +400,18 @@ export const apiService = {
         return res.data;
     },
 
+    createProduct: async (payload: {
+        name: string;
+        price: number;
+        categoryId: number;
+        description?: string;
+        imageUrl: string;
+    }, token: string): Promise<AdminProduct> => {
+        const res = await axios.post(`${getApiUrl()}/admin/products`, payload, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
 
     getAdminProducts: async (token: string): Promise<AdminProduct[]> => {
         const res = await axios.get(`${getApiUrl()}/admin/products`, {
@@ -407,6 +432,27 @@ export const apiService = {
             headers: { Authorization: `Bearer ${token}` }
         });
         return res.data;
+    },
+
+    createTopping: async (
+        data: { code: string; name: string; price: number },
+        token: string
+    ): Promise<AdminTopping> => {
+        try {
+            const res = await axios.post(`${getApiUrl()}/admin/toppings`, data, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return res.data;
+        } catch (error: unknown) {
+            let msg = 'Lỗi khi tạo topping mới';
+            if (axios.isAxiosError(error) && error.response?.data?.message) {
+                const resMsg = error.response.data.message;
+                msg = Array.isArray(resMsg) ? resMsg.join(', ') : resMsg;
+            } else if (error instanceof Error) {
+                msg = error.message;
+            }
+            throw new Error(msg);
+        }
     },
 
     updateTopping: async (code: string, data: { name?: string; price?: number; isAvailable?: boolean }, token: string) => {
@@ -438,6 +484,28 @@ export const apiService = {
         return res.data;
     },
 
+    createIngredient: async (
+        data: { name: string; unit: 'G' | 'ML' | 'PIECE'; minStock?: number },
+        token: string
+    ): Promise<Ingredient> => {
+        const res = await axios.post(`${getApiUrl()}/admin/ingredients`, data, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    // 2c. Sửa thông tin nguyên liệu (đổi tên hoặc đổi ngưỡng minStock)
+    updateIngredient: async (
+        id: number,
+        data: { name?: string; minStock?: number },
+        token: string
+    ): Promise<Ingredient> => {
+        const res = await axios.patch(`${getApiUrl()}/admin/ingredients/${id}`, data, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
     // 2. Lấy danh sách nguyên liệu sắp hết (stock <= minStock, thiếu nhiều nhất lên đầu)
     getAdminInventoryAlerts: async (token: string): Promise<Ingredient[]> => {
         const res = await axios.get(`${getApiUrl()}/admin/ingredients/alerts`, {
@@ -460,6 +528,19 @@ export const apiService = {
         return res.data;
     },
 
+    // Lấy danh sách lịch sử phiếu nhập kho của một nguyên liệu (mới nhất trước)
+    getIngredientReceipts: async (
+        ingredientId: number,
+        token: string,
+        limit: number = 50
+    ): Promise<IngredientReceipt[]> => {
+        const res = await axios.get(
+            `${getApiUrl()}/admin/ingredients/${ingredientId}/receipts?limit=${limit}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+        return res.data;
+    },
+
      // 4. Xem công thức pha chế của một món theo từng size (S, M, L)
     getProductRecipe: async (productId: number, token: string): Promise<ProductRecipe> => {
         const res = await axios.get(`${getApiUrl()}/admin/products/${productId}/recipe`, {
@@ -467,6 +548,66 @@ export const apiService = {
         });
         return res.data;
     },
+
+    // Cập nhật toàn bộ công thức định lượng của món theo các size
+    updateProductRecipe: async (
+        productId: number,
+        items: Array<{ size: 'S' | 'M' | 'L'; ingredientId: number; quantity: number }>,
+        token: string
+    ): Promise<ProductRecipe> => {
+        try {
+            const res = await axios.put(
+                `${getApiUrl()}/admin/products/${productId}/recipe`,
+                { items },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            return res.data;
+        } catch (error: unknown) {
+            let msg = 'Lỗi khi cập nhật công thức món';
+            if (axios.isAxiosError(error) && error.response?.data?.message) {
+                const resMsg = error.response.data.message;
+                msg = Array.isArray(resMsg) ? resMsg.join(', ') : resMsg;
+            } else if (error instanceof Error) {
+                msg = error.message;
+            }
+            throw new Error(msg);
+        }
+    },
+
+    // 5. Xem công thức định lượng của 1 loại topping
+    getToppingRecipe: async (code: string, token: string): Promise<ToppingRecipe> => {
+        const res = await axios.get(`${getApiUrl()}/admin/toppings/${code}/recipe`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        return res.data;
+    },
+
+    // Cập nhật/thay thế công thức định lượng của topping
+    updateToppingRecipe: async (
+        code: string,
+        items: Array<{ ingredientId: number; quantity: number }>,
+        token: string
+    ): Promise<ToppingRecipe> => {
+        try {
+            const res = await axios.put(
+                `${getApiUrl()}/admin/toppings/${code}/recipe`,
+                { items },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            return res.data;
+        } catch (error: unknown) {
+            let msg = 'Lỗi khi cập nhật công thức topping';
+            if (axios.isAxiosError(error) && error.response?.data?.message) {
+                const resMsg = error.response.data.message;
+                msg = Array.isArray(resMsg) ? resMsg.join(', ') : resMsg;
+            } else if (error instanceof Error) {
+                msg = error.message;
+            }
+            throw new Error(msg);
+        }
+    },
+
+    
 
     // ==========================================
     // QUẢN TRỊ VIÊN: NHÂN SỰ, VOUCHER, BÁO CÁO (S4.10)
@@ -522,4 +663,5 @@ export const apiService = {
         });
         return res.data;
     },
+    
 };

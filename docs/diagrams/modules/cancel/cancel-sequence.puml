@@ -1,0 +1,87 @@
+@startuml
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+actor ":KháchHàng / ThuNgân" as Actor
+participant ":GiaoDiệnĐơnHàng" as UI <<boundary>>
+participant ":CancelOrderDto" as DTO <<boundary>>
+participant ":OrdersController" as Ctrl <<control>>
+participant ":JwtAuthGuard" as Guard <<control>>
+participant ":OrdersService" as Svc <<control>>
+database ":Prisma / PostgreSQL" as DB <<entity>>
+
+autonumber 1 "<b>[0]</b>"
+
+Actor -> UI: bấmXácNhậnHủyĐơn(orderId, version, reason)
+activate UI
+
+UI -> Ctrl: POST /orders/:id/cancel { version, reason }
+activate Ctrl
+
+Ctrl -> Guard: canActivate(context)
+activate Guard
+
+alt Token không hợp lệ hoặc thiếu
+  Guard --> Ctrl: throw UnauthorizedException
+  Ctrl --> UI: 401 Unauthorized
+  UI --> Actor: yêuCầuĐăngNhậpLại()
+else Token hợp lệ
+  Guard --> Ctrl: true (req.user = { phone, role })
+  deactivate Guard
+  
+  Ctrl -> DTO: validate(version, reason)
+  activate DTO
+  DTO --> Ctrl: validDto
+  deactivate DTO
+  
+  Ctrl -> Svc: cancel(orderId, dto, actor)
+  activate Svc
+  
+  Svc -> DB: findFirst(Order WHERE id AND userPhone)
+  activate DB
+  DB --> Svc: order (status, version, promotionId)
+  deactivate DB
+  
+  alt Không tìm thấy đơn hàng
+    Svc --> Ctrl: 404 Not Found
+    Ctrl --> UI: 404 Not Found
+    UI --> Actor: báoKhôngTìmThấyĐơn()
+  else Đơn hàng tồn tại
+    alt Khóa lạc quan: order.version != dto.version
+      Svc --> Ctrl: throw ConflictException("Đơn vừa bị thay đổi trước đó")
+      Ctrl --> UI: 409 Conflict
+      UI --> Actor: báoXungĐột & tảiLạiDữLiệu()
+    else Phiên bản version trùng khớp
+      alt Đơn đã sang PREPARING hoặc READY (Bếp đang làm)
+        Svc --> Ctrl: throw ConflictException("Không thể hủy đơn đang pha chế")
+        Ctrl --> UI: 409 Conflict
+        UI --> Actor: thôngBáoKhôngThểHủyĐơn()
+      else Trạng thái PENDING, PAYMENT_FAILED hoặc PAID
+        Svc -> DB: $transaction(hoàn kho & đổi trạng thái)
+        activate DB
+        
+        opt Đơn ở trạng thái PAID
+          DB -> DB: hoànTrảTồnKhoNguyênLiệu(restoreOrderStock)\nhoànLạiLượtDùngVoucher(increment remainingUses)
+        end
+        
+        DB -> DB: UPDATE "Order" SET status = 'CANCELLED', version = version + 1\nWHERE id = orderId AND version = dto.version
+        DB --> Svc: { count: 1 }
+        deactivate DB
+        
+        Svc --> Ctrl: cancelOrderResultDto (id, status: 'CANCELLED', newVersion)
+        deactivate Svc
+        
+        Ctrl --> UI: 200 OK
+        deactivate Ctrl
+        
+        UI --> Actor: hiểnThịThôngBáoĐãHủyĐơn()
+        deactivate UI
+      end
+    end
+  end
+end
+@enduml

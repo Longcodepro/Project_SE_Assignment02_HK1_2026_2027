@@ -189,6 +189,18 @@ export interface ProductRecipe {
   items: RecipeItem[];
 }
 
+export interface ToppingRecipeItem {
+  ingredientId: number;
+  ingredientName?: string;
+  unit?: string;
+  quantity: number;
+}
+
+export interface ToppingRecipe {
+  toppingCode: string;
+  items: ToppingRecipeItem[];
+}
+
 export interface StaffUser {
   phone: string;
   name: string | null;
@@ -252,3 +264,16 @@ export interface ReportData {
   topProducts: TopProductItem[];
 }
 
+export interface IngredientReceipt {
+  id: number;
+  ingredientId: number;
+  quantity: number;
+  note: string | null;
+  createdByPhone: string;
+  createdAt: string;
+}
+
+export interface MenuOptions {
+  sizes: Array<{ size: 'S' | 'M' | 'L'; extra: number }>;
+  toppings: Array<{ code: string; name: string; price: number }>;
+}

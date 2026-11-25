@@ -1,3 +1,18 @@
+/**
+ * PaymentsService: Nghiệp vụ xử lý giao dịch thanh toán.
+ *
+ * Quy trình xử lý:
+ * 1. Kiểm tra chính chủ: userPhone phải khớp với người tạo đơn.
+ * 2. Kiểm tra Idempotency: nếu key đã được xử lý, trả lại kết quả cũ ngay.
+ * 3. Kiểm tra máy trạng thái: đơn phải ở trạng thái có thể chuyển sang PAID (PENDING hoặc PAYMENT_FAILED).
+ * 4. Gọi cổng thanh toán mô phỏng (Mock Gateway).
+ * 5. Mở Transaction CSDL:
+ *    - Khóa lạc quan: update `version = version + 1`.
+ *    - Trừ nguyên liệu thật trong kho (Deduct stock). Nếu thiếu thì rollback toàn bộ.
+ *    - Tích điểm loyalty (1 điểm / 1.000đ).
+ *    - Lưu lịch sử bản ghi Payment (SUCCESS hoặc FAILED).
+ */
+
 import {
   ConflictException,
   Injectable,
@@ -22,7 +37,7 @@ type PaymentRow = {
   pointsEarned: number;
 };
 
-// Dạng trả về cho client; lần gửi lại cùng Idempotency-Key cũng đi qua hàm này
+// Chuẩn hóa định dạng trả về cho Frontend
 const toResponse = (p: PaymentRow) => ({
   paymentId: p.id,
   orderId: p.orderId,
@@ -41,31 +56,32 @@ export class PaymentsService {
   ) {}
 
   async pay(userPhone: string, dto: CreatePaymentDto, idempotencyKey?: string) {
-    // Đơn của người khác cũng báo 404 để không lộ đơn có tồn tại
+    // 1. Kiểm tra quyền sở hữu đơn hàng (đơn của người khác báo 404 để chống dò ID đơn)
     const order = await this.prisma.order.findFirst({
       where: { id: dto.orderId, userPhone },
     });
     if (!order) throw new NotFoundException('Không tìm thấy đơn hàng');
 
+    // 2. Chống thanh toán trùng lặp (Idempotency): trả lại kết quả cũ nếu đã thanh toán bằng key này
     const findExisting = () =>
       this.prisma.payment.findUnique({
         where: {
           orderId_idempotencyKey: { orderId: order.id, idempotencyKey: idempotencyKey! },
         },
       });
-    // Phải kiểm tra trước khi xét trạng thái đơn: gửi lại sau khi đơn đã PAID
-    // vẫn phải nhận kết quả cũ, không phải 409
     if (idempotencyKey) {
       const existing = await findExisting();
       if (existing) return toResponse(existing);
     }
 
+    // 3. Kiểm tra máy trạng thái: đơn đã COMPLETED hoặc CANCELLED thì không cho thanh toán
     if (!canTransition(order.status, 'PAID')) {
       throw new ConflictException(
         `Đơn đang ở trạng thái ${order.status}, không thể thanh toán`,
       );
     }
 
+    // 4. Gọi cổng thanh toán (Thẻ hoặc Ví)
     const charge = this.gateway.charge({
       method: dto.method,
       amount: order.total,
@@ -76,15 +92,14 @@ export class PaymentsService {
       try {
         return toResponse(await this.record(order, userPhone, dto, idempotencyKey, charge));
       } catch (e) {
+        // Nếu kho hết nguyên liệu giữa chừng -> ghi nhận thất bại, không thu tiền
         if (!(e instanceof OutOfStockError)) throw e;
-        // Thiếu nguyên liệu: transaction đã hoàn tác (đơn chưa PAID, chưa trừ kho, chưa cộng điểm);
-        // ghi nhận thanh toán thất bại, không thu tiền, để thanh toán lại sau khi nhập kho
         return toResponse(
           await this.record(order, userPhone, dto, idempotencyKey, { ok: false, reason: e.message }),
         );
       }
     } catch (e) {
-      // Hai yêu cầu cùng key đến cùng lúc: yêu cầu thua trả lại kết quả của yêu cầu thắng
+      // Xử lý race condition khi 2 request cùng key gửi đến song song
       if (idempotencyKey && (isUniqueViolation(e) || e instanceof ConflictException)) {
         const existing = await findExisting();
         if (existing) return toResponse(existing);
@@ -93,7 +108,9 @@ export class PaymentsService {
     }
   }
 
-  // Ghi một lần thanh toán và các hệ quả của nó trong một transaction
+  /**
+   * Ghi nhận giao dịch thanh toán trong Database Transaction
+   */
   private record(
     order: Order,
     userPhone: string,
@@ -102,17 +119,14 @@ export class PaymentsService {
     result: { ok: boolean; reason?: string },
   ) {
     const orderStatus = result.ok ? 'PAID' : 'PAYMENT_FAILED';
-    // Thử lại mà vẫn lỗi: chỉ ghi thêm một lần thanh toán, đơn giữ nguyên trạng thái
     const changesStatus = orderStatus !== order.status;
     if (changesStatus) assertTransition(order.status, orderStatus);
 
-    // Chỉ tích điểm khi thanh toán thành công
+    // Tính điểm thưởng tích lũy (chỉ khi thanh toán thành công)
     const pointsEarned = result.ok ? pointsFor(order.total) : 0;
 
     return this.prisma.$transaction(async (tx) => {
-      // Khoá lạc quan: chỉ ghi khi đơn chưa bị yêu cầu khác sửa kể từ lúc đọc.
-      // Lần thử lại thất bại không đổi trạng thái vẫn tăng version để các lần
-      // thanh toán đồng thời trên cùng một đơn không lọt qua nhau.
+      // Khóa lạc quan: tăng version để ngăn các giao dịch đồng thời can thiệp đè lên nhau
       const updated = await tx.order.updateMany({
         where: { id: order.id, version: order.version },
         data: changesStatus
@@ -124,7 +138,8 @@ export class PaymentsService {
           'Đơn vừa được cập nhật bởi yêu cầu khác, vui lòng thử lại',
         );
       }
-      // Trừ kho có điều kiện cũng trong transaction này: thiếu thì ném OutOfStockError và hoàn tác tất cả
+
+      // Khi thanh toán thành công: thực hiện trừ kho thật
       if (result.ok) {
         const items = await tx.orderItem.findMany({
           where: { orderId: order.id },
@@ -132,13 +147,16 @@ export class PaymentsService {
         });
         await deductStock(tx, order.id, await loadNeeds(tx, items));
       }
-      // Cộng điểm cùng transaction với việc đổi đơn sang PAID nên không bao giờ lệch nhau
+
+      // Cộng điểm thưởng tích lũy vào tài khoản khách hàng
       if (pointsEarned > 0) {
         await tx.user.update({
           where: { phone: userPhone },
           data: { loyaltyPoints: { increment: pointsEarned } },
         });
       }
+
+      // Lưu lịch sử thanh toán vào bảng Payment
       return tx.payment.create({
         data: {
           orderId: order.id,

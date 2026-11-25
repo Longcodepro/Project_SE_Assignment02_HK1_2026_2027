@@ -1,0 +1,75 @@
+@startuml
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam shadowing false
+skinparam conditionStyle diamond
+skinparam ranksep 35
+skinparam nodesep 50
+
+|Khách hàng / Nhân viên|
+start
+:Mở Modal Đăng nhập;
+:Nhập Số điện thoại và Mật khẩu;
+:Bấm nút "Đăng nhập";
+
+|Giao diện Next.js|
+:Gửi yêu cầu HTTP POST /auth/login
+(kèm body: { phone, password });
+
+|Backend (NestJS API)|
+if (ValidationPipe kiểm tra DTO đầu vào?) then ([sai định dạng])
+  :Báo lỗi 400 Bad Request;
+  |Giao diện Next.js|
+  :Hiển thị lỗi định dạng thông tin;
+  |Khách hàng / Nhân viên|
+  stop
+endif
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Tìm tài khoản theo số điện thoại (findUnique);
+
+|Backend (NestJS API)|
+if (Tài khoản bị khóa? (isLocked == true)) then ([bị khóa])
+  :Báo lỗi 403 Forbidden
+("Tài khoản của bạn đã bị khóa");
+  |Giao diện Next.js|
+  :Thông báo tài khoản bị khóa liên hệ quản trị;
+  |Khách hàng / Nhân viên|
+  stop
+endif
+
+|Backend (NestJS API)|
+:Chạy bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH)
+(Áp dụng DUMMY_HASH chống dò thời gian Timing Attack);
+
+if (Tài khoản không tồn tại HOẶC Mật khẩu sai?) then ([sai thông tin])
+  :Báo lỗi chung 401 Unauthorized
+("Số điện thoại hoặc mật khẩu không đúng");
+  |Giao diện Next.js|
+  :Thông báo sai thông tin đăng nhập;
+  |Khách hàng / Nhân viên|
+  stop
+endif
+
+|Backend (NestJS API)|
+:Ký phát chuỗi JWT Access Token (hạn 24h)
+Payload chứa: sub (phone), role;
+:Trả về 200 OK kèm { accessToken };
+
+|Giao diện Next.js|
+:Lưu accessToken vào useAuthStore (Zustand);
+:Lưu thông tin vai trò (CUSTOMER, BARISTA, MANAGER);
+if (Vai trò là BARISTA?) then ([BARISTA])
+  :Điều hướng sang Màn hình bếp (/kds);
+else if (Vai trò là MANAGER?) then ([MANAGER])
+  :Điều hướng sang Báo cáo quản trị (/admin/reports);
+else ([CUSTOMER])
+  :Đóng Modal, giữ nguyên trạng thái giỏ hàng;
+endif
+
+|Khách hàng / Nhân viên|
+:Bắt đầu sử dụng phiên làm việc;
+stop
+@enduml

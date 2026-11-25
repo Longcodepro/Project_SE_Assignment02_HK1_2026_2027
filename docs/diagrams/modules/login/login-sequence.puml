@@ -1,0 +1,81 @@
+@startuml
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+actor ":KháchHàng / NhânViên" as User
+participant ":ModalĐăngNhập" as UI <<boundary>>
+participant ":LoginDto" as DTO <<boundary>>
+participant ":AuthController" as Ctrl <<control>>
+participant ":AuthService" as Svc <<control>>
+participant ":JwtService" as JWT <<control>>
+database ":Prisma / PostgreSQL" as DB <<entity>>
+
+autonumber 1 "<b>[0]</b>"
+
+User -> UI: nhậpThôngTin(phone, password)
+activate UI
+User -> UI: bấmNút"ĐăngNhập"()
+
+UI -> Ctrl: gửiYêuCầu(POST /auth/login, body)
+activate Ctrl
+
+Ctrl -> DTO: validate(phone, password)
+activate DTO
+
+alt Dữ liệu không hợp lệ
+  DTO --> Ctrl: validationErrors
+  Ctrl --> UI: 400 Bad Request
+  UI --> User: hiểnThịLỗiĐầuVào()
+else Dữ liệu hợp lệ
+  DTO --> Ctrl: validLoginDto
+  deactivate DTO
+  
+  Ctrl -> Svc: login(dto)
+  activate Svc
+  
+  Svc -> DB: findUnique(User WHERE phone)
+  activate DB
+  DB --> Svc: userRecord (hoặc null)
+  deactivate DB
+  
+  alt Tài khoản bị khóa (user.isLocked == true)
+    Svc --> Ctrl: throw ForbiddenException("Tài khoản đã bị khóa")
+    Ctrl --> UI: 403 Forbidden
+    UI --> User: thôngBáoTàiKhoảnBịKhóa()
+  else Tài khoản bình thường
+    Svc -> Svc: bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH)
+    
+    alt Không tìm thấy user HOẶC sai mật khẩu
+      Svc --> Ctrl: throw UnauthorizedException("Số điện thoại hoặc mật khẩu không đúng")
+      Ctrl --> UI: 401 Unauthorized
+      UI --> User: báoLỗiChungSaiTàiKhoảnMậtKhẩu()
+    else Mật khẩu trùng khớp
+      Svc -> JWT: signAsync({ sub: user.phone, role: user.role })
+      activate JWT
+      JWT --> Svc: accessToken
+      deactivate JWT
+      
+      Svc --> Ctrl: { accessToken }
+      deactivate Svc
+      
+      Ctrl --> UI: 200 OK
+      deactivate Ctrl
+      
+      UI -> UI: useAuthStore.getState().setToken(accessToken)
+      
+      alt Vai trò là BARISTA
+        UI --> User: điềuHướngSangMànHìnhBếp(/kds)
+      else Vai trò là MANAGER
+        UI --> User: điềuHướngSangBáoCáo(/admin/reports)
+      else Vai trò là CUSTOMER
+        UI --> User: đóngModal & sẵnSàngĐặtHàng()
+      end
+      deactivate UI
+    end
+  end
+end
+@enduml

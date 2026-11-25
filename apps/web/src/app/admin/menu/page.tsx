@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 import Navbar from '@/components/Navbar';
 import { useAuthStore } from '@/store/useAuthStore';
 import { apiService } from '@/services/api';
-import { AdminProduct, AdminCategory, AdminTopping, SizeSurcharge } from '@/types';
+import { AdminProduct, AdminCategory, AdminTopping, SizeSurcharge, Ingredient } from '@/types';
 
 import { 
   Coffee, 
@@ -42,7 +42,31 @@ export default function AdminMenuPage(){
     const [editedPrices, setEditedPrices] = useState<Record<number, number>>({});
     const [editedToppingPrices, setEditedToppingPrices] = useState<Record<string, number>>({});
     const [editedSizePrices, setEditedSizePrices] = useState<Record<string, number>>({});
-    const [newCategoryName, setNewCategoryName] = useState<string>('');
+    
+    // State cho thêm Danh mục
+    const [newCatName, setNewCatName] = useState('');
+
+    // State cho thêm Món nước
+    const [isAddingProd, setIsAddingProd] = useState(false);
+    const [newProdName, setNewProdName] = useState('');
+    const [newProdPrice, setNewProdPrice] = useState<number | ''>('');
+    const [newProdCatId, setNewProdCatId] = useState<number | ''>('');
+    const [newProdImg, setNewProdImg] = useState('');
+    const [newProdDesc, setNewProdDesc] = useState('');
+
+    // State thêm topping mới (Chỉ Manager)
+    const [isAddingTopping, setIsAddingTopping] = useState<boolean>(false);
+    const [newToppingCode, setNewToppingCode] = useState<string>('');
+    const [newToppingName, setNewToppingName] = useState<string>('');
+    const [newToppingPrice, setNewToppingPrice] = useState<number | ''>('');
+    const [submittingTopping, setSubmittingTopping] = useState<boolean>(false);
+
+    // State quản lý xem/sửa công thức của topping đang chọn
+  const [selectedToppingForRecipe, setSelectedToppingForRecipe] = useState<AdminTopping | null>(null);
+  const [toppingRecipeItems, setToppingRecipeItems] = useState<Array<{ ingredientId: number; quantity: number }>>([]);
+  const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([]);
+  const [loadingToppingRecipe, setLoadingToppingRecipe] = useState<boolean>(false);
+  const [savingToppingRecipe, setSavingToppingRecipe] = useState<boolean>(false);
 
     const showToast = (msg: string) => {
         setToastMsg(msg);
@@ -184,6 +208,144 @@ export default function AdminMenuPage(){
         }
     };
 
+     // Xử lý tạo danh mục
+    const handleCreateCategory = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!token || !newCatName.trim()) return;
+        try {
+            const created = await apiService.createCategory(newCatName.trim(), token);
+            setCategories(prev => [...prev, created]);
+            setNewCatName('');
+            showToast(`Đã thêm danh mục: ${created.name}`);
+        } catch {
+            alert('Lỗi tạo danh mục!');
+        }
+    };
+
+     // Xử lý tạo món nước
+    const handleCreateProduct = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!token || !newProdName || !newProdPrice || !newProdCatId || !newProdImg) {
+            alert('Vui lòng điền đầy đủ tên, giá, danh mục và link ảnh món!');
+            return;
+        }
+        try {
+            const created = await apiService.createProduct({
+                name: newProdName.trim(),
+                price: Number(newProdPrice),
+                categoryId: Number(newProdCatId),
+                imageUrl: newProdImg.trim(),
+                description: newProdDesc.trim() || undefined,
+            }, token);
+            setProducts(prev => [...prev, created]);
+            setIsAddingProd(false);
+            setNewProdName('');
+            setNewProdPrice('');
+            setNewProdDesc('');
+            showToast(`Đã thêm món mới: ${created.name}`);
+        } catch {
+            alert('Lỗi thêm món mới!');
+        }
+    };
+
+     // Tự động chuyển tên có dấu thành slug không dấu chuẩn cho mã code
+    const handleToppingNameChange = (name: string) => {
+        setNewToppingName(name);
+        // Tự động gợi ý code nếu code đang rỗng hoặc chưa bị sửa thủ công
+        const slug = name
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/đ/g, 'd')
+            .replace(/[^a-z0-9-]/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+            .slice(0, 32);
+        setNewToppingCode(slug);
+    };
+
+    // Xử lý gửi API tạo topping mới
+    const handleCreateTopping = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!token || !newToppingCode.trim() || !newToppingName.trim() || newToppingPrice === '') {
+            showToast('Vui lòng điền đầy đủ mã, tên và giá topping!');
+            return;
+        }
+        setSubmittingTopping(true);
+        try {
+            const created = await apiService.createTopping({
+                code: newToppingCode.trim().toLowerCase(),
+                name: newToppingName.trim(),
+                price: Number(newToppingPrice),
+            }, token);
+            setToppings(prev => [...prev, created]);
+            setIsAddingTopping(false);
+            setNewToppingCode('');
+            setNewToppingName('');
+            setNewToppingPrice('');
+            showToast(`Đã thêm topping mới: ${created.name}`);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Lỗi khi tạo topping';
+            showToast(msg);
+        } finally {
+            setSubmittingTopping(false);
+        }
+    };
+
+    // 1. Mở modal và nạp công thức của topping
+const handleOpenToppingRecipe = async (topping: AdminTopping) => {
+    setSelectedToppingForRecipe(topping);
+    if (!token) return;
+    setLoadingToppingRecipe(true);
+    try {
+        // Tải danh sách nguyên liệu kho và công thức topping cùng lúc
+        const [ingList, recipe] = await Promise.all([
+            availableIngredients.length === 0 ? apiService.getAdminIngredients(token) : Promise.resolve(availableIngredients),
+            apiService.getToppingRecipe(topping.code, token)
+        ]);
+        if (availableIngredients.length === 0) setAvailableIngredients(ingList);
+        setToppingRecipeItems(recipe.items.map(it => ({ ingredientId: it.ingredientId, quantity: it.quantity })));
+    } catch {
+        setToppingRecipeItems([]);
+    } finally {
+        setLoadingToppingRecipe(false);
+    }
+};
+
+// 2. Thêm một dòng nguyên liệu cho topping
+const handleAddToppingRow = () => {
+    if (availableIngredients.length === 0) return;
+    // Chọn nguyên liệu chưa có trong danh sách
+    const existingIds = new Set(toppingRecipeItems.map(it => it.ingredientId));
+    const available = availableIngredients.find(ing => !existingIds.has(ing.id)) || availableIngredients[0];
+    setToppingRecipeItems(prev => [...prev, { ingredientId: available.id, quantity: 10 }]);
+};
+// 3. Xóa dòng nguyên liệu
+const handleRemoveToppingRow = (index: number) => {
+    setToppingRecipeItems(prev => prev.filter((_, idx) => idx !== index));
+};
+// 4. Lưu công thức topping lên Backend
+const handleSaveToppingRecipe = async () => {
+    if (!token || !selectedToppingForRecipe) return;
+    // Client validate: Kiểm tra trùng lặp nguyên liệu
+    const ids = toppingRecipeItems.map(i => i.ingredientId);
+    if (new Set(ids).size !== ids.length) {
+        showToast('Mỗi nguyên liệu chỉ được khai báo một lần trong công thức topping!');
+        return;
+    }
+    setSavingToppingRecipe(true);
+    try {
+        await apiService.updateToppingRecipe(selectedToppingForRecipe.code, toppingRecipeItems, token);
+        showToast(`Đã lưu công thức cho topping ${selectedToppingForRecipe.name}!`);
+        setSelectedToppingForRecipe(null);
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Lỗi khi lưu công thức';
+        showToast(msg);
+    } finally {
+        setSavingToppingRecipe(false);
+    }
+};
+
     if (!isClient) return null;
     if (!isManager) {
         return (
@@ -297,98 +459,176 @@ export default function AdminMenuPage(){
           <>
             {/* TAB 1: DANH SÁCH MÓN ĐỒ UỐNG */}
             {activeTab === 'products' && (
-              <div className="bg-[#261A13] border border-[#3E291F] rounded-3xl overflow-hidden shadow-xl">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-[#1F150F] text-[#A89284] uppercase font-bold border-b border-[#3E291F]">
-                      <tr>
-                        <th className="p-4">Tên món đồ uống</th>
-                        <th className="p-4">Danh mục</th>
-                        <th className="p-4">Giá gốc (Size S)</th>
-                        <th className="p-4 text-center">Trạng thái bán</th>
-                        <th className="p-4 text-right">Lưu giá</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#3A261C]">
-                      {products.map((p) => {
-                        const currentPriceInput = editedPrices[p.id] ?? p.price;
-                        const isSaving = savingId === p.id;
-                        return (
-                          <tr key={p.id} className="hover:bg-[#2F2018] transition">
-                            <td className="p-4 font-bold text-white flex items-center gap-3">
-                              <span className="w-8 h-8 rounded-xl bg-[#3E291F] flex items-center justify-center text-sm">
-                                ☕
-                              </span>
-                              <span>{p.name}</span>
-                            </td>
-                            <td className="p-4 text-[#D8C7B8]">
-                              <span className="px-2 py-1 bg-[#1F150F] rounded-lg border border-[#3E291F]">
-                                {p.category?.name || `Mã ${p.categoryId}`}
-                              </span>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex items-center gap-1.5">
-                                <input
-                                  type="number"
-                                  value={currentPriceInput}
-                                  onChange={(e) => setEditedPrices({ ...editedPrices, [p.id]: Number(e.target.value) })}
-                                  className="w-24 px-2.5 py-1.5 rounded-xl bg-[#1F150F] border border-[#4A3224] text-white font-mono font-bold focus:outline-none focus:border-[#D4A373]"
-                                />
-                                <span className="text-[#A89284]">đ</span>
-                              </div>
-                            </td>
-                            <td className="p-4 text-center">
-                              <button
-                                onClick={() => handleToggleProduct(p)}
-                                disabled={isSaving}
-                                className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition active:scale-95 ${
-                                  p.isAvailable
-                                    ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-600/60'
-                                    : 'bg-red-950/80 text-red-300 border border-red-600/60'
-                                }`}
-                              >
-                                {p.isAvailable ? '✓ Đang bán' : '✕ Hết hàng'}
-                              </button>
-                            </td>
-                            <td className="p-4 text-right">
-                              <button
-                                onClick={() => handleSaveProductPrice(p)}
-                                disabled={isSaving || currentPriceInput === p.price}
-                                className="px-3 py-1.5 rounded-xl bg-[#D4A373] hover:bg-[#C28E5C] disabled:opacity-30 text-[#1F1612] font-black inline-flex items-center gap-1 transition active:scale-95 shadow"
-                              >
-                                <Save className="w-3.5 h-3.5" />
-                                <span>Lưu</span>
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+              <div className="space-y-4">
+                {/* NÚT BẬT FORM THÊM MÓN MỚI */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setIsAddingProd(!isAddingProd)}
+                    className="px-4 py-2 bg-[#D4A373] hover:bg-[#C28E5C] text-[#1F1612] font-black text-xs rounded-xl transition shadow active:scale-95"
+                  >
+                    {isAddingProd ? '✕ Đóng form' : '+ Thêm món mới'}
+                  </button>
+                </div>
+
+                {/* FORM THÊM MÓN MỚI */}
+                {isAddingProd && (
+                  <form onSubmit={handleCreateProduct} className="p-5 bg-[#261A13] border border-[#D4A373]/40 rounded-3xl space-y-3 shadow-xl">
+                    <h3 className="text-xs font-black text-[#D4A373] uppercase tracking-wider">Thông tin món nước mới</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                      <input
+                        type="text"
+                        placeholder="Tên món (VD: Cà phê dừa)..."
+                        value={newProdName}
+                        onChange={(e) => setNewProdName(e.target.value)}
+                        className="px-3 py-2 rounded-xl bg-[#1F150F] border border-[#4A3224] text-white text-xs"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Giá gốc Size S (VD: 35000)..."
+                        value={newProdPrice}
+                        onChange={(e) => setNewProdPrice(e.target.value ? Number(e.target.value) : '')}
+                        className="px-3 py-2 rounded-xl bg-[#1F150F] border border-[#4A3224] text-white text-xs font-mono"
+                      />
+                      <select
+                        value={newProdCatId}
+                        onChange={(e) => setNewProdCatId(e.target.value ? Number(e.target.value) : '')}
+                        className="px-3 py-2 rounded-xl bg-[#1F150F] border border-[#4A3224] text-[#D8C7B8] text-xs"
+                      >
+                        <option value="">-- Chọn danh mục --</option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        placeholder="URL ảnh món nước..."
+                        value={newProdImg}
+                        onChange={(e) => setNewProdImg(e.target.value)}
+                        className="px-3 py-2 rounded-xl bg-[#1F150F] border border-[#4A3224] text-white text-xs"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="submit"
+                        className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow transition active:scale-95"
+                      >
+                        Lưu món vào Menu
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                <div className="bg-[#261A13] border border-[#3E291F] rounded-3xl overflow-hidden shadow-xl">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#1F150F] text-[#A89284] uppercase font-bold border-b border-[#3E291F]">
+                        <tr>
+                          <th className="p-4">Tên món đồ uống</th>
+                          <th className="p-4">Danh mục</th>
+                          <th className="p-4">Giá gốc (Size S)</th>
+                          <th className="p-4 text-center">Trạng thái bán</th>
+                          <th className="p-4 text-right">Lưu giá</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#3A261C]">
+                        {products.map((p) => {
+                          const currentPriceInput = editedPrices[p.id] ?? p.price;
+                          const isSaving = savingId === p.id;
+                          return (
+                            <tr key={p.id} className="hover:bg-[#2F2018] transition">
+                              <td className="p-4 font-bold text-white flex items-center gap-3">
+                                <span className="w-8 h-8 rounded-xl bg-[#3E291F] flex items-center justify-center text-sm">
+                                  ☕
+                                </span>
+                                <span>{p.name}</span>
+                              </td>
+                              <td className="p-4 text-[#D8C7B8]">
+                                <span className="px-2 py-1 bg-[#1F150F] rounded-lg border border-[#3E291F]">
+                                  {p.category?.name || `Mã ${p.categoryId}`}
+                                </span>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="number"
+                                    value={currentPriceInput}
+                                    onChange={(e) => setEditedPrices({ ...editedPrices, [p.id]: Number(e.target.value) })}
+                                    className="w-24 px-2.5 py-1.5 rounded-xl bg-[#1F150F] border border-[#4A3224] text-white font-mono font-bold focus:outline-none focus:border-[#D4A373]"
+                                  />
+                                  <span className="text-[#A89284]">đ</span>
+                                </div>
+                              </td>
+                              <td className="p-4 text-center">
+                                <button
+                                  onClick={() => handleToggleProduct(p)}
+                                  disabled={isSaving}
+                                  className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition active:scale-95 ${
+                                    p.isAvailable
+                                      ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-600/60'
+                                      : 'bg-red-950/80 text-red-300 border border-red-600/60'
+                                  }`}
+                                >
+                                  {p.isAvailable ? '✓ Đang bán' : '✕ Hết hàng'}
+                                </button>
+                              </td>
+                              <td className="p-4 text-right">
+                                <button
+                                  onClick={() => handleSaveProductPrice(p)}
+                                  disabled={isSaving || currentPriceInput === p.price}
+                                  className="px-3 py-1.5 rounded-xl bg-[#D4A373] hover:bg-[#C28E5C] disabled:opacity-30 text-[#1F1612] font-black inline-flex items-center gap-1 transition active:scale-95 shadow"
+                                >
+                                  <Save className="w-3.5 h-3.5" />
+                                  <span>Lưu</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
             {/* TAB 2: DANH MỤC */}
             {activeTab === 'categories' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {categories.map((c) => (
-                  <div key={c.id} className="p-5 rounded-3xl bg-[#261A13] border border-[#3E291F] flex items-center justify-between shadow">
-                    <div>
-                      <h3 className="text-sm font-bold text-white">{c.name}</h3>
-                      <p className="text-[11px] text-[#A89284] mt-0.5">Mã danh mục #{c.id}</p>
+              <div className="space-y-4">
+                {/* FORM THÊM DANH MỤC MỚI */}
+                <form onSubmit={handleCreateCategory} className="flex gap-2 p-4 bg-[#261A13] border border-[#3E291F] rounded-2xl">
+                  <input
+                    type="text"
+                    placeholder="Nhập tên danh mục mới (VD: Trà trái cây, Bánh ngọt)..."
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    className="flex-1 px-3.5 py-2 rounded-xl bg-[#1F150F] border border-[#4A3224] text-white text-xs focus:outline-none focus:border-[#D4A373]"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-[#D4A373] hover:bg-[#C28E5C] text-[#1F1612] font-black text-xs rounded-xl transition shadow active:scale-95"
+                  >
+                    + Thêm danh mục
+                  </button>
+                </form>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {categories.map((c) => (
+                    <div key={c.id} className="p-5 rounded-3xl bg-[#261A13] border border-[#3E291F] flex items-center justify-between shadow">
+                      <div>
+                        <h3 className="text-sm font-bold text-white">{c.name}</h3>
+                        <p className="text-[11px] text-[#A89284] mt-0.5">Mã danh mục #{c.id}</p>
+                      </div>
+                      <button
+                        onClick={() => handleToggleCategory(c)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 ${
+                          c.isActive
+                            ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-600/60'
+                            : 'bg-stone-800 text-stone-400 border border-stone-700'
+                        }`}
+                      >
+                        {c.isActive ? 'Đang hiện' : 'Đang ẩn'}
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleToggleCategory(c)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 ${
-                        c.isActive
-                          ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-600/60'
-                          : 'bg-stone-800 text-stone-400 border border-stone-700'
-                      }`}
-                    >
-                      {c.isActive ? 'Đang hiện' : 'Đang ẩn'}
-                    </button>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
             {/* TAB 3: TOPPING & SIZE */}
@@ -428,11 +668,74 @@ export default function AdminMenuPage(){
                   </div>
                 </div>
                 {/* BẢNG GIÁ TOPPING */}
-                <div className="bg-[#261A13] border border-[#3E291F] rounded-3xl p-6 shadow-xl">
-                  <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-                    <Layers className="w-5 h-5 text-[#D4A373]" />
-                    <span>Bảng giá Topping ({toppings.length})</span>
-                  </h3>
+                <div className="bg-[#261A13] border border-[#3E291F] rounded-3xl p-6 shadow-xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      <Layers className="w-5 h-5 text-[#D4A373]" />
+                      <span>Bảng giá Topping ({toppings.length})</span>
+                    </h3>
+                    {/* Nút bật/tắt form thêm topping */}
+                    {isManager && (
+                      <button
+                        onClick={() => setIsAddingTopping(!isAddingTopping)}
+                        className="px-3 py-1.5 bg-[#D4A373] hover:bg-[#C28E5C] text-[#1F1612] font-black text-xs rounded-xl transition shadow active:scale-95"
+                      >
+                        {isAddingTopping ? '✕ Đóng' : '+ Thêm Topping'}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* FORM THÊM TOPPING MỚI (POST /admin/toppings) */}
+                  {isAddingTopping && isManager && (
+                    <form onSubmit={handleCreateTopping} className="p-4 bg-[#1F150F] border border-[#D4A373]/40 rounded-2xl space-y-3 shadow-inner">
+                      <h4 className="text-xs font-black text-[#D4A373] uppercase tracking-wider">Thông tin Topping mới</h4>
+                      <div className="space-y-2.5">
+                        <div>
+                          <label className="text-[10px] text-[#A89284] font-semibold block mb-1">Tên topping</label>
+                          <input
+                            type="text"
+                            placeholder="VD: Pudding trứng, Thạch dừa..."
+                            value={newToppingName}
+                            onChange={(e) => handleToppingNameChange(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-[#261A13] border border-[#4A3224] text-white text-xs focus:outline-none focus:border-[#D4A373]"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] text-[#A89284] font-semibold block mb-1">Mã code (duy nhất)</label>
+                            <input
+                              type="text"
+                              placeholder="VD: pudding-trung"
+                              value={newToppingCode}
+                              onChange={(e) => setNewToppingCode(e.target.value.toLowerCase())}
+                              className="w-full px-3 py-2 rounded-xl bg-[#261A13] border border-[#4A3224] text-amber-400 font-mono text-xs focus:outline-none focus:border-[#D4A373]"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-[#A89284] font-semibold block mb-1">Đơn giá bán (VNĐ)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="VD: 8000"
+                              value={newToppingPrice}
+                              onChange={(e) => setNewToppingPrice(e.target.value ? Number(e.target.value) : '')}
+                              className="w-full px-3 py-2 rounded-xl bg-[#261A13] border border-[#4A3224] text-white font-mono text-xs focus:outline-none focus:border-[#D4A373]"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2 pt-1">
+                        <button
+                          type="submit"
+                          disabled={submittingTopping}
+                          className="px-4 py-2 bg-[#D4A373] hover:bg-[#C28E5C] text-[#1F1612] font-black text-xs rounded-xl shadow transition active:scale-95 disabled:opacity-50"
+                        >
+                          {submittingTopping ? 'Đang tạo...' : 'Lưu Topping'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
                   <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
                     {toppings.map((t) => {
                       const curPrice = editedToppingPrices[t.code] ?? t.price;
@@ -457,6 +760,14 @@ export default function AdminMenuPage(){
                             >
                               Lưu
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenToppingRecipe(t)}
+                              className="px-2.5 py-1.5 bg-[#3E291F] hover:bg-[#4E3528] text-amber-400 text-xs font-semibold rounded-xl transition active:scale-95 shadow"
+                              title="Xem và sửa công thức định lượng"
+                            >
+                              Công thức
+                            </button>
                           </div>
                         </div>
                       );
@@ -466,6 +777,138 @@ export default function AdminMenuPage(){
               </div>
             )}
           </>
+        )}
+
+        {/* MODAL CÔNG THỨC TOPPING */}
+        {selectedToppingForRecipe && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-[#1F150F] border border-[#D4A373]/40 rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-2xl">
+              <div className="flex justify-between items-center border-b border-[#3E291F] pb-3">
+                <div>
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-[#D4A373]" />
+                    <span>Công thức: {selectedToppingForRecipe.name}</span>
+                  </h3>
+                  <p className="text-[11px] text-[#A89284] mt-0.5">
+                    Định lượng nguyên liệu tiêu hao cho 1 phần topping (mã: <span className="font-mono text-amber-400">{selectedToppingForRecipe.code}</span>)
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedToppingForRecipe(null)}
+                  className="w-7 h-7 rounded-lg bg-[#261A13] hover:bg-[#3E291F] text-[#A89284] hover:text-white flex items-center justify-center text-xs transition"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {loadingToppingRecipe ? (
+                <div className="py-12 text-center text-xs text-[#A89284] flex flex-col items-center justify-center gap-2">
+                  <RefreshCw className="w-5 h-5 animate-spin text-[#D4A373]" />
+                  <span>Đang tải công thức...</span>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="text-[#A89284] border-b border-[#3E291F] font-bold">
+                          <th className="py-2 px-1">Nguyên liệu</th>
+                          <th className="py-2 px-1">Định lượng / phần</th>
+                          <th className="py-2 px-1 text-right">Xóa</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#3E291F]/50">
+                        {toppingRecipeItems.map((item, idx) => {
+                          const curIng = availableIngredients.find(ing => ing.id === item.ingredientId);
+                          return (
+                            <tr key={idx} className="hover:bg-[#261A13]/50">
+                              <td className="py-2 px-1">
+                                <select
+                                  value={item.ingredientId}
+                                  onChange={(e) => {
+                                    const next = [...toppingRecipeItems];
+                                    next[idx].ingredientId = Number(e.target.value);
+                                    setToppingRecipeItems(next);
+                                  }}
+                                  className="px-2 py-1.5 bg-[#261A13] border border-[#4A3224] text-white rounded-xl text-xs w-full max-w-[200px] focus:outline-none focus:border-[#D4A373]"
+                                >
+                                  {availableIngredients.map(ing => (
+                                    <option key={ing.id} value={ing.id}>
+                                      {ing.name} ({ing.unit})
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="py-2 px-1">
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={item.quantity}
+                                    onChange={(e) => {
+                                      const next = [...toppingRecipeItems];
+                                      next[idx].quantity = Math.max(1, Number(e.target.value) || 1);
+                                      setToppingRecipeItems(next);
+                                    }}
+                                    className="w-20 px-2.5 py-1.5 bg-[#261A13] border border-[#4A3224] text-white rounded-xl text-xs font-mono focus:outline-none focus:border-[#D4A373]"
+                                  />
+                                  <span className="text-[#A89284] text-xs font-medium">{curIng?.unit || ''}</span>
+                                </div>
+                              </td>
+                              <td className="py-2 px-1 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveToppingRow(idx)}
+                                  className="p-1 rounded-lg hover:bg-red-950/60 text-[#A89284] hover:text-red-400 transition"
+                                  title="Xóa nguyên liệu này"
+                                >
+                                  ✕
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {toppingRecipeItems.length === 0 && (
+                          <tr>
+                            <td colSpan={3} className="py-6 text-center text-[#A89284]">
+                              Topping này chưa có nguyên liệu định lượng.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddToppingRow}
+                    className="text-xs text-[#D4A373] hover:text-[#C28E5C] font-bold transition inline-flex items-center gap-1"
+                  >
+                    + Thêm nguyên liệu cho topping
+                  </button>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2.5 pt-4 border-t border-[#3E291F]">
+                <button
+                  type="button"
+                  onClick={() => setSelectedToppingForRecipe(null)}
+                  className="px-4 py-2 bg-[#261A13] hover:bg-[#3E291F] text-[#A89284] hover:text-white text-xs font-bold rounded-xl transition"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="button"
+                  disabled={savingToppingRecipe}
+                  onClick={handleSaveToppingRecipe}
+                  className="px-5 py-2 bg-[#D4A373] hover:bg-[#C28E5C] text-[#1F1612] text-xs font-black rounded-xl shadow transition active:scale-95 disabled:opacity-50"
+                >
+                  {savingToppingRecipe ? 'Đang lưu...' : 'Lưu công thức'}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

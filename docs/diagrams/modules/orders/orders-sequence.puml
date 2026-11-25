@@ -1,0 +1,96 @@
+@startuml
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+actor ":KháchHàng" as User
+participant ":GiaoDiệnĐặtHàng" as UI <<boundary>>
+participant ":CreateOrderDto" as DTO <<boundary>>
+participant ":OrdersController" as Ctrl <<control>>
+participant ":JwtAuthGuard" as Guard <<control>>
+participant ":OrdersService" as Svc <<control>>
+database ":Prisma / PostgreSQL" as DB <<entity>>
+
+autonumber 1 "<b>[0]</b>"
+
+User -> UI: bấmĐặtHàng(items, promoCode)
+activate UI
+
+UI -> UI: sinhKhóa(Idempotency-Key)
+UI -> Ctrl: gửiYêuCầu(POST /orders, body, headers)
+activate Ctrl
+
+Ctrl -> Guard: canActivate(context)
+activate Guard
+
+alt Token SĐT không hợp lệ hoặc thiếu
+  Guard --> Ctrl: throw UnauthorizedException("Thiếu token")
+  Ctrl --> UI: 401 Unauthorized
+  UI --> User: yêuCầuĐăngNhậpLại()
+else Token hợp lệ
+  Guard --> Ctrl: true (gán req.user = { phone, role })
+  deactivate Guard
+  
+  Ctrl -> DTO: validate(items, promoCode)
+  activate DTO
+  
+  alt Dữ liệu DTO không hợp lệ (sai số lượng, thiếu size)
+    DTO --> Ctrl: validationErrors
+    Ctrl --> UI: 400 Bad Request
+    UI --> User: hiểnThịLỗiDữLiệu()
+  else Dữ liệu hợp lệ
+    DTO --> Ctrl: createOrderDto
+    deactivate DTO
+    
+    Ctrl -> Svc: create(userPhone, dto, idempotencyKey)
+    activate Svc
+    
+    opt Có gửi kèm Idempotency-Key
+      Svc -> DB: findUnique(userPhone, idempotencyKey)
+      activate DB
+      DB --> Svc: existingOrder (hoặc null)
+      deactivate DB
+      
+      break Đơn đã tồn tại từ trước (gửi lặp request)
+        Svc --> Ctrl: existingOrder (trả lại đơn cũ)
+        Ctrl --> UI: 201 Created (kèm orderId cũ)
+        UI --> User: chuyểnSangMànHìnhThanhToán(orderId, total)
+      end
+    end
+    
+    Svc -> DB: findMany(products) & findUnique(promo)
+    activate DB
+    DB --> Svc: danhSáchGiá & thôngTinVoucher
+    deactivate DB
+    
+    Svc -> Svc: tínhToánGiáServerSide(basePrice + size + toppings - discount)
+    
+    Svc -> DB: $transaction(trừKhoNguyênLiệu & tạoĐơn)
+    activate DB
+    
+    alt Không đủ nguyên liệu tồn kho (count == 0)
+      DB --> Svc: throw ConflictException("Nguyên liệu không đủ")
+      Svc --> Ctrl: 409 Conflict
+      Ctrl --> UI: 409 Conflict
+      UI --> User: thôngBáoMónĐãHết()
+    else Đủ nguyên liệu và tạo đơn thành công
+      DB --> DB: UPDATE "InventoryItem" SET stock = stock - qty\nCREATE "Order" (PENDING, version=0)\nCREATE "OrderItem"
+      DB --> Svc: orderSummary (id, total, discount, status: PENDING)
+      deactivate DB
+      
+      Svc --> Ctrl: orderSummary
+      deactivate Svc
+      
+      Ctrl --> UI: 201 Created
+      deactivate Ctrl
+      
+      UI -> UI: clearCart()
+      UI --> User: hiểnThịThànhCông & chuyểnSangThanhToán(orderId, total)
+      deactivate UI
+    end
+  end
+end
+@enduml

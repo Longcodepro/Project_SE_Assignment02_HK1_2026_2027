@@ -1,0 +1,53 @@
+@startuml
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam shadowing false
+skinparam conditionStyle diamond
+skinparam ranksep 35
+skinparam nodesep 50
+
+|Khách hàng|
+start
+:Mở ứng dụng web (Mobile-first PWA);
+
+|Giao diện Next.js|
+:Hiển thị khung xương tải (Loading Skeleton);
+:Gửi song song 2 yêu cầu HTTP:\n- GET /products (Lấy danh mục món)\n- GET /menu-options (Lấy bảng giá size & topping);
+
+|Backend (NestJS API)|
+:ProductsController tiếp nhận yêu cầu;
+:Gọi ProductsService.findAll() & getMenuOptions();
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Truy vấn danh mục sản phẩm đang mở bán (isActive: true);\n:Lấy cấu hình các size ly (S, M, L) và danh mục topping;
+
+|Backend (NestJS API)|
+:Trả về mã 200 OK kèm danh sách món và menu options;
+
+|Giao diện Next.js|
+:Ẩn loading và vẽ lưới sản phẩm phân theo danh mục;
+
+|Khách hàng|
+:Xem danh mục đồ uống và bấm chọn món muốn đặt;
+
+|Giao diện Next.js|
+:Mở Modal tùy biến sản phẩm (ProductDetailModal);
+:Hiển thị động bảng giá Size và Topping lấy từ Server;
+
+|Khách hàng|
+:Chọn kích cỡ (Size S/M/L) và các loại Topping;
+
+|Giao diện Next.js|
+:Tự động tính lại tổng tiền tạm tính cho món;
+
+|Khách hàng|
+:Bấm nút "Thêm vào giỏ hàng";
+
+|Giao diện Next.js|
+:Lưu sản phẩm vào giỏ hàng (Zustand State Store);\n:Cập nhật huy hiệu (Badge) số lượng trên biểu tượng giỏ hàng;
+
+|Khách hàng|
+stop
+@enduml

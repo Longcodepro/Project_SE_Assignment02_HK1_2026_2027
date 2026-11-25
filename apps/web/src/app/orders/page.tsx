@@ -386,7 +386,7 @@ export default function OrderHistoryPage(){
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-gray-100">
                                     <div className="flex items-center gap-1.5 text-xs sm:text-sm">
                                         <span className="font-mono font-black text-amber-950">
-                                            #{order.id}
+                                            #{String(order.id).slice(-5)}
                                         </span>
                                         <span className="text-gray-300">•</span>
                                         <span className="text-gray-500 text-[11px] sm:text-xs">

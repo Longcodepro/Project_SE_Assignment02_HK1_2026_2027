@@ -8,68 +8,91 @@ datasource db {
 }
 
 model Category {
+  // [Khóa chính] Mã ID danh mục, tự động tăng (1, 2, 3...)
   id       Int       @id @default(autoincrement())
+  // [Tên danh mục] Tên loại đồ uống (VD: "Cà phê", "Trà trái cây")
   name     String
-  // false: ẩn danh mục cùng các món của nó khỏi menu
+  // [Trạng thái hiển thị] false: ẩn danh mục cùng các món của nó khỏi menu (Xóa mềm)
   isActive Boolean   @default(true)
+  // [Quan hệ ảo] Danh sách các món nước thuộc danh mục này
   products Product[]
 }
 
 model Product {
+  // [Khóa chính] Mã ID sản phẩm, tự động tăng
   id          Int          @id @default(autoincrement())
+  // [Tên món] Tên đồ uống (VD: "Cà phê sữa đá")
   name        String
+  // [Mô tả] Giới thiệu hương vị, thành phần món (có thể để trống)
   description String?
-  // VND, size S
+  // [Giá gốc] Giá bán size S tính bằng VNĐ
   price       Int
+  // [Link ảnh] Đường dẫn URL ảnh món nước
   imageUrl    String
+  // [Tình trạng] true: còn hàng mở bán; false: tạm hết món
   isAvailable Boolean      @default(true)
+  // [Khóa ngoại thật] ID của danh mục cha lưu dưới DB
   categoryId  Int
+  // [Cầu nối ảo] Trỏ sang đối tượng Category tương ứng
   category    Category     @relation(fields: [categoryId], references: [id])
+  // [Quan hệ ảo] Các dòng chi tiết đơn hàng tham chiếu đến món này
   orderItems  OrderItem[]
+  // [Quan hệ ảo] Công thức pha chế định lượng nguyên liệu cho món
   recipeItems RecipeItem[]
 }
 
 enum Size {
-  S
-  M
-  L
+  S // Cỡ nhỏ
+  M // Cỡ vừa (+5.000đ)
+  L // Cỡ lớn (+10.000đ)
 }
 
 enum OrderStatus {
-  PENDING
-  PAID
-  PAYMENT_FAILED
-  PREPARING
-  READY
-  COMPLETED
-  CANCELLED
+  PENDING        // 1. Chờ thanh toán (vừa tạo đơn xong)
+  PAID           // 2. Đã thanh toán thành công
+  PAYMENT_FAILED // (Lỗi) Thanh toán thất bại, có thể thử lại
+  PREPARING      // 3. Barista đang pha chế
+  READY          // 4. Pha xong, có mã nhận hàng 6 số
+  COMPLETED      // 5. Khách đã nhận nước, hoàn tất đơn
+  CANCELLED      // (Hủy) Đơn bị hủy và hoàn tiền
 }
 
 model Order {
+  // [Khóa chính] Mã đơn hàng dạng chuỗi (VD: "ord_1042")
   id             String       @id
+  // [Khóa ngoại thật] Số điện thoại người đặt đơn
   userPhone      String
+  // [Cầu nối ảo] Trỏ sang đối tượng User tương ứng
   user           User         @relation(fields: [userPhone], references: [phone])
-  // Client gửi lại cùng key thì trả đơn cũ thay vì tạo đơn mới
+  // [Chống gửi trùng] Client gửi lại cùng key này thì trả đơn cũ thay vì tạo mới
   idempotencyKey String?
+  // [Trạng thái đơn] Máy trạng thái: PENDING -> PAID -> PREPARING -> READY -> COMPLETED
   status         OrderStatus  @default(PENDING)
-  // VND, tính ở server từ giá sản phẩm + size + topping
+  // [Tổng tiền] Tính bằng VNĐ tại server: Tổng (Giá gốc + Size + Topping) - Giảm giá
   total          Int
+  // [Thời gian tạo] Mốc ngày giờ đặt đơn, mặc định lấy giờ hiện tại
   createdAt      DateTime     @default(now())
-  // Khoá lạc quan: mỗi lần cập nhật đơn phải khớp version đã đọc, rồi tăng thêm 1
+  // [Khóa lạc quan] Mỗi lần cập nhật phải khớp version hiện tại rồi tăng lên 1 (chống ghi đè)
   version        Int          @default(0)
-  // Mã nhận hàng 6 số, chỉ khác null khi đơn READY (xóa khi COMPLETED) nên @unique
-  // cũng chính là "duy nhất trong số đơn đang READY"
+  // [Mã nhận hàng 6 số] Chỉ sinh ra khi đơn READY, xóa khi COMPLETED (@unique chống trùng tại quầy)
   pickupCode     String?      @unique
-  // Lý do hủy và thời điểm hoàn tiền mô phỏng (dùng ở S3.8)
+  // [Lý do hủy đơn] Ghi nhận khi khách hoặc nhân viên bấm hủy
   cancelReason   String?
+  // [Thời điểm hoàn tiền] Mốc thời gian hệ thống hoàn tiền mô phỏng
   refundedAt     DateTime?
-  // Mã giảm giá đã áp; total là số tiền sau giảm, discountAmount là phần được giảm (VND)
+  // [Khóa ngoại] Mã ID của chương trình khuyến mãi đã áp dụng (nếu có)
   promotionId    Int?
+  // [Cầu nối ảo] Trỏ sang thông tin chi tiết của Voucher khuyến mãi
   promotion      Promotion?   @relation(fields: [promotionId], references: [id])
+  // [Số tiền được giảm] Số tiền VNĐ được khấu trừ nhờ mã giảm giá
   discountAmount Int          @default(0)
+  // [Quan hệ ảo] Danh sách các ly nước trong đơn này
   items          OrderItem[]
+  // [Quan hệ ảo] Lịch sử các lần thử thanh toán cho đơn này
   payments       Payment[]
+  // [Quan hệ ảo] Đánh giá 1-5 sao của khách sau khi nhận nước
   review         Review?
+  // [Quan hệ ảo] Định lượng nguyên liệu thực tế đã tiêu hao cho đơn này
   stockUsages    StockUsage[]
 
   @@unique([userPhone, idempotencyKey])
@@ -78,187 +101,263 @@ model Order {
 
 // Mỗi đơn COMPLETED được đánh giá một lần (orderId @unique); chủ đơn lấy qua order.userPhone
 model Review {
+  // [Khóa chính] Mã ID đánh giá tự tăng
   id        Int      @id @default(autoincrement())
+  // [Khóa ngoại thật] Mã đơn hàng được đánh giá (duy nhất: 1 đơn chỉ đánh giá 1 lần)
   orderId   String   @unique
+  // [Cầu nối ảo] Trỏ sang đơn hàng tương ứng
   order     Order    @relation(fields: [orderId], references: [id])
-  // 1 đến 5 (có CHECK trong migration)
+  // [Số sao] Đánh giá từ 1 đến 5 sao
   stars     Int
+  // [Bình luận] Lời nhận xét của khách (tùy chọn)
   comment   String?
+  // [Thời gian tạo] Thời điểm gửi đánh giá
   createdAt DateTime @default(now())
 }
 
 enum DiscountType {
-  FIXED
-  PERCENT
+  FIXED   // Giảm số tiền cố định (VD: giảm thẳng 20.000 VNĐ)
+  PERCENT // Giảm theo phần trăm (VD: giảm 10% tổng đơn)
 }
 
 model Promotion {
+  // [Khóa chính] Mã ID chương trình khuyến mãi tự tăng
   id             Int          @id @default(autoincrement())
-  // Viết hoa; khách nhập không phân biệt hoa thường
+  // [Mã giảm giá] Mã khách gõ (VD: "GIAM20K", lưu chữ in hoa)
   code           String       @unique
+  // [Loại giảm giá] FIXED (tiền VNĐ) hoặc PERCENT (%)
   discountType   DiscountType
-  // FIXED: VND; PERCENT: 1 đến 100
+  // [Giá trị giảm] Số tiền VNĐ (nếu FIXED) hoặc tỷ lệ 1-100 (nếu PERCENT)
   discountValue  Int
-  // VND, tính trước giảm
+  // [Đơn tối thiểu] Giá trị giỏ hàng trước giảm tối thiểu để được áp mã (VNĐ)
   minOrderAmount Int          @default(0)
+  // [Bật / Tắt] true: đang áp dụng; false: tạm khóa mã
   isActive       Boolean      @default(true)
+  // [Hạn dùng] Ngày giờ hết hạn của mã (null là vô thời hạn)
   expiryDate     DateTime?
-  // null là không giới hạn; usedCount tăng khi tạo đơn và giảm khi đơn bị hủy
+  // [Lượt tối đa] Giới hạn số đơn được dùng mã này (null là không giới hạn)
   maxUses        Int?
+  // [Lượt đã dùng] Số đơn đã áp mã thành công (tăng khi tạo đơn, giảm khi hủy đơn)
   usedCount      Int          @default(0)
+  // [Quan hệ ảo] Các đơn hàng đã áp dụng mã khuyến mãi này
   orders         Order[]
 }
 
 model OrderItem {
+  // [Khóa chính] Mã ID dòng chi tiết món tự tăng
   id        Int      @id @default(autoincrement())
+  // [Khóa ngoại thật] Mã đơn hàng chứa món này
   orderId   String
+  // [Cầu nối ảo] Trỏ sang đơn hàng cha (xóa đơn thì tự động xóa các món bên trong - Cascade)
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  // [Khóa ngoại thật] Mã sản phẩm đồ uống được chọn
   productId Int
+  // [Cầu nối ảo] Trỏ sang thông tin gốc của sản phẩm
   product   Product  @relation(fields: [productId], references: [id])
+  // [Số lượng] Số lượng ly đặt (1, 2, 3...)
   quantity  Int
+  // [Kích cỡ ly] Size S, M hoặc L
   size      Size
+  // [Danh sách Topping] Mảng chuỗi các topping thêm vào (VD: ["tran-chau", "kem-cheese"])
   toppings  String[]
-  // VND, giá 1 ly đã gồm size + topping tại thời điểm đặt
+  // [Đơn giá tại thời điểm đặt] Giá 1 ly = Giá gốc + Phụ thu size + Giá topping (lưu cứng để sau này đổi giá không đổi đơn cũ)
   unitPrice Int
 
   @@index([orderId])
 }
 
 enum Role {
-  CUSTOMER
-  BARISTA
-  CASHIER
-  MANAGER
+  CUSTOMER // Khách hàng (đặt món, tích điểm)
+  BARISTA  // Nhân viên pha chế (xem đơn, đổi trạng thái READY)
+  CASHIER  // Thu ngân (nhận tiền, giao món cho khách)
+  MANAGER  // Quản lý (xem báo cáo, kho nguyên liệu)
 }
 
 model User {
+  // [Khóa chính] Số điện thoại người dùng (10 chữ số) làm Natural Key
   phone         String         @id
-  // bcrypt hash, không bao giờ trả ra ngoài API
+  // [Mật khẩu băm] Chuỗi băm bcrypt, tuyệt đối không trả ra ngoài API
   passwordHash  String
+  // [Họ tên] Tên người dùng hiển thị (tùy chọn)
   name          String?
-  // Tùy chọn, không duy nhất
+  // [Email] Thư điện tử nhận hóa đơn (tùy chọn, không bắt buộc duy nhất)
   email         String?
+  // [Vai trò] Phân quyền: Mặc định là CUSTOMER
   role          Role           @default(CUSTOMER)
-  // Tích lũy khi thanh toán thành công (xem payments/loyalty.ts)
+  // [Điểm tích lũy] Tích 1 điểm / 1.000đ khi thanh toán thành công
   loyaltyPoints Int            @default(0)
-  // Tài khoản bị khóa đăng nhập không được (token đã cấp vẫn dùng đến khi hết hạn)
+  // [Trạng thái khóa] true: Tài khoản bị khóa, chặn đăng nhập
   isLocked      Boolean        @default(false)
+  // [Ngày tạo] Thời điểm đăng ký tài khoản
   createdAt     DateTime       @default(now())
+  // [Quan hệ ảo] Lịch sử các đơn hàng do khách này đặt
   orders        Order[]
+  // [Quan hệ ảo] Các phiếu nhập kho do người này tạo (nếu là nhân viên/quản lý)
   stockReceipts StockReceipt[]
 }
 
 enum PaymentMethod {
-  WALLET
-  CARD
+  WALLET // Ví điện tử (Momo / ZaloPay mô phỏng)
+  CARD   // Thẻ ngân hàng (Visa / Mastercard mô phỏng)
 }
 
 enum PaymentStatus {
-  SUCCESS
-  FAILED
+  SUCCESS // Thanh toán thành công (chuyển đơn sang PAID)
+  FAILED  // Thanh toán thất bại (chuyển đơn sang PAYMENT_FAILED)
 }
 
-// Mỗi lần thử thanh toán là một dòng, nên đơn thất bại có thể thử lại
+// Mỗi lần thử thanh toán là một dòng riêng, hỗ trợ đơn thất bại có thể đổi phương thức thanh toán lại
 model Payment {
+  // [Khóa chính] Mã ID lượt thanh toán tự tăng
   id             Int           @id @default(autoincrement())
+  // [Khóa ngoại thật] Mã đơn hàng đang được thanh toán
   orderId        String
+  // [Cầu nối ảo] Trỏ sang đơn hàng tương ứng
   order          Order         @relation(fields: [orderId], references: [id])
+  // [Hình thức] WALLET (Ví) hoặc CARD (Thẻ)
   method         PaymentMethod
+  // [Kết quả] SUCCESS hoặc FAILED
   status         PaymentStatus
-  // VND, lấy từ Order.total chứ không nhận từ client
+  // [Số tiền thanh toán] Lấy trực tiếp từ Order.total của Server, không nhận từ Client
   amount         Int
+  // [Lý do thất bại] Ghi nhận nếu cổng thanh toán từ chối (thẻ 0000, ví > 500k)
   failureReason  String?
-  // Điểm tích được từ lần thanh toán này, lưu lại để gửi lại cùng key vẫn trả đúng
+  // [Điểm thưởng nhận được] Điểm tích lũy cộng cho khách từ lần thanh toán này
   pointsEarned   Int           @default(0)
+  // [Chống thanh toán trùng] Khóa chống trừ tiền 2 lần khi mạng lag
   idempotencyKey String?
+  // [Thời gian thanh toán] Mốc thời điểm thực hiện giao dịch
   createdAt      DateTime      @default(now())
 
   @@unique([orderId, idempotencyKey])
   @@index([orderId])
 }
 
-// Kho nguyên liệu (Sprint 4). stock và quantity là số nguyên theo đơn vị unit.
+// Đơn vị tính nguyên liệu kho: Gam (G), Mililit (ML), Cái/Phần (PIECE)
 enum Unit {
-  G
-  ML
-  PIECE
+  G     // Gam (cho bột cà phê, đường, hạt...)
+  ML    // Mililit (cho sữa tươi, siro, nước đường...)
+  PIECE // Cái/Miếng (cho bánh quy, túi lọc...)
 }
 
+// Kho nguyên liệu pha chế
 model Ingredient {
+  // [Khóa chính] Mã ID nguyên liệu tự tăng
   id                 Int                 @id @default(autoincrement())
+  // [Tên nguyên liệu] Tên duy nhất (VD: "Hạt cà phê Robusta", "Sữa tươi thanh trùng")
   name               String              @unique
+  // [Đơn vị tính] G, ML hoặc PIECE
   unit               Unit
+  // [Số lượng tồn kho] Số lượng thực tế còn lại trong kho tính theo đơn vị unit
   stock              Int                 @default(0)
-  // Chạm ngưỡng này thì cảnh báo sắp hết
+  // [Ngưỡng tối thiểu] Chạm tới mức này thì hệ thống cảnh báo sắp hết hàng
   minStock           Int                 @default(0)
+  // [Quan hệ ảo] Lịch sử các phiếu nhập thêm nguyên liệu này
   receipts           StockReceipt[]
+  // [Quan hệ ảo] Lịch sử tiêu hao nguyên liệu cho các đơn hàng
   stockUsages        StockUsage[]
+  // [Quan hệ ảo] Các công thức pha chế có dùng nguyên liệu này
   recipeItems        RecipeItem[]
+  // [Quan hệ ảo] Các công thức làm topping có dùng nguyên liệu này
   toppingRecipeItems ToppingRecipeItem[]
 }
 
-// Phiếu nhập kho, lưu người thực hiện để truy vết
+// Phiếu nhập kho, lưu vết người nhập để chống thất thoát
 model StockReceipt {
+  // [Khóa chính] Mã ID phiếu nhập tự tăng
   id             Int        @id @default(autoincrement())
+  // [Khóa ngoại thật] Mã nguyên liệu được nhập thêm
   ingredientId   Int
+  // [Cầu nối ảo] Trỏ sang nguyên liệu tương ứng
   ingredient     Ingredient @relation(fields: [ingredientId], references: [id])
+  // [Số lượng nhập] Lượng nhập thêm tính theo đơn vị của nguyên liệu
   quantity       Int
+  // [Ghi chú] Lý do nhập, nhà cung cấp, hạn sử dụng...
   note           String?
+  // [Khóa ngoại thật] Số điện thoại của nhân viên/quản lý tạo phiếu
   createdByPhone String
+  // [Cầu nối ảo] Trỏ sang tài khoản User đã thực hiện nhập kho
   createdBy      User       @relation(fields: [createdByPhone], references: [phone])
+  // [Thời gian nhập] Ngày giờ lập phiếu
   createdAt      DateTime   @default(now())
 
   @@index([ingredientId])
 }
 
-// Nguyên liệu cho MỘT ly món productId ở cỡ size
+// Công thức pha chế: Định lượng nguyên liệu cho MỘT ly (theo món và theo size)
 model RecipeItem {
+  // [Khóa chính] Mã ID công thức tự tăng
   id           Int        @id @default(autoincrement())
+  // [Khóa ngoại thật] Mã sản phẩm áp dụng công thức
   productId    Int
+  // [Cầu nối ảo] Trỏ sang thông tin sản phẩm
   product      Product    @relation(fields: [productId], references: [id])
+  // [Kích cỡ] Size S, M hoặc L
   size         Size
+  // [Khóa ngoại thật] Mã nguyên liệu cần dùng
   ingredientId Int
+  // [Cầu nối ảo] Trỏ sang nguyên liệu tương ứng
   ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  // [Định lượng] Số lượng nguyên liệu cần lấy cho 1 ly (VD: 20g bột cafe cho size M)
   quantity     Int
 
   @@unique([productId, size, ingredientId])
 }
 
-// Bảng giá topping và phụ thu size (Sprint 4 thay cho hằng số trong pricing.ts)
+// Bảng giá Topping bán kèm
 model Topping {
+  // [Khóa chính] Mã định danh topping (VD: "tran-chau", "kem-cheese")
   code        String              @id
+  // [Tên hiển thị] Tên gọi trên menu (VD: "Trân châu trắng", "Kem phô mai")
   name        String
-  // VND
+  // [Đơn giá] Giá bán thêm tính bằng VNĐ (VD: 8000đ, 10000đ)
   price       Int
+  // [Trạng thái] true: đang có sẵn; false: hết topping
   isActive    Boolean             @default(true)
+  // [Quan hệ ảo] Công thức định lượng nguyên liệu làm ra topping này
   recipeItems ToppingRecipeItem[]
 }
 
+// Bảng phụ thu theo kích cỡ ly
 model SizeSurcharge {
+  // [Khóa chính] Kích cỡ ly (S, M, L)
   size  Size @id
-  // VND
+  // [Tiền cộng thêm] Số tiền VNĐ cộng thêm so với size S chuẩn (S: +0đ, M: +5000đ, L: +10000đ)
   extra Int
 }
 
-// Nguyên liệu cho MỘT phần topping
+// Công thức định lượng nguyên liệu cho MỘT phần topping
 model ToppingRecipeItem {
+  // [Khóa chính] Mã ID công thức topping tự tăng
   id           Int        @id @default(autoincrement())
+  // [Khóa ngoại thật] Mã topping tương ứng
   toppingCode  String
+  // [Cầu nối ảo] Trỏ sang bảng Topping
   topping      Topping    @relation(fields: [toppingCode], references: [code])
+  // [Khóa ngoại thật] Mã nguyên liệu cần dùng để làm topping này
   ingredientId Int
+  // [Cầu nối ảo] Trỏ sang nguyên liệu tương ứng
   ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  // [Định lượng] Lượng nguyên liệu tiêu hao cho 1 phần topping (VD: 30ml siro)
   quantity     Int
 
   @@unique([toppingCode, ingredientId])
 }
 
-// Nguyên liệu đã trừ cho từng đơn PAID; hoàn kho khi hủy theo đúng số này (kể cả khi công thức đã đổi)
+// Lịch sử nguyên liệu thực tế đã trừ kho cho từng đơn hàng PAID
+// Đảm bảo khi hủy đơn thì hoàn trả đúng số lượng này (kể cả khi công thức quán đã đổi)
 model StockUsage {
+  // [Khóa chính] Mã ID lượt trừ kho tự tăng
   id           Int        @id @default(autoincrement())
+  // [Khóa ngoại thật] Mã đơn hàng đã tiêu thụ nguyên liệu
   orderId      String
+  // [Cầu nối ảo] Trỏ sang đơn hàng tương ứng
   order        Order      @relation(fields: [orderId], references: [id])
+  // [Khóa ngoại thật] Mã nguyên liệu bị tiêu hao
   ingredientId Int
+  // [Cầu nối ảo] Trỏ sang nguyên liệu tương ứng
   ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  // [Số lượng đã trừ] Số lượng thực tế đã trừ khỏi kho khi đơn chuyển sang PAID
   quantity     Int
 
   @@unique([orderId, ingredientId])

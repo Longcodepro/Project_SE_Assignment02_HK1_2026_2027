@@ -1,0 +1,32 @@
+[
+  {
+    "scenario": "SĐT sai định dạng chữ",
+    "phone": "abc1234567",
+    "password": "matkhau123",
+    "expectedStatus": 400
+  },
+  {
+    "scenario": "SĐT bàn Việt Nam (đầu 02)",
+    "phone": "0241234567",
+    "password": "matkhau123",
+    "expectedStatus": 400
+  },
+  {
+    "scenario": "SĐT thiếu chữ số (9 số)",
+    "phone": "091234567",
+    "password": "matkhau123",
+    "expectedStatus": 400
+  },
+  {
+    "scenario": "Mật khẩu quá ngắn (< 6 ký tự)",
+    "phone": "0912345678",
+    "password": "123",
+    "expectedStatus": 400
+  },
+  {
+    "scenario": "Mật khẩu quá dài (> 72 byte cho bcrypt)",
+    "phone": "0912345678",
+    "password": "matkhauqua_dai_matkhauqua_dai_matkhauqua_dai_matkhauqua_dai_matkhauqua_dai_matkhauqua_dai",
+    "expectedStatus": 400
+  }
+]
