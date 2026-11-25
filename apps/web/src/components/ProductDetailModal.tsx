@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { apiService } from "@/services/api";
 import { Product } from "@/types";
 import { X, Check } from "lucide-react";
 import { SIZE_OPTIONS, TOPPING_OPTIONS, calcUnitPrice } from "@/lib/pricing";
@@ -8,6 +9,18 @@ import { SIZE_OPTIONS, TOPPING_OPTIONS, calcUnitPrice } from "@/lib/pricing";
 // Re-export bảng giá và hàm tính giá để tương thích ngược với ProductDetailModal.spec.ts
 export { SIZE_OPTIONS, TOPPING_OPTIONS };
 export const calculateFinalPrice = calcUnitPrice;
+
+interface DynamicSizeOption {
+    id: 'S' | 'M' | 'L';
+    name: string;
+    extraPrice: number;
+}
+
+interface DynamicToppingOption {
+    id: string;
+    name: string;
+    price: number;
+}
 
 interface ProductDetailModalProps {
     product: Product | null;
@@ -28,11 +41,51 @@ export default function ProductDetailModel({
     const [selectedSize, setSelectedSize] = useState<'S' | 'M' | 'L'>('S');
     const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
 
+    // Khởi tạo State động cho Size và Topping từ CSDL (Fallback về giá mặc định)
+    const [dynamicSizes, setDynamicSizes] = useState<DynamicSizeOption[]>([...SIZE_OPTIONS]);
+    const [dynamicToppings, setDynamicToppings] = useState<DynamicToppingOption[]>([...TOPPING_OPTIONS]);
+
+    // Tự động tải phụ thu Size và Topping mới nhất từ Backend (GET /menu-options)
+    useEffect(() => {
+        let isMounted = true;
+        apiService.getMenuOptions()
+            .then((data) => {
+                if (!isMounted) return;
+                if (data.sizes?.length) {
+                    setDynamicSizes(
+                        data.sizes.map((s) => ({
+                            id: s.size,
+                            name: s.size === 'S' ? 'Size S (Nhỏ)' : s.size === 'M' ? 'Size M (Vừa)' : 'Size L (Lớn)',
+                            extraPrice: s.extra,
+                        }))
+                    );
+                }
+                if (data.toppings?.length) {
+                    setDynamicToppings(
+                        data.toppings.map((t) => ({
+                            id: t.code,
+                            name: t.name,
+                            price: t.price,
+                        }))
+                    );
+                }
+            })
+            .catch(() => {
+                // Nếu lỗi mạng, tự động dùng giá mặc định ban đầu
+            });
+        return () => { isMounted = false; };
+    }, []);
+
     // Nếu không có món nào được chọn thì không hiển thị popup
     if (!product) return null;
 
-    // Thuật toán tự tính tổng giá tiền
-    const finalPrice = calcUnitPrice(product.price, selectedSize, selectedToppings);
+    // Thuật toán tính tổng giá tiền linh hoạt theo cấu hình Size & Topping động
+    const sizeExtra = dynamicSizes.find((s) => s.id === selectedSize)?.extraPrice ?? 0;
+    const toppingsExtra = selectedToppings.reduce(
+        (total, id) => total + (dynamicToppings.find((t) => t.id === id)?.price ?? 0),
+        0
+    );
+    const finalPrice = product.price + sizeExtra + toppingsExtra;
 
     // Hàm bật/tắt chọn toppings
     const toggleTopping = (toppingId: string) => {
@@ -110,7 +163,7 @@ export default function ProductDetailModel({
                             <span className="text-[11px] sm:text-xs text-[#8C5835] font-medium">Bắt buộc</span>
                         </div>
                         <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                            {SIZE_OPTIONS.map((size) => {
+                            {dynamicSizes.map((size) => {
                                 const isSelected = selectedSize === size.id;
                                 return (
                                     <button
@@ -142,7 +195,7 @@ export default function ProductDetailModel({
                             <span className="text-[11px] sm:text-xs text-[#A08875]">Tùy chọn</span>
                         </div>
                         <div className="space-y-2 sm:space-y-2.5">
-                            {TOPPING_OPTIONS.map((topping) => {
+                            {dynamicToppings.map((topping) => {
                                 const isSelected = selectedToppings.includes(topping.id);
                                 return (
                                     <div

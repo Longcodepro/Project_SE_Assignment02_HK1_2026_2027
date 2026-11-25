@@ -1,0 +1,118 @@
+@startuml
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+actor ":NhânViênBarista" as Barista
+participant ":MànHìnhBếpKDS" as UI <<boundary>>
+participant ":UpdateKdsStatusDto" as DTO <<boundary>>
+participant ":KdsController" as Ctrl <<control>>
+participant ":RolesGuard" as Guard <<control>>
+participant ":KdsService" as Svc <<control>>
+database ":Prisma / PostgreSQL" as DB <<entity>>
+
+autonumber 1 "<b>[0]</b>"
+
+Barista -> UI: mởMànHìnhBếpKDS()
+activate UI
+
+UI -> Ctrl: gửiYêuCầu(GET /kds/orders, Bearer Token)
+activate Ctrl
+
+Ctrl -> Guard: canActivate(context)
+activate Guard
+
+alt Không phải tài khoản vai trò BARISTA
+  Guard --> Ctrl: throw ForbiddenException("Không có quyền")
+  Ctrl --> UI: 403 Forbidden
+  UI --> Barista: từChốiTruyCập()
+else Đủ quyền BARISTA
+  Guard --> Ctrl: true
+  deactivate Guard
+  
+  Ctrl -> Svc: list()
+  activate Svc
+  
+  Svc -> DB: findMany(WHERE status in ['PAID', 'PREPARING'], orderBy createdAt ASC)
+  activate DB
+  DB --> Svc: danhSáchĐơnChờPhaChế
+  deactivate DB
+  
+  Svc --> Ctrl: kdsOrderList
+  deactivate Svc
+  
+  Ctrl --> UI: 200 OK (danh sách đơn)
+  deactivate Ctrl
+  
+  UI --> Barista: hiểnThịCácThẻĐơnHàng()
+  
+  == Bước 1: Barista nhận đơn (Chuyển sang PREPARING) ==
+  
+  Barista -> UI: bấmNút"NhậnPhaChế"(orderId, version)
+  UI -> Ctrl: PATCH /kds/orders/:id/status { status: "PREPARING", version }
+  activate Ctrl
+  
+  Ctrl -> DTO: validate(status, version)
+  activate DTO
+  DTO --> Ctrl: validDto
+  deactivate DTO
+  
+  Ctrl -> Svc: changeStatus(orderId, dto)
+  activate Svc
+  
+  Svc -> DB: findUnique(Order WHERE id)
+  activate DB
+  DB --> Svc: order (status, version)
+  deactivate DB
+  
+  alt Khóa lạc quan: order.version != dto.version (đã bị người khác đổi)
+    Svc --> Ctrl: throw ConflictException("Đơn vừa được cập nhật bởi yêu cầu khác")
+    Ctrl --> UI: 409 Conflict
+    UI --> Barista: cảnhBáoXungĐột & tựĐộngTảiLại()
+  else Đúng phiên bản version
+    Svc -> Svc: assertTransition(order.status, "PREPARING")
+    
+    Svc -> DB: updateMany(WHERE id, version, status SET status: 'PREPARING', version + 1)
+    activate DB
+    DB --> Svc: { count: 1 }
+    deactivate DB
+    
+    Svc --> Ctrl: kdsStatusResultDto (status: 'PREPARING', newVersion)
+    deactivate Svc
+    
+    Ctrl --> UI: 200 OK
+    deactivate Ctrl
+    
+    UI --> Barista: cậpNhậtTrạngThái"ĐangPhaChế"()
+    
+    == Bước 2: Hoàn tất pha chế (Chuyển sang READY & sinh mã 6 số) ==
+    
+    Barista -> UI: bấmNút"BáoXongMón"(orderId, newVersion)
+    UI -> Ctrl: PATCH /kds/orders/:id/status { status: "READY", version: newVersion }
+    activate Ctrl
+    
+    Ctrl -> Svc: changeStatus(orderId, dto)
+    activate Svc
+    
+    Svc -> Svc: assertTransition('PREPARING', 'READY')
+    Svc -> Svc: sinhMãNhậnMón(newPickupCode -> '123456')
+    
+    Svc -> DB: updateMany(SET status: 'READY', pickupCode: '123456', version + 1)
+    activate DB
+    DB --> Svc: { count: 1 }
+    deactivate DB
+    
+    Svc --> Ctrl: { id, status: 'READY', pickupCode: '123456', version }
+    deactivate Svc
+    
+    Ctrl --> UI: 200 OK
+    deactivate Ctrl
+    
+    UI --> Barista: hiểnThịMãNhận"123456"ĐểGiaoKhách()
+    deactivate UI
+  end
+end
+@enduml

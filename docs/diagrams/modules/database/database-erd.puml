@@ -1,0 +1,203 @@
+@startuml
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam monochrome true
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundcorner 5
+skinparam nodesep 40
+skinparam ranksep 40
+
+title SƠ ĐỒ CƠ SỞ DỮ LIỆU - BREWLITE ASSIGNMENT 2 (FULL ARCHITECTURE)
+
+package "Quản lý Người dùng & Phân quyền" {
+  entity "User" as User {
+    * **phone** : String <<PK, Natural Key 10 số>>
+    --
+    * passwordHash : String
+    name : String
+    email : String
+    * role : Role = CUSTOMER
+    * loyaltyPoints : Int = 0
+    * isLocked : Boolean = false
+    * createdAt : DateTime = now()
+  }
+}
+
+package "Quản lý Thực đơn & Sản phẩm" {
+  entity "Category" as Category {
+    * **id** : Int <<PK, autoincrement>>
+    --
+    * name : String
+    * isActive : Boolean = true
+  }
+
+  entity "Product" as Product {
+    * **id** : Int <<PK, autoincrement>>
+    --
+    * name : String
+    description : String
+    * price : Int
+    * imageUrl : String
+    * isAvailable : Boolean = true
+    * categoryId : Int <<FK>>
+  }
+
+  entity "Topping" as Topping {
+    * **code** : String <<PK, tran-chau...>>
+    --
+    * name : String
+    * price : Int
+    * isActive : Boolean = true
+  }
+
+  entity "SizeSurcharge" as SizeSurcharge {
+    * **size** : Size <<PK>>
+    --
+    * extra : Int
+  }
+}
+
+package "Khuyến mãi & Giảm giá" {
+  entity "Promotion" as Promotion {
+    * **id** : Int <<PK, autoincrement>>
+    --
+    * code : String <<UQ, in hoa>>
+    * discountType : DiscountType
+    * discountValue : Int
+    * minOrderAmount : Int = 0
+    * isActive : Boolean = true
+    expiryDate : DateTime
+    maxUses : Int
+    * usedCount : Int = 0
+  }
+}
+
+package "Đơn hàng, Thanh toán & Đánh giá" {
+  entity "Order" as Order {
+    * **id** : String <<PK, ord_xxx>>
+    --
+    * userPhone : String <<FK>>
+    idempotencyKey : String
+    * status : OrderStatus = PENDING
+    * total : Int
+    * version : Int = 0 <<Optimistic Lock>>
+    pickupCode : String <<UQ, 6 số>>
+    cancelReason : String
+    refundedAt : DateTime
+    promotionId : Int <<FK>>
+    * discountAmount : Int = 0
+    * createdAt : DateTime = now()
+    --
+    UQ(userPhone, idempotencyKey)
+  }
+
+  entity "OrderItem" as OrderItem {
+    * **id** : Int <<PK, autoincrement>>
+    --
+    * orderId : String <<FK>>
+    * productId : Int <<FK>>
+    * quantity : Int
+    * size : Size
+    * toppings : String[]
+    * unitPrice : Int
+  }
+
+  entity "Payment" as Payment {
+    * **id** : Int <<PK, autoincrement>>
+    --
+    * orderId : String <<FK>>
+    * method : PaymentMethod
+    * status : PaymentStatus
+    * amount : Int
+    failureReason : String
+    * pointsEarned : Int = 0
+    idempotencyKey : String
+    * createdAt : DateTime = now()
+    --
+    UQ(orderId, idempotencyKey)
+  }
+
+  entity "Review" as Review {
+    * **id** : Int <<PK, autoincrement>>
+    --
+    * orderId : String <<FK, UQ>>
+    * stars : Int (1..5)
+    comment : String
+    * createdAt : DateTime = now()
+  }
+}
+
+package "Kho nguyên liệu, Công thức & Tiêu hao" {
+  entity "Ingredient" as Ingredient {
+    * **id** : Int <<PK, autoincrement>>
+    --
+    * name : String <<UQ>>
+    * unit : Unit (G, ML, PIECE)
+    * stock : Int = 0
+    * minStock : Int = 0
+  }
+
+  entity "RecipeItem" as RecipeItem {
+    * **id** : Int <<PK, autoincrement>>
+    --
+    * productId : Int <<FK>>
+    * size : Size
+    * ingredientId : Int <<FK>>
+    * quantity : Int
+    --
+    UQ(productId, size, ingredientId)
+  }
+
+  entity "ToppingRecipeItem" as ToppingRecipeItem {
+    * **id** : Int <<PK, autoincrement>>
+    --
+    * toppingCode : String <<FK>>
+    * ingredientId : Int <<FK>>
+    * quantity : Int
+    --
+    UQ(toppingCode, ingredientId)
+  }
+
+  entity "StockReceipt" as StockReceipt {
+    * **id** : Int <<PK, autoincrement>>
+    --
+    * ingredientId : Int <<FK>>
+    * quantity : Int
+    note : String
+    * createdByPhone : String <<FK>>
+    * createdAt : DateTime = now()
+  }
+
+  entity "StockUsage" as StockUsage {
+    * **id** : Int <<PK, autoincrement>>
+    --
+    * orderId : String <<FK>>
+    * ingredientId : Int <<FK>>
+    * quantity : Int
+    --
+    UQ(orderId, ingredientId)
+  }
+}
+
+' QUAN HỆ GIỮA CÁC THỰC THỂ
+Category ||--o{ Product : "1..N"
+Product ||--o{ OrderItem : "1..N"
+Order ||--|{ OrderItem : "1..N (Cascade)"
+User ||--o{ Order : "1..N (đặt đơn)"
+Promotion |o--o{ Order : "0..1 (áp voucher)"
+Order ||--o{ Payment : "1..N (giao dịch)"
+Order ||--o| Review : "1..1 (đánh giá sau khi nhận)"
+
+Product ||--o{ RecipeItem : "1..N (công thức)"
+Ingredient ||--o{ RecipeItem : "1..N"
+Topping ||--o{ ToppingRecipeItem : "1..N"
+Ingredient ||--o{ ToppingRecipeItem : "1..N"
+
+Ingredient ||--o{ StockReceipt : "1..N (nhập kho)"
+User ||--o{ StockReceipt : "1..N (người lập phiếu)"
+
+Order ||--o{ StockUsage : "1..N (tiêu hao thực tế)"
+Ingredient ||--o{ StockUsage : "1..N"
+@enduml

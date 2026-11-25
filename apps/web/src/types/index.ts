@@ -133,3 +133,147 @@ export interface KdsOrder{
     createdAt: string;
     items: KdsItem[];
 }
+
+export interface AdminCategory {
+  id: number;
+  name: string;
+  isActive: boolean;
+}
+
+export interface AdminProduct {
+  id: number;
+  name: string;
+  price: number;
+  imageUrl: string;
+  isAvailable: boolean;
+  categoryId: number;
+  category?: { id: number; name: string };
+}
+
+export interface AdminTopping {
+  code: string;
+  name: string;
+  price: number;
+  isAvailable: boolean;
+}
+
+export interface SizeSurcharge {
+  size: 'S' | 'M' | 'L';
+  surcharge: number;
+}
+
+export interface Ingredient {
+  id: number;
+  name: string;
+  unit: string;
+  stock: number;
+  minStock: number;
+  isLow: boolean;
+}
+
+export interface CreateReceiptPayload {
+  quantity: number;
+  note?: string;
+}
+
+export interface RecipeItem {
+  size: string;
+  ingredientId: number;
+  ingredientName: string;
+  unit: string;
+  quantity: number;
+}
+
+export interface ProductRecipe {
+  productId: number;
+  items: RecipeItem[];
+}
+
+export interface ToppingRecipeItem {
+  ingredientId: number;
+  ingredientName?: string;
+  unit?: string;
+  quantity: number;
+}
+
+export interface ToppingRecipe {
+  toppingCode: string;
+  items: ToppingRecipeItem[];
+}
+
+export interface StaffUser {
+  phone: string;
+  name: string | null;
+  role: 'BARISTA' | 'CASHIER' | 'MANAGER';
+  isLocked: boolean;
+  createdAt: string;
+}
+
+export interface CreateStaffPayload {
+  phone: string;
+  password: string;
+  name?: string;
+  role: 'BARISTA' | 'CASHIER';
+}
+
+export interface AdminPromotion {
+  id: number;
+  code: string;
+  discountType: 'FIXED' | 'PERCENT';
+  discountValue: number;
+  minOrderAmount: number;
+  maxUses: number | null;
+  usedCount: number;
+  expiryDate: string | null;
+  isActive: boolean;
+}
+
+export interface CreatePromotionPayload {
+  code: string;
+  discountType: 'FIXED' | 'PERCENT';
+  discountValue: number;
+  minOrderAmount?: number;
+  maxUses?: number;
+  expiryDate?: string;
+}
+
+export interface ReportBucket {
+  revenue: number;
+  completedOrders: number;
+  totalOrders: number;
+  cancelledOrders: number;
+  cancelRate: number;
+}
+
+export interface ReportSeriesItem extends ReportBucket {
+  period: string;
+}
+
+export interface TopProductItem {
+  productId: number;
+  productName: string;
+  quantity: number;
+}
+
+export interface ReportData {
+  from: string;
+  to: string;
+  groupBy: 'day' | 'week' | 'month';
+  totals: ReportBucket;
+  series: ReportSeriesItem[];
+  topProducts: TopProductItem[];
+}
+
+export interface IngredientReceipt {
+  id: number;
+  ingredientId: number;
+  quantity: number;
+  note: string | null;
+  createdByPhone: string;
+  createdAt: string;
+}
+
+export interface MenuOptions {
+  sizes: Array<{ size: 'S' | 'M' | 'L'; extra: number }>;
+  toppings: Array<{ code: string; name: string; price: number }>;
+}

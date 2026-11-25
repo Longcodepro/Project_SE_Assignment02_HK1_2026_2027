@@ -1,0 +1,61 @@
+@startuml
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+actor ":KháchHàng" as User
+participant ":TrangMenu" as UI <<boundary>>
+participant ":ModalChiTiếtMón" as Modal <<boundary>>
+participant ":ProductsController" as Ctrl <<control>>
+participant ":ProductsService" as Svc <<control>>
+database ":Prisma / PostgreSQL" as DB <<entity>>
+
+autonumber 1 "<b>[0]</b>"
+
+User -> UI: truyCậpTrangChủ()
+activate UI
+
+UI -> Ctrl: gửiYêuCầu(GET /products)
+activate Ctrl
+Ctrl -> Svc: findAll()
+activate Svc
+Svc -> DB: findMany(WHERE isActive = true, include: category)
+activate DB
+DB --> Svc: danhSáchSảnPhẩm
+deactivate DB
+Svc --> Ctrl: productList
+deactivate Svc
+Ctrl --> UI: 200 OK (ProductDto[])
+deactivate Ctrl
+
+UI -> Ctrl: gửiYêuCầu(GET /menu-options)
+activate Ctrl
+Ctrl -> Svc: getMenuOptions()
+activate Svc
+Svc --> Ctrl: menuOptions (sizes, toppings)
+deactivate Svc
+Ctrl --> UI: 200 OK (MenuOptionsDto)
+deactivate Ctrl
+
+UI --> User: hiểnThịMenuĐồUống()
+
+User -> UI: bấmChọnMónĐồUống(productId = 1)
+UI -> Modal: mởModalChiTiết(product, menuOptions)
+activate Modal
+Modal --> User: hiểnThịTùyChọn(Size: S/M/L, Topping)
+
+User -> Modal: chọnSize('M') & chọnTopping(['tran-chau'])
+Modal -> Modal: tínhLạiĐơnGiá(basePrice + sizeExtra + toppingExtra)
+Modal --> User: cậpNhậtGiáTạmTính()
+
+User -> Modal: bấmNút"ThêmVàoGiỏHàng"()
+Modal -> UI: addToCart({ product, size, toppings, unitPrice, quantity })
+deactivate Modal
+
+UI -> UI: useCartStore.getState().addItem(...)
+UI --> User: cậpNhậtBadgeGiỏHàng()
+deactivate UI
+@enduml

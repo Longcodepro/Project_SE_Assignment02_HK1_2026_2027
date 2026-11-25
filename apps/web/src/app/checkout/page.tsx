@@ -30,6 +30,14 @@ export default function CheckoutPage(){
     const [loading, setLoading] = useState<boolean>(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+    // Ghi nhớ đơn vừa thanh toán thất bại để nếu khách bấm thử lại ngay tại Checkout thì tái sử dụng đơn cũ,
+    // chuyển trạng thái sang PAID thay vì tạo thêm đơn mới gây rác lịch sử đơn.
+    const [failedOrder, setFailedOrder] = useState<{
+        orderId: string;
+        cartKey: string;
+        total: number;
+    } | null>(null);
+
     // Mã giảm giá: server tính số tiền giảm nên áp mã = tạo đơn nháp có promoCode, client chỉ hiển thị kết quả
     const { draft, setDraft, clearDraft } = useCheckoutDraftStore();
     const [promoInput, setPromoInput] = useState<string>('');
@@ -43,13 +51,18 @@ export default function CheckoutPage(){
     }));
     const cartKey = cartKeyOf(orderItems);
 
-    // Giỏ hàng đổi sau khi áp mã: đơn nháp cũ không còn khớp, hủy để trả lại lượt dùng mã
+    // Giỏ hàng đổi sau khi áp mã hoặc khi có đơn thất bại cũ: hủy đơn cũ không còn khớp
     useEffect(() => {
         if (draft && draft.cartKey !== cartKey) {
             void apiService.discardDraftOrder(draft.orderId);
             clearDraft();
         }
-    }, [draft, cartKey, clearDraft]);
+        if (failedOrder && failedOrder.cartKey !== cartKey) {
+            void apiService.discardDraftOrder(failedOrder.orderId);
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setFailedOrder(null);
+        }
+    }, [draft, failedOrder, cartKey, clearDraft]);
 
     if (!isClient) return null;
 
@@ -87,6 +100,10 @@ export default function CheckoutPage(){
         setPromoLoading(true);
         setPromoError(null);
         try {
+            if (failedOrder) {
+                void apiService.discardDraftOrder(failedOrder.orderId);
+                setFailedOrder(null);
+            }
             const order = await apiService.createOrder({ items: orderItems, promoCode: code });
             setDraft({
                 orderId: order.id,
@@ -140,8 +157,8 @@ export default function CheckoutPage(){
                 if (res.status !== 'PAID') {
                     throw new Error(
                         res.reason
-                            ? `Thanh toán đơn hàng #${draft.orderId} không thành công: ${res.reason}. Bạn có thể thử lại.`
-                            : `Thanh toán đơn hàng #${draft.orderId} không thành công (PAYMENT_FAILED). Bạn có thể thử lại.`,
+                            ? `Thanh toán đơn hàng #${String(draft.orderId).slice(-6).toUpperCase()} không thành công: ${res.reason}. Bạn có thể thử lại.`
+                            : `Thanh toán đơn hàng #${String(draft.orderId).slice(-6).toUpperCase()} không thành công (PAYMENT_FAILED). Bạn có thể thử lại.`,
                     );
                 }
                 const paid = draft;
@@ -151,6 +168,29 @@ export default function CheckoutPage(){
                     `/order-success?orderId=${paid.orderId}&total=${res.amount ?? paid.total}&method=${paymentMethod}` +
                         `&discount=${paid.discountAmount}&promo=${encodeURIComponent(paid.promoCode)}`,
                 );
+                return;
+            }
+
+            // Tái sử dụng đơn cũ khi lần thanh toán trước bị thất bại (cùng giỏ hàng):
+            // Gọi payOrder cho chính đơn đó để cập nhật trạng thái PAYMENT_FAILED -> PAID thay vì tạo đơn mới
+            if (failedOrder) {
+                const res = await apiService.payOrder({
+                    orderId: failedOrder.orderId,
+                    paymentMethod,
+                    cardNumber: paymentMethod === 'CARD' ? cardNumber.trim() : undefined,
+                });
+                if (res.status !== 'PAID') {
+                    throw new Error(
+                        res.reason
+                            ? `Thanh toán đơn hàng #${String(failedOrder.orderId).slice(-6).toUpperCase()} không thành công: ${res.reason}. Bạn có thể thử lại.`
+                            : `Thanh toán đơn hàng #${String(failedOrder.orderId).slice(-6).toUpperCase()} không thành công (PAYMENT_FAILED). Bạn có thể thử lại.`,
+                    );
+                }
+                const paidOrderId = failedOrder.orderId;
+                const paidTotal = res.amount ?? failedOrder.total;
+                setFailedOrder(null);
+                clearCart();
+                router.push(`/order-success?orderId=${paidOrderId}&total=${paidTotal}&method=${paymentMethod}`);
                 return;
             }
 
@@ -171,10 +211,17 @@ export default function CheckoutPage(){
             }
 
             if (resultOrder.status !== 'PAID') {
-                throw new Error(`Thanh toán đơn hàng #${resultOrder.orderId} không thành công (PAYMENT_FAILED). Bạn có thể thử lại hoặc tra cứu đơn trong mục "Lịch sử đơn".`);
+                // Lưu lại đơn thất bại để lần bấm tiếp theo sẽ tái sử dụng chính đơn này
+                setFailedOrder({
+                    orderId: String(resultOrder.orderId),
+                    cartKey,
+                    total: resultOrder.total,
+                });
+                throw new Error(`Thanh toán đơn hàng #${String(resultOrder.orderId).slice(-6).toUpperCase()} không thành công (PAYMENT_FAILED). Bạn có thể thử lại hoặc tra cứu đơn trong mục "Lịch sử đơn".`);
             }
 
             // Nếu thanh toán thành công, làm sạch giỏ hàng và chuyển sang màn hình xác nhận
+            setFailedOrder(null);
             clearCart();
             router.push(`/order-success?orderId=${resultOrder.orderId}&total=${resultOrder.total}&method=${paymentMethod}`);
         } catch (err: unknown) {

@@ -1,0 +1,63 @@
+@startuml
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+actor ":KháchHàng" as User
+participant ":ModalĐăngKý" as UI <<boundary>>
+participant ":RegisterDto" as DTO <<boundary>>
+participant ":AuthController" as Ctrl <<control>>
+participant ":AuthService" as Svc <<control>>
+database ":Prisma / PostgreSQL" as DB <<entity>>
+
+autonumber 1 "<b>[0]</b>"
+
+User -> UI: nhậpThôngTin(phone, password, name)
+activate UI
+User -> UI: bấmNút"ĐăngKý"()
+
+UI -> Ctrl: gửiYêuCầu(POST /auth/register, body)
+activate Ctrl
+
+Ctrl -> DTO: validate(phone, password, name)
+activate DTO
+
+alt Dữ liệu DTO không hợp lệ (sai định dạng SĐT VN hoặc pass < 6 ký tự)
+  DTO --> Ctrl: validationErrors
+  Ctrl --> UI: 400 Bad Request
+  UI --> User: hiểnThịLỗiDữLiệuĐầuVào()
+else Dữ liệu hợp lệ
+  DTO --> Ctrl: validRegisterDto
+  deactivate DTO
+  
+  Ctrl -> Svc: register(dto)
+  activate Svc
+  
+  Svc -> Svc: passwordHash = bcrypt.hash(password, 10)
+  
+  Svc -> DB: create(User { phone, passwordHash, name, role: CUSTOMER })
+  activate DB
+  
+  alt Số điện thoại đã được đăng ký từ trước (Prisma error P2002)
+    DB --> Svc: throw UniqueConstraintViolation (P2002)
+    Svc --> Ctrl: throw ConflictException("Số điện thoại đã được đăng ký")
+    Ctrl --> UI: 409 Conflict
+    UI --> User: báoSốĐiệnThoạiĐãTồnTại()
+  else Tạo tài khoản thành công
+    DB --> Svc: createdUser (id, phone, name, role)
+    deactivate DB
+    
+    Svc --> Ctrl: registerResponseDto
+    deactivate Svc
+    
+    Ctrl --> UI: 201 Created
+    deactivate Ctrl
+    
+    UI --> User: thôngBáoThànhCông & mởModalĐăngNhập()
+    deactivate UI
+  end
+end
+@enduml

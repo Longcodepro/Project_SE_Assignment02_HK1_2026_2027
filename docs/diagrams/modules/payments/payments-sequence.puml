@@ -1,0 +1,125 @@
+@startuml
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+actor ":KháchHàng" as User
+participant ":GiaoDiệnThanhToán" as UI <<boundary>>
+participant ":CreatePaymentDto" as DTO <<boundary>>
+participant ":PaymentsController" as Ctrl <<control>>
+participant ":JwtAuthGuard" as Guard <<control>>
+participant ":PaymentsService" as Svc <<control>>
+participant ":MockGateway" as Mock <<control>>
+database ":Prisma / PostgreSQL" as DB <<entity>>
+
+autonumber 1 "<b>[0]</b>"
+
+User -> UI: bấmXácNhậnThanhToán(orderId, method, cardNumber)
+activate UI
+
+UI -> UI: sinhKhóa(Idempotency-Key)
+UI -> Ctrl: gửiYêuCầu(POST /payments, body, headers)
+activate Ctrl
+
+Ctrl -> Guard: canActivate(context)
+activate Guard
+
+alt Token không hợp lệ hoặc thiếu
+  Guard --> Ctrl: throw UnauthorizedException
+  Ctrl --> UI: 401 Unauthorized
+  UI --> User: yêuCầuĐăngNhậpLại()
+else Token hợp lệ
+  Guard --> Ctrl: true (req.user = { phone, role })
+  deactivate Guard
+  
+  Ctrl -> DTO: validate(orderId, method, cardNumber)
+  activate DTO
+  
+  alt Dữ liệu DTO không hợp lệ (sai số thẻ)
+    DTO --> Ctrl: validationErrors
+    Ctrl --> UI: 400 Bad Request
+    UI --> User: báoLỗiThôngTinThanhToán()
+  else DTO hợp lệ
+    DTO --> Ctrl: createPaymentDto
+    deactivate DTO
+    
+    Ctrl -> Svc: pay(userPhone, dto, idempotencyKey)
+    activate Svc
+    
+    Svc -> DB: findFirst(Order WHERE id AND userPhone)
+    activate DB
+    DB --> Svc: order (status, total, version)
+    deactivate DB
+    
+    alt Không tìm thấy đơn hàng
+      Svc --> Ctrl: 404 Not Found
+      Ctrl --> UI: 404 Not Found
+      UI --> User: báoKhôngTìmThấyĐơn()
+    else Đơn hàng hợp lệ
+      opt Có gửi kèm Idempotency-Key
+        Svc -> DB: findUnique(Payment WHERE orderId, idempotencyKey)
+        activate DB
+        DB --> Svc: existingPayment (hoặc null)
+        deactivate DB
+        
+        break Đã thanh toán trước đó với Key này
+          Svc --> Ctrl: paymentResponseDto (trả lại kết quả cũ)
+          Ctrl --> UI: 201 Created (kết quả cũ)
+          UI --> User: hiểnThịKếtQuả(status, reason)
+        end
+      end
+      
+      alt Đơn đã PAID hoặc CANCELLED (State Machine chặn)
+        Svc --> Ctrl: throw ConflictException("Đơn không thể thanh toán")
+        Ctrl --> UI: 409 Conflict
+        UI --> User: báoLỗiTrạngTháiĐơn()
+      else Trạng thái PENDING hoặc PAYMENT_FAILED
+        Svc -> Mock: charge({ method, amount, cardNumber })
+        activate Mock
+        
+        alt Thẻ đuôi 0000
+          Mock --> Svc: { ok: false, reason: "Thẻ bị từ chối" }
+        else Thẻ hợp lệ hoặc Ví điện tử
+          Mock --> Svc: { ok: true }
+        end
+        deactivate Mock
+        
+        Svc -> DB: $transaction(cập nhật Order và tạo Payment)
+        activate DB
+        
+        DB -> DB: UPDATE "Order" SET status = newStatus, version = version + 1\nWHERE id = orderId AND version = order.version
+        
+        alt Cập nhật thất bại (count == 0 - Khóa lạc quan phát hiện race condition)
+          DB --> Svc: throw ConflictException("Đơn vừa bị cập nhật bởi yêu cầu khác")
+          Svc --> Ctrl: 409 Conflict
+          Ctrl --> UI: 409 Conflict
+          UI --> User: báoXungĐộtĐồngThời & yêuCầuTảiLại()
+        else Cập nhật thành công
+          opt Giao dịch thành công (PAID)
+            DB -> DB: UPDATE "User" SET loyaltyPoints = loyaltyPoints + points
+          end
+          DB -> DB: CREATE "Payment" (orderId, method, status, amount, reason, idempotencyKey)
+          DB --> Svc: paymentRecord
+          deactivate DB
+          
+          Svc --> Ctrl: paymentResponseDto (status, amount, pointsEarned, reason)
+          deactivate Svc
+          
+          Ctrl --> UI: 201 Created
+          deactivate Ctrl
+          
+          alt Kết quả là PAID
+            UI --> User: chuyểnSangTrangThànhCông(orderId, pointsEarned)
+          else Kết quả là PAYMENT_FAILED
+            UI --> User: hiểnThịLỗiThanhToánThấtBại & choPhépThửLại()
+          end
+          deactivate UI
+        end
+      end
+    end
+  end
+end
+@enduml

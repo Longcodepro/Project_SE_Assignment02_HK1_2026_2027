@@ -1,0 +1,93 @@
+@startuml
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam shadowing false
+skinparam conditionStyle diamond
+skinparam ranksep 35
+skinparam nodesep 50
+
+|Khách hàng|
+start
+:Mở giỏ hàng, chọn món và kích cỡ;
+:Nhập mã giảm giá voucher (nếu có, ví dụ WELCOME10);
+:Bấm nút "Đặt hàng";
+
+|Giao diện Next.js (Mobile-first)|
+:Sinh khóa chống gửi trùng Idempotency-Key;
+:Gửi yêu cầu HTTP POST /orders
+(kèm Bearer Token SĐT, Idempotency-Key, items, promoCode);
+
+|Backend (NestJS API)|
+if (Xác thực JWT Token qua JwtAuthGuard?) then ([không hợp lệ])
+  :Báo lỗi 401 Unauthorized;
+  |Giao diện Next.js (Mobile-first)|
+  :Yêu cầu đăng nhập lại bằng SĐT;
+  |Khách hàng|
+  stop
+endif
+
+|Backend (NestJS API)|
+if (Validate CreateOrderDto (class-validator)?) then ([sai định dạng hoặc giỏ rỗng])
+  :Báo lỗi 400 Bad Request;
+  |Giao diện Next.js (Mobile-first)|
+  :Hiển thị lỗi kiểm tra dữ liệu;
+  |Khách hàng|
+  stop
+endif
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Kiểm tra Idempotency-Key theo userPhone;
+
+|Backend (NestJS API)|
+if (Đã tồn tại đơn hàng cùng Key?) then ([đã tồn tại])
+  :Trả về ngay thông tin đơn cũ
+(chống trừ kho và tạo đơn lặp);
+  |Giao diện Next.js (Mobile-first)|
+  :Chuyển tiếp sang màn hình Thanh toán;
+  |Khách hàng|
+  stop
+endif
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Truy vấn danh mục sản phẩm (prisma.product.findMany);
+:Kiểm tra mã giảm giá (prisma.promotion.findUnique);
+
+|Backend (NestJS API)|
+:Server tự tính toán lại toàn bộ đơn giá
+(Giá chuẩn + Phụ thu size + Giá topping);
+:Tính chiết khấu voucher và tổng tiền thực trả;
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Mở Database Transaction nguyên tử;
+:Kiểm tra và trừ định lượng tồn kho nguyên liệu
+(UPDATE "InventoryItem" ... WHERE stock >= qty);
+
+|Backend (NestJS API)|
+if (Đủ nguyên liệu theo công thức từng size?) then ([hết hàng])
+  :Rollback transaction;
+  :Báo lỗi 409 Conflict ("Nguyên liệu không đủ");
+  |Giao diện Next.js (Mobile-first)|
+  :Thông báo món đã hết nguyên liệu;
+  |Khách hàng|
+  stop
+endif
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Tạo bản ghi Order (status: PENDING, version: 0);
+:Tạo các bản ghi OrderItem tương ứng;
+:Đóng Transaction thành công (Commit);
+
+|Backend (NestJS API)|
+:Trả về 201 Created kèm OrderSummaryDto
+(orderId, total, discount, status: PENDING);
+
+|Giao diện Next.js (Mobile-first)|
+:Xóa giỏ hàng hiện tại trong Zustand;
+:Điều hướng sang màn hình Thanh toán (/checkout);
+
+|Khách hàng|
+:Xem thông tin đơn vừa tạo và tiến hành thanh toán;
+stop
+@enduml

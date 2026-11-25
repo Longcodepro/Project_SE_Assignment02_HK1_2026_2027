@@ -1,0 +1,126 @@
+@startuml
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam shadowing false
+skinparam conditionStyle diamond
+skinparam ranksep 35
+skinparam nodesep 50
+
+|Khách hàng|
+start
+:Mở màn hình Thanh toán (/checkout);
+:Chọn phương thức thanh toán (Ví hoặc Thẻ ngân hàng);
+:Nhập thông tin thẻ (nếu chọn phương thức Thẻ);
+:Bấm nút "Xác nhận thanh toán";
+
+|Giao diện Next.js (Mobile-first)|
+:Sinh khóa chống trừ tiền trùng Idempotency-Key;
+:Gửi yêu cầu HTTP POST /payments
+(kèm Bearer Token, orderId, method, cardNumber);
+
+|Backend (NestJS API)|
+if (Xác thực JWT Token qua JwtAuthGuard?) then ([không hợp lệ])
+  :Báo lỗi 401 Unauthorized;
+  |Giao diện Next.js (Mobile-first)|
+  :Yêu cầu đăng nhập lại;
+  |Khách hàng|
+  stop
+endif
+
+|Backend (NestJS API)|
+if (Validate CreatePaymentDto?) then ([sai định dạng])
+  :Báo lỗi 400 Bad Request;
+  |Giao diện Next.js (Mobile-first)|
+  :Hiển thị lỗi thông tin thanh toán;
+  |Khách hàng|
+  stop
+endif
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Tìm đơn hàng theo orderId và userPhone;
+
+|Backend (NestJS API)|
+if (Đơn hàng có tồn tại và thuộc về khách?) then ([không tồn tại])
+  :Báo lỗi 404 Not Found
+(bảo mật chống lộ mã đơn);
+  |Giao diện Next.js (Mobile-first)|
+  :Thông báo không tìm thấy đơn;
+  |Khách hàng|
+  stop
+endif
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Kiểm tra Idempotency-Key trong bảng Payment;
+
+|Backend (NestJS API)|
+if (Đã thanh toán với Key này?) then ([đã tồn tại])
+  :Trả lại ngay kết quả giao dịch cũ
+(không trừ tiền lần 2);
+  |Giao diện Next.js (Mobile-first)|
+  :Hiển thị kết quả thanh toán tương ứng;
+  |Khách hàng|
+  stop
+endif
+
+|Backend (NestJS API)|
+if (Trạng thái đơn cho phép thanh toán? (FSM)) then ([đơn đã PAID hoặc CANCELLED])
+  :Báo lỗi 409 Conflict
+("Đơn không ở trạng thái cho phép thanh toán");
+  |Giao diện Next.js (Mobile-first)|
+  :Thông báo trạng thái đơn không hợp lệ;
+  |Khách hàng|
+  stop
+endif
+
+|Backend (NestJS API)|
+:Gọi Cổng thanh toán mô phỏng (MockPaymentGateway);
+if (Thẻ có đuôi '0000'?) then ([đuôi 0000])
+  :Đánh dấu giao dịch THẤT BẠI
+(status: PAYMENT_FAILED, reason: "Thẻ bị từ chối");
+else ([hợp lệ])
+  :Đánh dấu giao dịch THÀNH CÔNG
+(status: PAID);
+endif
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Mở Database Transaction;
+:Cập nhật đơn hàng bằng KHÓA LẠC QUAN
+(WHERE id = orderId AND version = order.version
+SET status = newStatus, version = version + 1);
+
+|Backend (NestJS API)|
+if (Số dòng cập nhật == 0? (Bị xung đột race condition)) then ([bị xung đột])
+  :Rollback transaction;
+  :Báo lỗi 409 Conflict
+("Đơn vừa được cập nhật bởi yêu cầu khác");
+  |Giao diện Next.js (Mobile-first)|
+  :Yêu cầu khách tải lại trang;
+  |Khách hàng|
+  stop
+endif
+
+|Cơ sở dữ liệu (PostgreSQL)|
+if (Giao dịch thành công (PAID)?) then ([có])
+  :Tích điểm Loyalty cho khách (1.000đ = 1 điểm);
+endif
+:Lưu bản ghi Payment mới vào CSDL;
+:Commit Transaction;
+
+|Backend (NestJS API)|
+:Trả về 201 Created kèm PaymentResponseDto
+(status, amount, pointsEarned, reason);
+
+|Giao diện Next.js (Mobile-first)|
+if (Kết quả là PAID?) then ([thành công])
+  :Điều hướng sang trang /order-success
+(Mã đơn, điểm thưởng, chuyển sang KDS);
+else ([thất bại])
+  :Hiển thị lỗi và cho phép bấm "Thanh toán lại";
+endif
+
+|Khách hàng|
+:Xem kết quả giao dịch và hóa đơn;
+stop
+@enduml

@@ -32,7 +32,7 @@ function OrderSuccessContent(){
                 <div className="w-full bg-amber-50/50 rounded-2xl p-4 border border-amber-100/80 mb-6 space-y-2.5 text-sm text-left">
                     <div className="flex justify-between items-center">
                         <span className="text-gray-500 text-xs">Mã đơn hàng:</span>
-                        <span className="font-extrabold text-amber-950 font-mono text-base">{orderId}</span>
+                        <span className="font-extrabold text-amber-950 font-mono text-base">#{String(orderId).slice(-5)}</span>
                     </div>
 
                     <div className="flex justify-between items-center">

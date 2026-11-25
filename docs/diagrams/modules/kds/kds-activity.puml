@@ -1,0 +1,85 @@
+@startuml
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam shadowing false
+skinparam conditionStyle diamond
+skinparam ranksep 35
+skinparam nodesep 50
+
+|Nhân viên Barista|
+start
+:Mở màn hình bếp KDS (/kds);
+:Hệ thống yêu cầu đăng nhập tài khoản vai trò BARISTA;
+
+|Giao diện KDS (Next.js)|
+:Gửi yêu cầu HTTP GET /kds/orders (kèm Bearer Token);
+
+|Backend (NestJS API)|
+if (Xác thực JWT và Phân quyền RolesGuard (BARISTA)?) then ([không đủ quyền])
+  :Báo lỗi 403 Forbidden;
+  |Giao diện KDS (Next.js)|
+  :Hiển thị thông báo không có quyền truy cập;
+  |Nhân viên Barista|
+  stop
+endif
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Truy vấn danh sách đơn hàng có status in ['PAID', 'PREPARING']
+(sắp xếp tăng dần theo thời gian tạo, cũ nhất lên đầu);
+
+|Giao diện KDS (Next.js)|
+:Hiển thị danh sách các thẻ đơn hàng chờ pha chế;
+
+|Nhân viên Barista|
+:Chọn một đơn hàng và bấm "Nhận pha chế";
+
+|Giao diện KDS (Next.js)|
+:Gửi yêu cầu HTTP PATCH /kds/orders/:id/status
+(kèm body: { status: "PREPARING", version: currentVersion });
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Đọc đơn hàng từ CSDL (status, version);
+
+|Backend (NestJS API)|
+if (Kiểm tra Khóa lạc quan (version trong DB == version gửi lên)?) then ([khác nhau - đã bị sửa trước đó])
+  :Báo lỗi 409 Conflict
+("Đơn vừa được cập nhật bởi yêu cầu khác, vui lòng tải lại");
+  |Giao diện KDS (Next.js)|
+  :Tự động tải lại danh sách đơn hàng;
+  |Nhân viên Barista|
+  stop
+endif
+
+|Backend (NestJS API)|
+:Kiểm tra máy trạng thái (PAID -> PREPARING);
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Cập nhật đơn hàng (status = 'PREPARING', version = version + 1);
+
+|Giao diện KDS (Next.js)|
+:Đổi màu thẻ đơn hàng sang trạng thái "Đang pha chế";
+
+|Nhân viên Barista|
+:Thực hiện pha chế đồ uống theo công thức;
+:Pha chế hoàn tất, bấm nút "Báo xong món";
+
+|Giao diện KDS (Next.js)|
+:Gửi yêu cầu HTTP PATCH /kds/orders/:id/status
+(kèm body: { status: "READY", version: newVersion });
+
+|Backend (NestJS API)|
+:Sinh ngẫu nhiên mã nhận đồ uống 6 số (pickupCode);
+:Kiểm tra chuyển trạng thái (PREPARING -> READY);
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Cập nhật đơn hàng (status = 'READY', pickupCode, version = version + 1);
+
+|Giao diện KDS (Next.js)|
+:Hiển thị mã nhận đồ uống 6 số trên màn hình chờ nhận món;
+
+|Nhân viên Barista|
+:Giao đồ uống cho khách hàng khi khách đọc đúng mã 6 số;
+stop
+@enduml

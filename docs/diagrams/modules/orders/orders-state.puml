@@ -1,0 +1,44 @@
+@startuml
+' Sơ đồ máy trạng thái đơn hàng và điều kiện khóa lạc quan (OCC)
+' Mã sơ đồ: State-01 | Phân hệ: Orders & KDS & Cashier
+' Liên quan: UC-05, UC-06, UC-07, UC-08, UC-11, UC-12, FR-05, FR-06, FR-09, FR-11, NFR-05
+
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam shadowing false
+
+title Sơ đồ máy trạng thái đơn hàng & Điều kiện Version (State-01) - BrewLite AS2
+
+[*] --> PENDING : <b>POST /orders</b>\n[Khởi tạo: version = 0]
+
+PENDING --> PAID : <b>POST /payments</b> (Thanh toán thành công)\n[Điều kiện: version == 0, version -> 1]\n(Tích 1 điểm / 1.000đ, trừ kho nguyên liệu)
+PENDING --> PAYMENT_FAILED : <b>POST /payments</b> (Thất bại: Thẻ 0000 / Ví > 500k)\n[Điều kiện: version == 0, version -> 1]
+PENDING --> CANCELLED : <b>POST /orders/:id/cancel</b> (Khách hủy)\n[Điều kiện: version == V, version -> V+1]
+
+PAYMENT_FAILED --> PAID : <b>POST /payments</b> (Thanh toán lại)\n[Điều kiện: version == V, version -> V+1]
+PAYMENT_FAILED --> CANCELLED : <b>POST /orders/:id/cancel</b> (Khách hủy)\n[Điều kiện: version == V, version -> V+1]
+
+PAID --> PREPARING : <b>PATCH /kds/orders/:id</b> (Barista nhận pha)\n[Điều kiện: version == V, version -> V+1]
+PAID --> CANCELLED : <b>POST /orders/:id/cancel</b> (Khách / Quầy hủy)\n[Điều kiện: version == V, version -> V+1]\n(Hoàn tiền, trừ điểm loyalty, hoàn trả kho)
+
+PREPARING --> READY : <b>PATCH /kds/orders/:id</b> (Barista pha xong)\n[Điều kiện: version == V, version -> V+1]\n(Tự động sinh pickupCode 6 số duy nhất)
+
+READY --> COMPLETED : <b>POST /cashier/orders/:id/complete</b> (Cashier giao món)\n[Điều kiện: Đúng pickupCode & version == V, version -> V+1]\n(Xóa pickupCode để cấp lại)
+
+COMPLETED --> [*]
+CANCELLED --> [*]
+
+note right of PREPARING
+  <b>Quy tắc nghiệp vụ & Bất biến (Invariants):</b>
+  - <b>COMPLETED</b> và <b>CANCELLED</b> là trạng thái cuối (Terminal states).
+  - Từ <b>PREPARING</b> trở đi: Đơn <b>KHÔNG</b> thể hủy (chặn CANCELLED).
+  - <b>Khóa lạc quan (OCC):</b> Cập nhật qua điều kiện nguyên tử:
+    <i>UPDATE "Order" SET status = :new, version = version + 1
+    WHERE id = :id AND version = :dtoVersion AND status = :expectedStatus</i>
+  - Nếu số dòng cập nhật = 0 (tranh chấp / sai version):
+    Backend ném ngay lỗi <b>409 Conflict</b>.
+end note
+
+@enduml

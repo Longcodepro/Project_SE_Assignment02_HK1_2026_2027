@@ -1,0 +1,81 @@
+@startuml
+skinparam style strictuml
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam monochrome true
+skinparam shadowing false
+skinparam conditionStyle diamond
+skinparam ranksep 35
+skinparam nodesep 50
+
+|Khách hàng / Thu ngân|
+start
+:Mở chi tiết đơn hàng muốn hủy;
+:Nhập lý do hủy đơn (bắt buộc nếu đơn đã PAID);
+:Bấm nút "Xác nhận hủy đơn";
+
+|Giao diện Next.js|
+:Gửi yêu cầu HTTP POST /orders/:id/cancel
+(kèm Bearer Token, body: { version, reason });
+
+|Backend (NestJS API)|
+if (Xác thực JWT Token qua JwtAuthGuard?) then ([không hợp lệ])
+  :Báo lỗi 401 Unauthorized;
+  |Giao diện Next.js|
+  :Yêu cầu đăng nhập lại;
+  |Khách hàng / Thu ngân|
+  stop
+endif
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Tìm đơn hàng theo id (và userPhone nếu là khách);
+
+|Backend (NestJS API)|
+if (Đơn hàng có tồn tại và thuộc quyền quản lý?) then ([không tìm thấy])
+  :Báo lỗi 404 Not Found;
+  |Giao diện Next.js|
+  :Thông báo không tìm thấy đơn;
+  |Khách hàng / Thu ngân|
+  stop
+endif
+
+|Backend (NestJS API)|
+if (Khóa lạc quan: version trong DB == version gửi lên?) then ([khác version])
+  :Báo lỗi 409 Conflict
+("Đơn vừa được cập nhật bởi yêu cầu khác");
+  |Giao diện Next.js|
+  :Yêu cầu tải lại trang;
+  |Khách hàng / Thu ngân|
+  stop
+endif
+
+|Backend (NestJS API)|
+if (Trạng thái đơn cho phép hủy? (PENDING, PAYMENT_FAILED, PAID)) then ([đã sang PREPARING hoặc READY])
+  :Báo lỗi 409 Conflict
+("Đơn đang pha chế, không thể hủy");
+  |Giao diện Next.js|
+  :Thông báo đơn đã vào bếp, không thể hủy;
+  |Khách hàng / Thu ngân|
+  stop
+endif
+
+|Cơ sở dữ liệu (PostgreSQL)|
+:Mở Database Transaction;
+if (Đơn hàng đã thanh toán (PAID)?) then ([đã PAID])
+  :Hoàn trả định lượng tồn kho nguyên liệu
+(Dựa trên snapshot công thức từng size);
+:Hoàn lại lượt sử dụng mã giảm giá voucher (nếu có);
+endif
+:Cập nhật đơn hàng (status = 'CANCELLED', reason, version = version + 1);
+:Commit Transaction;
+
+|Backend (NestJS API)|
+:Trả về 200 OK kèm kết quả hủy đơn thành công;
+
+|Giao diện Next.js|
+:Cập nhật trạng thái hiển thị "Đã hủy đơn";
+
+|Khách hàng / Thu ngân|
+:Xem thông báo hủy đơn thành công;
+stop
+@enduml
