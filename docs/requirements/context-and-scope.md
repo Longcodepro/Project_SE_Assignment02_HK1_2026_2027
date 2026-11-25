@@ -233,7 +233,7 @@ Các tính năng nâng cao đã được quy hoạch trong Product Backlog và s
 | `CN-10` | Tiện ích khách: voucher, hủy đơn, đánh giá (Đã hoàn thành Sprint 3: S3.6..S3.12) | 3 | Could | Long và Tài | FR-11 (phía khách), FR-12, FR-13 | UC-10, UC-08, UC-13, UC-09 |
 | `CN-11` | Quản lý menu, danh mục, topping (CRUD) (Đã hoàn thành Sprint 4 API: S4.2) | 4 | Could | Long và Tài | FR-18 | UC-15 |
 | `CN-12` | Kho nguyên liệu và công thức pha chế (Đã hoàn thành Sprint 4 API: S4.4, S4.5) | 4 | Could | Long và Tài | FR-15, FR-16, FR-17 | UC-14, UC-16, UC-17 |
-| `CN-13` | Quản trị nhân sự, voucher và báo cáo (Đã hoàn thành Sprint 4 API: S4.1, S4.7, S4.8, S4.9) | 4 | Could | Long và Tài | FR-11 (phía Manager), FR-14, FR-19 | UC-18, UC-21, UC-19 |
+| `CN-13` | Quản trị nhân sự, voucher và báo cáo (Đã hoàn thành Sprint 4 API: S4.1, S4.7, S4.8, S4.9, Web: S4.10) | 4 | Could | Long và Tài | FR-11 (phía Manager), FR-14, FR-19 | UC-18, UC-21, UC-19 |
 
 ### 6.2. 21 use case (UC)
 
